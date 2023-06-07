@@ -7,22 +7,25 @@
 
 class MemTable
 {
-private:
-    std::vector<Entry *> entries;
+protected:
+    std::vector<Entry *> entries{}; // Change this to generic container
 
 public:
     MemTable();
+
     /*
      * Insert or Update an entry into Memtable (The update would work only in-memory)
      * The implementation coud be different based on type of memetable
      * Type can be skiplist, vector, linklist any
      */
-    bool insert(Entry &entry);
+    bool virtual insert(Entry &entry);
+
     /*
      * Delete an entry from the Memtable (If the entry exists in-memory remove
      * and add tombstone for older, otherwise just add tombstone for older)
      */
-    bool remove(Entry &entry);
+    bool virtual remove(Entry &entry);
+
     Entry &operator[](int index);
 
     std::vector<Entry *>::const_iterator begin()

@@ -1,4 +1,12 @@
 
+ifndef DISABLE_JEMALLOC
+	ifdef JEMALLOC
+		PLATFORM_CXXFLAGS += -DROCKSDB_JEMALLOC -DJEMALLOC_NO_DEMANGLE
+	endif
+	EXEC_LDFLAGS := $(JEMALLOC_LIB) $(EXEC_LDFLAGS) -lpthread
+	PLATFORM_CXXFLAGS += $(JEMALLOC_INCLUDE)
+endif
+
 ifneq ($(USE_RTTI), 1)
 	CXXFLAGS += -fno-rtti
 endif
@@ -6,7 +14,7 @@ endif
 CXX = g++
 CXX_FLAGS = -std=c++1y -O0 -ggdb -g3 
 
-all: emu_runner 
+all: emu_runner # , load_gen
 
 # CXXFLAGS += -std=c++1y
 # $(info PRINT FLAGS $(CXXFLAGS))
@@ -18,11 +26,14 @@ all: emu_runner
 # $(info PRINT FLAGS $(CFLAGS))
 
 
-emu_runner: emu_runner.cc emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc
-	$(CXX) $(CXX_FLAGS)  $@.cc -o$@ emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc
+emu_runner: emu_runner.cc emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc load_gen.cc Generator.cc Key.cc
+	$(CXX) $(CXX_FLAGS)  $@.cc -o$@ emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc load_gen.cc Generator.cc Key.cc
+
+# load_gen: load_gen.cc Generator.cc Key.cc
+# 	$(CXX) $(CXXFLAGS) -o $@ load_gen.cc Generator.cc Key.cc -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
 
 clean:
-	rm -rf emu_runner  
+	rm -rf emu_runner
 
 
 

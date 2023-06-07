@@ -16,6 +16,7 @@
 #include <iomanip>
 
 #include "args.hxx"
+#include "load_gen.h"
 #include "emu_environment.h"
 #include "tree_builder.h"
 #include "workload_executor.h"
@@ -100,8 +101,11 @@ int main(int argc, char *argvx[]) {
     // if (_env->verbosity >= 1) 
     std::cerr << "Issuing inserts ... " << std::endl << std::flush; 
     
-    WorkloadGenerator workload_generator;
-    workload_generator.generateWorkload((long)_env->num_inserts, (long)_env->entry_size, _env->correlation);    
+    // WorkloadGenerator workload_generator;
+    // workload_generator.generateWorkload((long)_env->num_inserts, (long)_env->entry_size, _env->correlation);
+    int argc = 0;
+    char *argv[] = {};
+    generate_workload(argc, argv, _env->num_inserts, _env->num_updates, _env->num_point_deletes, _env->num_point_queries, _env->num_range_queries, _env->range_query_selectivity);
 
     std::cout << "Workload Generated!" << std::endl;
 
@@ -192,8 +196,8 @@ int main(int argc, char *argvx[]) {
 
         cout << "Running Delete Query..." << endl;
         Query::delete_query_experiment();
-        cout << "Running Range Query..." << endl;
-        Query::range_query_experiment();
+        // cout << "Running Range Query..." << endl;
+        // Query::range_query_experiment();
         cout << "Running Secondary Range Query..." << endl;
         Query::sec_range_query_experiment();
         cout << "Running Point Query..." << endl;
@@ -221,12 +225,12 @@ int main(int argc, char *argvx[]) {
 
       cout << "Running Delete Query..." << endl;
       Query::delete_query_experiment();
-      cout << "Running Range Query..." << endl;
-      Query::range_query_experiment();
+      // cout << "Running Range Query..." << endl;
+      // Query::range_query_experiment();
       cout << "Running Secondary Range Query..." << endl;
       Query::sec_range_query_experiment();
-      cout << "Running Point Query..." << endl;
-      Query::new_point_query_experiment();
+      // cout << "Running Point Query..." << endl;
+      // Query::new_point_query_experiment();
 
       DiskMetaFile::clearAllEntries();
       WorkloadExecutor::counter = 0;
@@ -292,7 +296,12 @@ int parse_arguments2(int argc,char *argvx[], EmuEnv* _env) {
   args::ValueFlag<long> buffer_size_cmd(group1, "M", "Memory size (PBE) [def: 2 MB]", {'M', "memory_size"});
   args::ValueFlag<int> delete_tile_size_in_pages_cmd(group1, "delete_tile_size_in_pages", "Size of a delete tile in terms of pages [def: -1]", {'h', "delete_tile_size_in_pages"});
   args::ValueFlag<long> file_size_cmd(group1, "file_size", "file size [def: 256 KB]", {"file_size"});
-  args::ValueFlag<long long> num_inserts_cmd(group1, "#inserts", "The number of unique inserts to issue in the experiment [def: 0]", {'i', "num_inserts"});
+  args::ValueFlag<long> num_inserts_cmd(group1, "#inserts", "The number of unique inserts to issue in the experiment [def: 0]", {'I', "num_inserts"});
+  args::ValueFlag<long> num_updates_cmd(group1, "#updates", "The number of updates to issue in the experiment [def: 0]", {'U', "num_updates"});
+  args::ValueFlag<long> num_point_deletes_cmd(group1, "#point_deletes", "The number of point deletes to issue in the experiment [def: 0]", {'D', "num_point_deletes"});
+  args::ValueFlag<long> num_point_queries_cmd(group1, "#point_queries", "The number of point queries to issue in the experiment [def: 0]", {'Q', "num_point_queries"});
+  args::ValueFlag<long> num_range_queries_cmd(group1, "#range_queries", "The number of range queries to issue in the experiment [def: 0]", {'S', "num_range_queries"});
+  args::ValueFlag<float> range_query_selectivity_cmd(group1, "#selectivity", "The range query selectivity to issue range queries [def: 0]", {'Y', "range_query_selectivity"});
   args::ValueFlag<int> cor_cmd(group1, "#correlation", "Correlation between sort key and delete key [def: 0]", {'c', "correlation"});
   args::ValueFlag<int> verbosity_cmd(group1, "verbosity", "The verbosity level of execution [0,1,2; def:0]", {'V', "verbosity"});
   args::ValueFlag<int> lethe_new_cmd(group1, "lethe_new", "Specific h across tree(0), Optimal h across tree(1) or different optimal h in each levels(2) [0, 1, 2; def:0]", {'X', "lethe_new"});
@@ -340,6 +349,11 @@ int parse_arguments2(int argc,char *argvx[], EmuEnv* _env) {
   _env->delete_tile_size_in_pages = delete_tile_size_in_pages_cmd ? args::get(delete_tile_size_in_pages_cmd) : -1;
   _env->file_size = file_size_cmd ? args::get(file_size_cmd) : _env->buffer_size;
   _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
+  _env->num_updates = num_updates_cmd ? args::get(num_updates_cmd) : 0;
+  _env->num_point_deletes = num_point_deletes_cmd ? args::get(num_point_deletes_cmd) : 0;
+  _env->num_point_queries = num_point_queries_cmd ? args::get(num_point_queries_cmd) : 0;
+  _env->num_range_queries = num_range_queries_cmd ? args::get(num_range_queries_cmd) : 0;
+  _env->range_query_selectivity = range_query_selectivity_cmd ? args::get(range_query_selectivity_cmd) : 0;
   _env->verbosity = verbosity_cmd ? args::get(verbosity_cmd) : 0;
   _env->correlation = cor_cmd ? args::get(cor_cmd) : 0;
   _env->lethe_new = lethe_new_cmd ? args::get(lethe_new_cmd) : 0;

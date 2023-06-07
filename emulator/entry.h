@@ -6,7 +6,12 @@
 /*
  * Enum for PointEntry and PointTombston
  */
-enum EntryType;
+enum EntryType
+{
+    NO_TYPE,
+    POINT_ENTRY,
+    POINT_TOMBSTONE
+};
 
 /*
  * Entry could be point entry, point delete(tombstone)
@@ -30,16 +35,9 @@ public:
     Entry(const Entry &other);                 // copy constructor
     Entry(Entry &&other);                      // move constructor
     bool operator==(const Entry &other);       // comparison operator
-};
-
-/*
- * Enum for PointEntry and PointTombston
- */
-enum EntryType
-{
-    NO_TYPE = 0,
-    POINT_ENTRY = 1,
-    POINT_TOMBSTONE = 2
+    EntryType getType() {
+        return this->entry_type;
+    }
 };
 
 #endif // _ENTRY_H_

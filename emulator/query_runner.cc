@@ -134,35 +134,35 @@ void Query::delete_query_experiment()
   fout1.close();
 }
 
-void Query::range_query_experiment()
-{
-  EmuEnv* _env = EmuEnv::getInstance();
-  float selectivity[35] = {0.0001, 0.0005, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.1, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
-  int range_iterval_1, range_query_start_1, range_query_end_1;
+// void Query::range_query_experiment()
+// {
+//   EmuEnv* _env = EmuEnv::getInstance();
+//   float selectivity[35] = {0.0001, 0.0005, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.1, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
+//   int range_iterval_1, range_query_start_1, range_query_end_1;
 
-  fstream fout2;
-  fout2.open("out_range_srq.csv", ios::out | ios::app);
-  fout2 << "SRQ Count" << ", " << "Selectivity" << "," << "Range Start" << "," << "Range End" << "," << "Occurrences" << "\n";
+//   fstream fout2;
+//   fout2.open("out_range_srq.csv", ios::out | ios::app);
+//   fout2 << "SRQ Count" << ", " << "Selectivity" << "," << "Range Start" << "," << "Range End" << "," << "Occurrences" << "\n";
 
-  for (int i = 0; i < 35 ; i++ )
-  {
-    if (_env->correlation == 0)
-    {
-      range_iterval_1 = WorkloadGenerator::KEY_DOMAIN_SIZE * selectivity[i] / 100;
-      range_query_start_1 = WorkloadGenerator::KEY_DOMAIN_SIZE / 2 - range_iterval_1 / 2;
-      range_query_end_1 = WorkloadGenerator::KEY_DOMAIN_SIZE / 2 + range_iterval_1 / 2;
-    }
-    else
-    {
-      range_iterval_1 = _env->num_inserts * selectivity[i] / 100;
-      range_query_start_1 = _env->num_inserts / 2 - range_iterval_1 / 2;
-      range_query_end_1 = _env->num_inserts / 2 + range_iterval_1 / 2;
-    }
-    Query::rangeQuery(range_query_start_1, range_query_end_1);
-    fout2 << _env->srq_count << "," << selectivity[i] << "%" << "," << range_query_start_1 << "," << range_query_end_1 << "," << Query::range_occurances << endl;
-  }
-  fout2.close();
-}
+//   for (int i = 0; i < 35 ; i++ )
+//   {
+//     if (_env->correlation == 0)
+//     {
+//       range_iterval_1 = WorkloadGenerator::KEY_DOMAIN_SIZE * selectivity[i] / 100;
+//       range_query_start_1 = WorkloadGenerator::KEY_DOMAIN_SIZE / 2 - range_iterval_1 / 2;
+//       range_query_end_1 = WorkloadGenerator::KEY_DOMAIN_SIZE / 2 + range_iterval_1 / 2;
+//     }
+//     else
+//     {
+//       range_iterval_1 = _env->num_inserts * selectivity[i] / 100;
+//       range_query_start_1 = _env->num_inserts / 2 - range_iterval_1 / 2;
+//       range_query_end_1 = _env->num_inserts / 2 + range_iterval_1 / 2;
+//     }
+//     Query::rangeQuery(range_query_start_1, range_query_end_1);
+//     fout2 << _env->srq_count << "," << selectivity[i] << "%" << "," << range_query_start_1 << "," << range_query_end_1 << "," << Query::range_occurances << endl;
+//   }
+//   fout2.close();
+// }
 
 void Query::sec_range_query_experiment()
 {
@@ -199,41 +199,41 @@ void Query::point_query_experiment()
 
 }
 
-void Query::new_point_query_experiment ()
-{
-  EmuEnv* _env = EmuEnv::getInstance();
-  fstream fout4;
-  fout4.open("out_point_nonempty_srq.csv", ios::out | ios::app);
-  fout4 << "SRQ Count" << ", " << "Iterations" << "," <<  "Sum_Page_Id" << "," << "Avg_Page_Id" << "," << "Found" << "," << "Not Found" << "\n";
+// void Query::new_point_query_experiment ()
+// {
+//   EmuEnv* _env = EmuEnv::getInstance();
+//   fstream fout4;
+//   fout4.open("out_point_nonempty_srq.csv", ios::out | ios::app);
+//   fout4 << "SRQ Count" << ", " << "Iterations" << "," <<  "Sum_Page_Id" << "," << "Avg_Page_Id" << "," << "Found" << "," << "Not Found" << "\n";
 
-  counter = 0;
-  sum_page_id = 0;
-  found_count = 0;
-  not_found_count = 0;
-  for (int i = 0; i < _env->pq_count ; i++) {
-    unsigned long long randomKey = rand() % _env->num_inserts;
-    //std::cout << "Generated Random Key" << randomKey << std::endl;
-    randomKey = WorkloadGenerator::inserted_keys[randomKey];
-    int pageId = Query::pointQuery(randomKey);
-    if(pageId < 0) 
-    {
-      not_found_count++;
-    }
-    else 
-    {
-      //cout << pageId << endl;
-      sum_page_id += pageId;
-      found_count++;
-    }
-    counter++;
+//   counter = 0;
+//   sum_page_id = 0;
+//   found_count = 0;
+//   not_found_count = 0;
+//   for (int i = 0; i < _env->pq_count ; i++) {
+//     unsigned long long randomKey = rand() % _env->num_inserts;
+//     //std::cout << "Generated Random Key" << randomKey << std::endl;
+//     randomKey = WorkloadGenerator::inserted_keys[randomKey];
+//     int pageId = Query::pointQuery(randomKey);
+//     if(pageId < 0) 
+//     {
+//       not_found_count++;
+//     }
+//     else 
+//     {
+//       //cout << pageId << endl;
+//       sum_page_id += pageId;
+//       found_count++;
+//     }
+//     counter++;
 
-    if(!(counter % (_env->pq_count/100))){
-      showProgress(_env->pq_count, counter);
-    }
-  }
-  fout4 << _env->srq_count << "," << _env->pq_count << "," << Query::sum_page_id << "," << Query::sum_page_id/(Query::found_count * 1.0) << "," << Query::found_count << "," << Query::not_found_count << endl;
-  fout4.close();
-}
+//     if(!(counter % (_env->pq_count/100))){
+//       showProgress(_env->pq_count, counter);
+//     }
+//   }
+//   fout4 << _env->srq_count << "," << _env->pq_count << "," << Query::sum_page_id << "," << Query::sum_page_id/(Query::found_count * 1.0) << "," << Query::found_count << "," << Query::not_found_count << endl;
+//   fout4.close();
+// }
 
 void Query::rangeQuery (int lowerlimit, int upperlimit) {
 
@@ -364,37 +364,37 @@ int Query::pointQuery (int key)
   return -1;
 }
 
-void Query::pointQueryRunner (int iterations)
-{
-  counter = 0;
-  sum_page_id = 0;
-  found_count = 0;
-  not_found_count = 0;
-  for (int i = 0; i < iterations ; i++) {
-    unsigned long long randomKey = rand() %  WorkloadGenerator::KEY_DOMAIN_SIZE;
-    //std::cout << "Generated Random Key" << randomKey << std::endl;
-    int pageId = Query::pointQuery(randomKey);
-    if(pageId < 0) 
-    {
-      not_found_count++;
-    }
-    else 
-    {
-      //cout << pageId << endl;
-      sum_page_id += pageId;
-      found_count++;
-    }
-    counter++;
+// void Query::pointQueryRunner (int iterations)
+// {
+//   counter = 0;
+//   sum_page_id = 0;
+//   found_count = 0;
+//   not_found_count = 0;
+//   for (int i = 0; i < iterations ; i++) {
+//     unsigned long long randomKey = rand() %  WorkloadGenerator::KEY_DOMAIN_SIZE;
+//     //std::cout << "Generated Random Key" << randomKey << std::endl;
+//     int pageId = Query::pointQuery(randomKey);
+//     if(pageId < 0) 
+//     {
+//       not_found_count++;
+//     }
+//     else 
+//     {
+//       //cout << pageId << endl;
+//       sum_page_id += pageId;
+//       found_count++;
+//     }
+//     counter++;
 
-    if(!(counter % (iterations/100))){
-      // std::cout << "baal " << iterations << " " << counter;
-      showProgress(iterations, counter);
-    }
-  }
-    // std::cout << "(Point Query)" << std::endl;
-    // std::cout << "Total sum of found pageIDs : " <<  sumPageId << std::endl;
-    // std::cout << "Total number of found pageIDs : " <<  foundCount << std::endl;
-    // std::cout << "Total number of found average pageIDs : " <<  sumPageId/(foundCount * 1.0) << std::endl;
-    // std::cout << "Total number of not found pages : " <<  notFoundCount << std::endl << std::endl;
-}
+//     if(!(counter % (iterations/100))){
+//       // std::cout << "baal " << iterations << " " << counter;
+//       showProgress(iterations, counter);
+//     }
+//   }
+//     // std::cout << "(Point Query)" << std::endl;
+//     // std::cout << "Total sum of found pageIDs : " <<  sumPageId << std::endl;
+//     // std::cout << "Total number of found pageIDs : " <<  foundCount << std::endl;
+//     // std::cout << "Total number of found average pageIDs : " <<  sumPageId/(foundCount * 1.0) << std::endl;
+//     // std::cout << "Total number of not found pages : " <<  notFoundCount << std::endl << std::endl;
+// }
 

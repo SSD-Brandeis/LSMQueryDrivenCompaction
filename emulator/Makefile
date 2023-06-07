@@ -4,10 +4,7 @@ ifneq ($(USE_RTTI), 1)
 endif
 
 CXX = g++
-# CXX_FLAGS = -std=c++1y -O0 -ggdb -g3
-CXX_FLAGS = -std=c++1y -O0 -ggdb -g3 #-lSegFault
-I_PATH = -I . -I ./tree_builder
-
+CXX_FLAGS = -std=c++1y -O0 -ggdb -g3 
 
 all: emu_runner 
 
@@ -20,19 +17,12 @@ all: emu_runner
 # CFLAGS += -std=c++1y
 # $(info PRINT FLAGS $(CFLAGS))
 
-SRC=$(wildcard *.cc)	
-SRC2=$(wildcard */*.cc)	
 
-#emu_runner: emu_runner.cc emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc instruction_decoder.cc
-#	$(CXX) $(CXX_FLAGS)  $@.cc -o$@ emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc instruction_decoder.cc
-
-emu_runner: emu_runner.cc $(SRC) $(SRC2)
-	$(CXX) $(CXX_FLAGS)    -o$@ $(I_PATH) $(SRC) $(SRC2)
-
-test_compact: test_compact.cpp $(SRC) $(SRC2)
-	$(CXX) $(CXX_FLAGS)    -o$@ $(I_PATH) $(SRC) $(SRC2)
+emu_runner: emu_runner.cc emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc
+	$(CXX) $(CXX_FLAGS)  $@.cc -o$@ emu_environment.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc
 
 clean:
 	rm -rf emu_runner  
+
 
 

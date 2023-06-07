@@ -4,24 +4,7 @@
  */
 
 
-#ifndef QUERY_H_
-#define QUERY_H_
-
-
-class Query;
-
 #include <iostream>
-#include <cmath>
-#include <sys/time.h>
-#include <vector>
-#include <cstdlib>
-#include <algorithm>
-#include <iomanip>
-#include <fstream>
-
-#include "emu_environment.h"
-#include "tree_builder/tree_builder.h"
-#include "workload_generator.h"
 
 using namespace std;
 
@@ -29,14 +12,8 @@ using namespace std;
 class Query
 {
 private:
-    static long disk_sstfile_access_count;
   
 public:
-    static void incDiskSSTFileAccessCount();
-    static long getDiskSSTFileAccessCount();
-    static void resetDiskSSTFileAccessCount();
-
-
     static int delete_key;
     static int range_start_key;
     static int range_end_key;
@@ -58,9 +35,6 @@ public:
 
     static void checkDeleteCount (int deletekey);
     static int pointQuery (int key);
-    static pair<bool, string> pointQuery_RDF (long key);
-    static pair<bool, string> pointQuery_SplitRDF (long key);
-    static pair<bool, string> pointQuery_RDF_SkyLine (long key, long timetag);
     static void pointQueryRunner (int iterations);
     static void rangeQuery (int lowerlimit, int upperlimit);
     static void secondaryRangeQuery (int lowerlimit, int upperlimit);
@@ -71,8 +45,4 @@ public:
     static void point_query_experiment();
     static void new_point_query_experiment();
 
-    static void interactive_point_query();
-
 };
-
-#endif /* QUERY_H_ */

@@ -5,6 +5,7 @@
 
 #include "emu_environment.h"
 #include "memtable.h"
+#include "sstfile.h"
 
 #include <iostream>
 #include <vector>
@@ -13,7 +14,6 @@ using namespace std;
 
 namespace tree_builder
 {
-
   class MemoryBuffer
   {
   private:
@@ -27,7 +27,7 @@ namespace tree_builder
     static long current_buffer_size;
     static float current_buffer_saturation;
     static int buffer_flush_count;
-    static MemTable buffer; // Change to Memetable
+    static MemTable *buffer;
     static int verbosity;
 
     static MemoryBuffer *getBufferInstance(EmuEnv *_env);
@@ -36,48 +36,6 @@ namespace tree_builder
     static int initiateBufferFlush(int level_to_flush_in);
     static int printBufferEntries();
     // long getBufferSize();
-  };
-
-  class Page
-  {
-  public:
-    long min_sort_key;
-    long max_sort_key;
-    long min_delete_key;
-    long max_delete_key;
-    vector<pair<pair<long, long>, string>> kv_vector;
-    static struct vector<Page> createNewPages(int page_count);
-  };
-
-  class DeleteTile
-  {
-
-  public:
-    long min_sort_key;
-    long max_sort_key;
-    long min_delete_key;
-    long max_delete_key;
-    vector<Page> page_vector;
-    static struct vector<DeleteTile> createNewDeleteTiles(int delete_tile_count_in_a_file, int level_to_flush_in);
-  };
-
-  class SSTFile
-  {
-
-  public:
-    int file_level;
-    string file_id;
-    long min_sort_key;
-    long max_sort_key;
-    long min_delete_key;
-    long max_delete_key;
-
-    vector<DeleteTile> tile_vector;
-    struct SSTFile *next_file_ptr;
-
-    static struct SSTFile *createNewSSTFile(int level_to_flush_in);
-    static int PopulateFile(SSTFile *file, vector<pair<pair<long, long>, string>> vector_to_populate_file, int level_to_flush_in);
-    static int PopulateDeleteTile(SSTFile *file, vector<pair<pair<long, long>, string>> vector_to_populate_tile, int deletetileid, int level_to_flush_in);
   };
 
   class DiskMetaFile

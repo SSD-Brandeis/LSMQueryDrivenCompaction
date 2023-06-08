@@ -878,14 +878,14 @@ int parse_arguments2(int argc, char *argv[])
       args::Group group5(parser, "Optional less frequent switches and parameters:", args::Group::Validators::DontCare);
     */
 
-    //   args::ValueFlag<long> insert_cmd(group1, "I", "Number of inserts [def: 1]", {'I', "insert"});
-    //   args::ValueFlag<long> update_cmd(group1, "U", "Number of updates [def: 0]", {'U', "update"});
-    //   args::ValueFlag<long> point_delete_cmd(group1, "D", "Number of point deletes [def: 0]", {'D', "point_delete"});
+    args::ValueFlag<long> insert_cmd(group1, "I", "Number of inserts [def: 1]", {'I', "insert"});
+    args::ValueFlag<long> update_cmd(group1, "U", "Number of updates [def: 0]", {'U', "update"});
+    args::ValueFlag<long> point_delete_cmd(group1, "D", "Number of point deletes [def: 0]", {'D', "point_delete"});
     args::ValueFlag<long> range_delete_cmd(group1, "R", "Number of range deletes [def: 0]", {'R', "range_delete"});
     args::ValueFlag<float> range_delete_selectivity_cmd(group1, "y", "Range delete selectivity [def: 0]", {'y', "range_delete_selectivity"});
-    //   args::ValueFlag<long> point_query_cmd(group1, "Q", "Number of point queries [def: 0]", {'Q', "point_query"});
-    //   args::ValueFlag<long> range_query_cmd(group1, "S", "Number of range queries [def: 0]", {'S', "range_query"});
-    //   args::ValueFlag<float> range_query_selectivity_cmd(group1, "Y", "Range query selectivity [def: 0]", {'Y', "range_query_selectivity"});
+    args::ValueFlag<long> point_query_cmd(group1, "Q", "Number of point queries [def: 0]", {'Q', "point_query"});
+    args::ValueFlag<long> range_query_cmd(group1, "S", "Number of range queries [def: 0]", {'S', "range_query"});
+    args::ValueFlag<float> range_query_selectivity_cmd(group1, "Y", "Range query selectivity [def: 0]", {'Y', "range_query_selectivity"});
     args::ValueFlag<float> zero_result_point_delete_proportion_cmd(group1, "z", "Proportion of zero-result point deletes [def: 0]", {'z', "zero_result_point_delete_proportion"});
     args::ValueFlag<float> zero_result_point_lookup_proportion_cmd(group1, "Z", "Proportion of zero-result point lookups [def: 0]", {'Z', "zero_result_point_lookup_proportion"});
     args::ValueFlag<float> unique_zero_result_point_lookup_proportion_cmd(group1, "UZ", "Proportion of maximum unique zero-result point lookups [def: 0.5]", {"UZ", "unique_zero_result_point_lookup_proportion"});
@@ -925,6 +925,35 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<float> non_existing_point_lookup_dist_beta_beta_cmd(group1, "ZD_Beta_Beta", ", def: 1.0]", {"ZD_BBETA", "non_existing_point_lookup_distribution_beta_beta"});
     args::ValueFlag<float> non_existing_point_lookup_dist_zipf_alpha_cmd(group1, "ZD_Zipf_Alpha", ", def: 1.0]", {"ZD_ZALPHA", "non_existing_point_lookup_distribution_zipf_alpha"});
 
+    // Copying other stuff which is not required but necessary for parser
+    args::ValueFlag<int> size_ratio_cmd(group1, "T", "The size ratio of the tree [def: 2]", {'T', "size_ratio"});
+    args::ValueFlag<int> buffer_size_in_pages_cmd(group1, "P", "Size of the memory buffer in terms of pages [def: 128]", {'P', "buffer_size_in_pages"});
+    args::ValueFlag<int> entries_per_page_cmd(group1, "B", "No of entries in one page [def: 128]", {'B', "entries_per_page"});
+    // args::ValueFlag<int> entry_size_cmd(group1, "E", "Entry size in bytes [def: 128 B]", {'E', "entry_size"});
+    args::ValueFlag<long> buffer_size_cmd(group1, "M", "Memory size (PBE) [def: 2 MB]", {'M', "memory_size"});
+    args::ValueFlag<int> delete_tile_size_in_pages_cmd(group1, "delete_tile_size_in_pages", "Size of a delete tile in terms of pages [def: -1]", {'h', "delete_tile_size_in_pages"});
+    args::ValueFlag<long> file_size_cmd(group1, "file_size", "file size [def: 256 KB]", {"file_size"});
+    args::ValueFlag<long> num_inserts_cmd(group1, "#inserts", "The number of unique inserts to issue in the experiment [def: 0]", {'I', "num_inserts"});
+    args::ValueFlag<long> num_updates_cmd(group1, "#updates", "The number of updates to issue in the experiment [def: 0]", {'U', "num_updates"});
+    args::ValueFlag<long> num_point_deletes_cmd(group1, "#point_deletes", "The number of point deletes to issue in the experiment [def: 0]", {'D', "num_point_deletes"});
+    args::ValueFlag<long> num_point_queries_cmd(group1, "#point_queries", "The number of point queries to issue in the experiment [def: 0]", {'Q', "num_point_queries"});
+    args::ValueFlag<long> num_range_queries_cmd(group1, "#range_queries", "The number of range queries to issue in the experiment [def: 0]", {'S', "num_range_queries"});
+    // args::ValueFlag<float> range_query_selectivity_cmd(group1, "#selectivity", "The range query selectivity to issue range queries [def: 0]", {'Y', "range_query_selectivity"});
+    args::ValueFlag<int> cor_cmd(group1, "#correlation", "Correlation between sort key and delete key [def: 0]", {'c', "correlation"});
+    args::ValueFlag<int> verbosity_cmd(group1, "verbosity", "The verbosity level of execution [0,1,2; def:0]", {'V', "verbosity"});
+    args::ValueFlag<int> lethe_new_cmd(group1, "lethe_new", "Specific h across tree(0), Optimal h across tree(1) or different optimal h in each levels(2) [0, 1, 2; def:0]", {'X', "lethe_new"});
+    args::ValueFlag<int> SRD_cmd(group1, "SRD", "Count of secondary range delete [def:1]", {'I', "SRD"});
+    args::ValueFlag<int> EPQ_cmd(group1, "EPQ", "Count of empty point queries [def:1000000]", {'J', "EPQ"});
+    args::ValueFlag<int> PQ_cmd(group1, "PQ", "Count of non-empty point queries [def:1000000]", {'K', "PQ"});
+    args::ValueFlag<int> SRQ_cmd(group1, "SRQ", "Count of short range queries [def:1]", {'L', "SRQ"});
+
+    args::ValueFlag<int> delete_key_cmd(group1, "delete_key", "Delete all keys less than DK [def:700]", {'D', "delete_key"});
+    args::ValueFlag<int> range_start_key_cmd(group1, "range_start_key", "Starting key of the range query [def:2000]", {'S', "range_start_key"});
+    args::ValueFlag<int> range_end_key_cmd(group1, "range_end_key", "Ending key of the range query [def:5000]", {'F', "range_end_key"});
+    args::ValueFlag<int> sec_range_start_key_cmd(group1, "sec_range_start_key", "Starting key of the secondary range query [def:200]", {'s', "sec_range_start_key"});
+    args::ValueFlag<int> sec_range_end_key_cmd(group1, "sec_range_end_key", "Ending key of the secondary range query [def:500]", {'f', "sec_range_end_key"});
+    args::ValueFlag<int> iterations_point_query_cmd(group1, "iterations_point_query", "Number of point queries to be performed [def:100000]", {'N', "iterations_point_query"});
+
     try
     {
         parser.ParseCLI(argc, argv);
@@ -948,14 +977,14 @@ int parse_arguments2(int argc, char *argv[])
         return 1;
     }
 
-    //   insert_count = insert_cmd ? args::get(insert_cmd) : 0;
-    //   update_count = update_cmd ? args::get(update_cmd) : 0;
-    //   point_delete_count = point_delete_cmd ? args::get(point_delete_cmd) : 0;
+    insert_count = insert_cmd ? args::get(insert_cmd) : 0;
+    update_count = update_cmd ? args::get(update_cmd) : 0;
+    point_delete_count = point_delete_cmd ? args::get(point_delete_cmd) : 0;
     range_delete_count = range_delete_cmd ? args::get(range_delete_cmd) : 0;
     range_delete_selectivity = range_delete_selectivity_cmd ? args::get(range_delete_selectivity_cmd) : 0;
-    //   point_query_count = point_query_cmd ? args::get(point_query_cmd) : 0;
-    //   range_query_count = range_query_cmd ? args::get(range_query_cmd) : 0;
-    //   range_query_selectivity = range_query_selectivity_cmd ? args::get(range_query_selectivity_cmd) : 0;
+    point_query_count = point_query_cmd ? args::get(point_query_cmd) : 0;
+    range_query_count = range_query_cmd ? args::get(range_query_cmd) : 0;
+    range_query_selectivity = range_query_selectivity_cmd ? args::get(range_query_selectivity_cmd) : 0;
     zero_result_point_delete_proportion = zero_result_point_delete_proportion_cmd ? args::get(zero_result_point_delete_proportion_cmd) : 0;
     zero_result_point_lookup_proportion = zero_result_point_lookup_proportion_cmd ? args::get(zero_result_point_lookup_proportion_cmd) : 0;
     if (point_query_count != 0 && (zero_result_point_lookup_proportion < 0 || zero_result_point_lookup_proportion > 1))

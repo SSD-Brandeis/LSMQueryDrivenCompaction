@@ -2,7 +2,7 @@
  *  Created on: May 13, 2019
  *  Author: Subhadeep, Papon
  */
- 
+
 #include <sstream>
 #include <iostream>
 #include <cstdio>
@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <cstdlib>
 #include <iomanip>
+#include <cstring>
 
 #include "args.hxx"
 #include "load_gen.h"
@@ -29,7 +30,7 @@ using namespace workload_exec;
 
 /*
  * DECLARATIONS
-*/
+ */
 int Query::delete_key;
 int Query::range_start_key;
 int Query::range_end_key;
@@ -37,44 +38,50 @@ int Query::sec_range_start_key;
 int Query::sec_range_end_key;
 int Query::iterations_point_query;
 
-//long inserts(EmuEnv* _env);
-int parse_arguments2(int argc, char *argvx[], EmuEnv* _env);
-void printEmulationOutput(EmuEnv* _env);
-void calculateDeleteTileSize(EmuEnv* _env);
+// long inserts(EmuEnv* _env);
+int parse_arguments2(int argc, char *argvx[], EmuEnv *_env);
+void printEmulationOutput(EmuEnv *_env);
+void calculateDeleteTileSize(EmuEnv *_env);
 
-//int run_workload(read, pread, rread, write, update, delete, skew, others);
-int runWorkload(EmuEnv* _env);
+// int run_workload(read, pread, rread, write, update, delete, skew, others);
+int runWorkload(EmuEnv *_env);
 
-inline void showProgress(const uint32_t &workload_size, const uint32_t &counter) {
-  
-    // std::cout << "counter = " << counter << std::endl;
-    if (counter / (workload_size/100) >= 1) {
-      for (int i = 0; i<104; i++){
-        std::cout << "\b";
-        fflush(stdout);
-      }
-    }
-    for (int i = 0; i<counter / (workload_size/100); i++){
-      std::cout << "=" ;
+inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
+{
+
+  // std::cout << "counter = " << counter << std::endl;
+  if (counter / (workload_size / 100) >= 1)
+  {
+    for (int i = 0; i < 104; i++)
+    {
+      std::cout << "\b";
       fflush(stdout);
     }
-    std::cout << std::setfill(' ') << std::setw(101 - counter / (workload_size/100));
-    std::cout << counter*100/workload_size << "%";
-      fflush(stdout);
+  }
+  for (int i = 0; i < counter / (workload_size / 100); i++)
+  {
+    std::cout << "=";
+    fflush(stdout);
+  }
+  std::cout << std::setfill(' ') << std::setw(101 - counter / (workload_size / 100));
+  std::cout << counter * 100 / workload_size << "%";
+  fflush(stdout);
 
-  if (counter == workload_size) {
+  if (counter == workload_size)
+  {
     std::cout << "\n";
     return;
   }
 }
 
+int main(int argc, char *argvx[])
+{
 
-int main(int argc, char *argvx[]) {
-
-  // check emu_environment.h for the contents of EmuEnv and also the definitions of the singleton experimental environment 
-  EmuEnv* _env = EmuEnv::getInstance();
-  //parse the command line arguments
-  if (parse_arguments2(argc, argvx, _env)){
+  // check emu_environment.h for the contents of EmuEnv and also the definitions of the singleton experimental environment
+  EmuEnv *_env = EmuEnv::getInstance();
+  // parse the command line arguments
+  if (parse_arguments2(argc, argvx, _env))
+  {
     exit(1);
   }
 
@@ -94,27 +101,28 @@ int main(int argc, char *argvx[]) {
   // fout2.close();
   // fout3.close();
   // fout4.close();
-    
+
   // Issuing INSERTS
-  if (_env->num_inserts > 0) 
+  if (_env->num_inserts > 0)
   {
-    // if (_env->verbosity >= 1) 
-    std::cerr << "Issuing inserts ... " << std::endl << std::flush; 
-    
+    // if (_env->verbosity >= 1)
+    std::cerr << "Issuing inserts ... " << std::endl
+              << std::flush;
+
     // WorkloadGenerator workload_generator;
     // workload_generator.generateWorkload((long)_env->num_inserts, (long)_env->entry_size, _env->correlation);
-    int argc = 0;
-    char *argv[] = {};
-    generate_workload(argc, argv, _env->num_inserts, _env->num_updates, _env->num_point_deletes, _env->num_point_queries, _env->num_range_queries, _env->range_query_selectivity);
+    // int argc = argc;
+    generate_workload(argc, argvx, _env->num_inserts, _env->num_updates, _env->num_point_deletes, _env->num_point_queries, _env->num_range_queries, _env->range_query_selectivity);
 
     std::cout << "Workload Generated!" << std::endl;
 
     int only_file_meta_data = 0;
 
-    if(_env->delete_tile_size_in_pages > 0 && _env->lethe_new == 0)
+    if (_env->delete_tile_size_in_pages > 0 && _env->lethe_new == 0)
     {
       int s = runWorkload(_env);
-      std::cout << "Insert complete ... " << std::endl << std::flush; 
+      std::cout << "Insert complete ... " << std::endl
+                << std::flush;
       DiskMetaFile::printAllEntries(only_file_meta_data);
       MemoryBuffer::getCurrentBufferStatistics();
       DiskMetaFile::getMetaStatistics();
@@ -131,19 +139,19 @@ int main(int argc, char *argvx[]) {
       // Query::secondaryRangeQuery(Query::sec_range_start_key, Query::sec_range_end_key);
       // Query::pointQueryRunner(Query::iterations_point_query);
 
-      // cout << "H" << "\t" 
-      //   << "DKey" << "\t" 
-      //   << "Full_Drop" << "\t" 
-      //   << "Partial_Drop" << "\t" 
-      //   << "No_Drop" << "\t\t" 
-      //   << "RKEYs" << "\t" 
-      //   << "Occurance" << "\t" 
-      //   << "SRKEYs" << "\t" 
-      //   << "Occurance" << "\t" 
-      //   << "P_iter" << "\t\t" 
-      //   << "Sumpid" << "\t\t" 
-      //   << "Avgpid" << "\t\t" 
-      //   << "Found" << "\t\t" 
+      // cout << "H" << "\t"
+      //   << "DKey" << "\t"
+      //   << "Full_Drop" << "\t"
+      //   << "Partial_Drop" << "\t"
+      //   << "No_Drop" << "\t\t"
+      //   << "RKEYs" << "\t"
+      //   << "Occurance" << "\t"
+      //   << "SRKEYs" << "\t"
+      //   << "Occurance" << "\t"
+      //   << "P_iter" << "\t\t"
+      //   << "Sumpid" << "\t\t"
+      //   << "Avgpid" << "\t\t"
+      //   << "Found" << "\t\t"
       //   << "NtFound" << "\n";
 
       // cout << _env->delete_tile_size_in_pages;
@@ -178,11 +186,10 @@ int main(int argc, char *argvx[]) {
 
       if (MemoryBuffer::verbosity == 1 || MemoryBuffer::verbosity == 2 || MemoryBuffer::verbosity == 3)
         printEmulationOutput(_env);
-
     }
     else if (_env->delete_tile_size_in_pages == -1 && _env->lethe_new == 0)
     {
-      for (int i = 1; i <= _env->buffer_size_in_pages; i = i*2)
+      for (int i = 1; i <= _env->buffer_size_in_pages; i = i * 2)
       {
         cout << "Running for delete tile size: " << i << " ..." << endl;
         _env->delete_tile_size_in_pages = i;
@@ -194,18 +201,18 @@ int main(int argc, char *argvx[]) {
           DiskMetaFile::getMetaStatistics();
         }
 
-        cout << "Running Delete Query..." << endl;
-        Query::delete_query_experiment();
+        // cout << "Running Delete Query..." << endl;
+        // Query::delete_query_experiment();
         // cout << "Running Range Query..." << endl;
         // Query::range_query_experiment();
-        cout << "Running Secondary Range Query..." << endl;
-        Query::sec_range_query_experiment();
-        cout << "Running Point Query..." << endl;
+        // cout << "Running Secondary Range Query..." << endl;
+        // Query::sec_range_query_experiment();
+        // cout << "Running Point Query..." << endl;
         // Query::point_query_experiment();
-        
+
         DiskMetaFile::clearAllEntries();
         WorkloadExecutor::counter = 0;
-        
+
         if (MemoryBuffer::verbosity == 1 || MemoryBuffer::verbosity == 2 || MemoryBuffer::verbosity == 3)
           printEmulationOutput(_env);
       }
@@ -223,12 +230,12 @@ int main(int argc, char *argvx[]) {
         DiskMetaFile::getMetaStatistics();
       }
 
-      cout << "Running Delete Query..." << endl;
-      Query::delete_query_experiment();
+      // cout << "Running Delete Query..." << endl;
+      // Query::delete_query_experiment();
       // cout << "Running Range Query..." << endl;
       // Query::range_query_experiment();
-      cout << "Running Secondary Range Query..." << endl;
-      Query::sec_range_query_experiment();
+      // cout << "Running Secondary Range Query..." << endl;
+      // Query::sec_range_query_experiment();
       // cout << "Running Point Query..." << endl;
       // Query::new_point_query_experiment();
 
@@ -240,51 +247,53 @@ int main(int argc, char *argvx[]) {
         printEmulationOutput(_env);
     }
 
-    //srand(time(0));
-    //WorkloadExecutor::getWorkloadStatictics(_env);
-    //assert(_env->num_inserts == inserted); 
+    // srand(time(0));
+    // WorkloadExecutor::getWorkloadStatictics(_env);
+    // assert(_env->num_inserts == inserted);
   }
   return 0;
 }
 
-int runWorkload(EmuEnv* _env) {
+int runWorkload(EmuEnv *_env)
+{
 
-  MemoryBuffer* buffer_instance = MemoryBuffer::getBufferInstance(_env);
+  MemoryBuffer *buffer_instance = MemoryBuffer::getBufferInstance(_env);
   WorkloadExecutor workload_executer;
   // reading from file
   ifstream workload_file;
   workload_file.open("workload.txt");
   assert(workload_file);
   int counter = 0;
-  while(!workload_file.eof()) {
+  while (!workload_file.eof())
+  {
     char instruction;
-    long sortkey;
-    long deletekey;
-    string value;
-    workload_file >> instruction >> sortkey >> deletekey >> value;
+    std::string sortkey;
+    std::string value;
+    workload_file >> instruction >> sortkey >> value;
     switch (instruction)
     {
     case 'I':
-      //std::cout << instruction << " " << sortkey << " " << deletekey << " " << value << std::endl;
-      workload_executer.insert(sortkey, deletekey, value);
+      // std::cout << instruction << " " << sortkey << " " << deletekey << " " << value << std::endl;
+      workload_executer.insert(sortkey, value);
 
       break;
-    
-    //default:
-      //break;
+
+      // default:
+      // break;
     }
-    instruction='\0';
+    instruction = '\0';
     counter++;
-    if(!(counter % (_env->num_inserts/100))){
+    if (!(counter % (_env->num_inserts / 100)))
+    {
       showProgress(_env->num_inserts, counter);
     }
   }
 
-return 1;
+  return 1;
 }
 
-
-int parse_arguments2(int argc,char *argvx[], EmuEnv* _env) {
+int parse_arguments2(int argc, char *argvx[], EmuEnv *_env)
+{
   args::ArgumentParser parser("KIWI Emulator", "");
 
   args::Group group1(parser, "This group is all exclusive:", args::Group::Validators::DontCare);
@@ -309,7 +318,7 @@ int parse_arguments2(int argc,char *argvx[], EmuEnv* _env) {
   args::ValueFlag<int> EPQ_cmd(group1, "EPQ", "Count of empty point queries [def:1000000]", {'J', "EPQ"});
   args::ValueFlag<int> PQ_cmd(group1, "PQ", "Count of non-empty point queries [def:1000000]", {'K', "PQ"});
   args::ValueFlag<int> SRQ_cmd(group1, "SRQ", "Count of short range queries [def:1]", {'L', "SRQ"});
-  
+
   args::ValueFlag<int> delete_key_cmd(group1, "delete_key", "Delete all keys less than DK [def:700]", {'D', "delete_key"});
   args::ValueFlag<int> range_start_key_cmd(group1, "range_start_key", "Starting key of the range query [def:2000]", {'S', "range_start_key"});
   args::ValueFlag<int> range_end_key_cmd(group1, "range_end_key", "Ending key of the range query [def:5000]", {'F', "range_end_key"});
@@ -317,28 +326,27 @@ int parse_arguments2(int argc,char *argvx[], EmuEnv* _env) {
   args::ValueFlag<int> sec_range_end_key_cmd(group1, "sec_range_end_key", "Ending key of the secondary range query [def:500]", {'f', "sec_range_end_key"});
   args::ValueFlag<int> iterations_point_query_cmd(group1, "iterations_point_query", "Number of point queries to be performed [def:100000]", {'N', "iterations_point_query"});
 
-
   try
   {
-      parser.ParseCLI(argc, argvx);
+    parser.ParseCLI(argc, argvx);
   }
-  catch (args::Help&)
+  catch (args::Help &)
   {
-      std::cout << parser;
-      exit(0);
-      // return 0;
+    std::cout << parser;
+    exit(0);
+    // return 0;
   }
-  catch (args::ParseError& e)
+  catch (args::ParseError &e)
   {
-      std::cerr << e.what() << std::endl;
-      std::cerr << parser;
-      return 1;
+    std::cerr << e.what() << std::endl;
+    std::cerr << parser;
+    return 1;
   }
-  catch (args::ValidationError& e)
+  catch (args::ValidationError &e)
   {
-      std::cerr << e.what() << std::endl;
-      std::cerr << parser;
-      return 1;
+    std::cerr << e.what() << std::endl;
+    std::cerr << parser;
+    return 1;
   }
 
   _env->size_ratio = size_ratio_cmd ? args::get(size_ratio_cmd) : 2;
@@ -374,12 +382,12 @@ int parse_arguments2(int argc,char *argvx[], EmuEnv* _env) {
   return 0;
 }
 
-void calculateDeleteTileSize(EmuEnv* _env)
+void calculateDeleteTileSize(EmuEnv *_env)
 {
   // calculation of Kiwi++ (following desmos)
   float num = (_env->num_inserts * (_env->size_ratio - 1) * 1.0);
   float denum = (_env->buffer_size_in_pages * _env->entries_per_page * _env->size_ratio * 1.0);
-  _env->level_count = ceil(log(num/denum)/log(_env->size_ratio));
+  _env->level_count = ceil(log(num / denum) / log(_env->size_ratio));
   float E[20] = {-1};
   float F[20] = {-1};
   float G[20] = {-1};
@@ -392,7 +400,7 @@ void calculateDeleteTileSize(EmuEnv* _env)
   }
   for (int i = 1; i <= _env->level_count; i++)
   {
-    E[i] = pow(_env->size_ratio, i)/(temp_sum * 1.0);
+    E[i] = pow(_env->size_ratio, i) / (temp_sum * 1.0);
   }
   for (int i = 1; i <= _env->level_count; i++)
   {
@@ -401,7 +409,7 @@ void calculateDeleteTileSize(EmuEnv* _env)
     {
       tempsum2 += pow(_env->size_ratio, j);
     }
-    F[i] = (tempsum2 * 1.0)/temp_sum;
+    F[i] = (tempsum2 * 1.0) / temp_sum;
   }
   for (int i = 1; i <= _env->level_count; i++)
   {
@@ -410,14 +418,14 @@ void calculateDeleteTileSize(EmuEnv* _env)
   float phi = 0.0081925;
   for (int i = 1; i <= _env->level_count; i++)
   {
-    R[i] = (pow((_env->size_ratio * 1.0),((_env->size_ratio * 1.0)/(_env->size_ratio - 1))) * phi)/(pow(_env->size_ratio,_env->level_count + 1 - i));
-  } 
+    R[i] = (pow((_env->size_ratio * 1.0), ((_env->size_ratio * 1.0) / (_env->size_ratio - 1))) * phi) / (pow(_env->size_ratio, _env->level_count + 1 - i));
+  }
 
   for (int i = 1; i <= _env->level_count; i++)
   {
     float num2 = _env->buffer_size_in_pages * pow(_env->size_ratio, i) * _env->srd_count;
     float denum2 = ((_env->epq_count + (_env->pq_count * G[i])) * R[i]) + ((R[i] * _env->pq_count * E[i]) / 2) + _env->srq_count;
-    _env->variable_delete_tile_size_in_pages[i] = round (pow(num2/denum2, 0.5));
+    _env->variable_delete_tile_size_in_pages[i] = round(pow(num2 / denum2, 0.5));
     if (_env->variable_delete_tile_size_in_pages[i] == 0)
       _env->variable_delete_tile_size_in_pages[i] = 1;
     if (_env->variable_delete_tile_size_in_pages[i] > _env->buffer_size_in_pages)
@@ -427,10 +435,10 @@ void calculateDeleteTileSize(EmuEnv* _env)
   if (_env->lethe_new == 1)
   {
     // Optimal h for Kiwi
-    float phi_opt = ((pow(_env->size_ratio,(_env->size_ratio*1.0/(_env->size_ratio-1)*1.0)))/_env->size_ratio)*phi;
-    float num_opt = (_env->srd_count * _env->num_inserts * 1.0)/_env->entries_per_page;
+    float phi_opt = ((pow(_env->size_ratio, (_env->size_ratio * 1.0 / (_env->size_ratio - 1) * 1.0))) / _env->size_ratio) * phi;
+    float num_opt = (_env->srd_count * _env->num_inserts * 1.0) / _env->entries_per_page;
     float denum_opt = ((_env->epq_count + _env->pq_count) * phi_opt * _env->level_count) + (_env->level_count * _env->srq_count);
-    _env->delete_tile_size_in_pages = round (pow(num_opt/denum_opt, 0.5));
+    _env->delete_tile_size_in_pages = round(pow(num_opt / denum_opt, 0.5));
     if (_env->delete_tile_size_in_pages == 0)
       _env->delete_tile_size_in_pages = 1;
     if (_env->delete_tile_size_in_pages > _env->buffer_size_in_pages)
@@ -439,25 +447,25 @@ void calculateDeleteTileSize(EmuEnv* _env)
   }
 }
 
-
-void printEmulationOutput(EmuEnv* _env) {
-  //double percentage_non_zero_result_queries = ceil((100 * _env->nonzero_to_zero_ratio) / (_env->nonzero_to_zero_ratio + 1.0));
-  //if (_env->verbosity >= 1) 
+void printEmulationOutput(EmuEnv *_env)
+{
+  // double percentage_non_zero_result_queries = ceil((100 * _env->nonzero_to_zero_ratio) / (_env->nonzero_to_zero_ratio + 1.0));
+  // if (_env->verbosity >= 1)
   std::cout << "T, P, B, E, M, h, file_size, #I \n";
   std::cout << _env->size_ratio << ", ";
-  std::cout << _env->buffer_size_in_pages << ", ";  
+  std::cout << _env->buffer_size_in_pages << ", ";
   std::cout << _env->entries_per_page << ", ";
   std::cout << _env->entry_size << ", ";
   std::cout << _env->buffer_size << ", ";
   std::cout << _env->delete_tile_size_in_pages << ", ";
   std::cout << _env->file_size << ", ";
-  std::cout << _env->num_inserts ;
+  std::cout << _env->num_inserts;
 
   std::cout << std::endl;
 
   std::cout << "Kiwi++,\tSRD,\tEPQ,\tPQ,\tSRQ\n";
   std::cout << _env->lethe_new << "\t";
-  std::cout << _env->srd_count << "\t";  
+  std::cout << _env->srd_count << "\t";
   std::cout << _env->epq_count << "\t";
   std::cout << _env->pq_count << "\t";
   std::cout << _env->srq_count << "\t";
@@ -474,4 +482,3 @@ void printEmulationOutput(EmuEnv* _env) {
     std::cout << std::endl;
   }
 }
-

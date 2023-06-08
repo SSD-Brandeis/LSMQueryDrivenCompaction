@@ -24,39 +24,44 @@ long WorkloadExecutor::buffer_update_count = 0;
 long WorkloadExecutor::total_insert_count = 0;
 uint32_t WorkloadExecutor::counter = 0;
 
-inline void showProgress(const uint32_t &workload_size, const uint32_t &counter) {
-  
-    // std::cout << "counter = " << counter << std::endl;
-    if (counter / (workload_size/100) >= 1) {
-      for (int i = 0; i<104; i++){
-        std::cout << "\b";
-        fflush(stdout);
-      }
-    }
-    for (int i = 0; i<counter / (workload_size/100); i++){
-      std::cout << "=" ;
-      fflush(stdout);
-    }
-    std::cout << std::setfill(' ') << std::setw(101 - counter / (workload_size/100));
-    std::cout << counter*100/workload_size << "%";
-      fflush(stdout);
+inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
+{
 
-  if (counter == workload_size) {
+  // std::cout << "counter = " << counter << std::endl;
+  if (counter / (workload_size / 100) >= 1)
+  {
+    for (int i = 0; i < 104; i++)
+    {
+      std::cout << "\b";
+      fflush(stdout);
+    }
+  }
+  for (int i = 0; i < counter / (workload_size / 100); i++)
+  {
+    std::cout << "=";
+    fflush(stdout);
+  }
+  std::cout << std::setfill(' ') << std::setw(101 - counter / (workload_size / 100));
+  std::cout << counter * 100 / workload_size << "%";
+  fflush(stdout);
+
+  if (counter == workload_size)
+  {
     std::cout << "\n";
     return;
   }
 }
 
-//This is used to sort the whole file based on sort key
-bool Utility::sortbysortkey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b)
+// This is used to sort the whole file based on sort key
+bool Utility::sortbysortkey(const Entry *a, const Entry *b)
 {
-  return (a.first.first < b.first.first);
+  return (a->getKey() < b->getKey());
 }
-//This is used to sort the whole file based on delete key
-bool Utility::sortbydeletekey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b)
-{
-  return (a.first.second < b.first.second);
-}
+// This is used to sort the whole file based on delete key
+// bool Utility::sortbydeletekey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b)
+// {
+//   return (a.first.second < b.first.second);
+// }
 
 int Utility::minInt(int a, int b)
 {
@@ -68,25 +73,25 @@ int Utility::minInt(int a, int b)
   }
 }
 
-void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > vector_to_compact, int level_to_flush_in)
+void Utility::compactAndFlush(vector<Entry*> vector_to_compact, int level_to_flush_in)
 {
   EmuEnv *_env = EmuEnv::getInstance();
-  
+
   int entries_per_file = _env->entries_per_page * _env->buffer_size_in_pages;
-  int file_count = ceil(vector_to_compact.size() / (entries_per_file*1.0));
+  int file_count = ceil(vector_to_compact.size() / (entries_per_file * 1.0));
   if (MemoryBuffer::verbosity == 2)
     std::cout << "\nwriting " << file_count << " file(s)\n";
 
   SSTFile *head_level_1 = DiskMetaFile::getSSTFileHead(level_to_flush_in);
   SSTFile *moving_head = head_level_1;
-  SSTFile *moving_head_prev = head_level_1;   //Need this to overwrite current overlapping file
+  SSTFile *moving_head_prev = head_level_1; // Need this to overwrite current overlapping file
   SSTFile *end_ptr = moving_head;
 
   if (!head_level_1)
   {
     for (int i = 0; i < file_count; i++)
     {
-      vector<pair<pair<long, long>, string>> vector_to_populate_file;
+      vector<Entry*> vector_to_populate_file;
       entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
       for (int j = 0; j < entries_per_file; ++j)
       {
@@ -115,19 +120,19 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
   }
   else
   {
-    //Calculating end pointer
+    // Calculating end pointer
     while (moving_head)
     {
-      if (moving_head->max_sort_key <= vector_to_compact[0].first.first)
+      if (moving_head->max_sort_key <= vector_to_compact[0]->getKey())
       {
         end_ptr = NULL;
         moving_head = moving_head->next_file_ptr;
         continue;
       }
-      end_ptr = moving_head;  // Need to assign this in case vector gets inserted in between with no overlapping
-      if (moving_head->min_sort_key >= vector_to_compact[vector_to_compact.size() - 1].first.first )
+      end_ptr = moving_head; // Need to assign this in case vector gets inserted in between with no overlapping
+      if (moving_head->min_sort_key >= vector_to_compact[vector_to_compact.size() - 1]->getKey())
       {
-        //safe to say we have calculated end pointer
+        // safe to say we have calculated end pointer
         break;
       }
       end_ptr = moving_head->next_file_ptr;
@@ -136,35 +141,35 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
 
     if (MemoryBuffer::verbosity == 2)
       cout << "Calculated end pointer" << endl;
-    
+
     moving_head = head_level_1;
-    int flag = 0; //1 means vector to be appended at the begining or vector to be inserted in between two files (NO OVERLAPPING); 2 means not possible to be head; 0 means overlapping
-    int hasHeadChanged = 0;  //head?
+    int flag = 0;           // 1 means vector to be appended at the begining or vector to be inserted in between two files (NO OVERLAPPING); 2 means not possible to be head; 0 means overlapping
+    int hasHeadChanged = 0; // head?
 
     while (moving_head)
     {
-      if (moving_head->max_sort_key <= vector_to_compact[0].first.first)
+      if (moving_head->max_sort_key <= vector_to_compact[0]->getKey())
       {
-        moving_head_prev = moving_head; 
-        flag = 2; //Not possible to be a head anymore
+        moving_head_prev = moving_head;
+        flag = 2; // Not possible to be a head anymore
         if (moving_head->next_file_ptr)
         {
           moving_head = moving_head->next_file_ptr;
           continue;
         }
       }
-      //cout << "Prev max: " << moving_head_prev->max_sort_key << endl;
-      //cout << "Current max: " << moving_head->max_sort_key << endl;
-      // if (end_ptr != NULL)
-      //   cout << "End max: " << end_ptr->max_sort_key << endl;
-      if (moving_head->min_sort_key >= vector_to_compact[vector_to_compact.size()-1].first.first)
+      // cout << "Prev max: " << moving_head_prev->max_sort_key << endl;
+      // cout << "Current max: " << moving_head->max_sort_key << endl;
+      //  if (end_ptr != NULL)
+      //    cout << "End max: " << end_ptr->max_sort_key << endl;
+      if (moving_head->min_sort_key >= vector_to_compact[vector_to_compact.size() - 1]->getKey())
       {
-        flag = 1; //vector to be appended very begining or vector to be inserted in between with no overlapping
+        flag = 1; // vector to be appended very begining or vector to be inserted in between with no overlapping
       }
-      //std::cout << "\nFile Count: " << file_count << std::endl; 
+      // std::cout << "\nFile Count: " << file_count << std::endl;
       for (int i = 0; i < file_count; i++)
       {
-        vector<pair<pair<long, long>, string>> vector_to_populate_file;
+        vector<Entry*> vector_to_populate_file;
         entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
         for (int j = 0; j < entries_per_file; ++j)
         {
@@ -175,7 +180,7 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
         {
           std::cout << "\nprinting before trimming " << std::endl;
           for (int j = 0; j < vector_to_compact.size(); ++j)
-            std::cout << "< " << vector_to_compact[j].first.first << ",  " << vector_to_compact[j].first.second << " >"
+            std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getKey() << " >"
                       << "\t" << std::endl;
         }
         vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
@@ -184,7 +189,7 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
         {
           std::cout << "\nprinting after trimming " << std::endl;
           for (int j = 0; j < vector_to_compact.size(); ++j)
-            std::cout << "< " << vector_to_compact[j].first.first << ",  " << vector_to_compact[j].first.second << " >"
+            std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getKey() << " >"
                       << "\t";
         }
         if (MemoryBuffer::verbosity == 2)
@@ -192,22 +197,22 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
           std::cout << "\npopulating file " << head_level_1 << std::endl;
           std::cout << "Vector to populate file: " << endl;
           for (int j = 0; j < vector_to_populate_file.size(); ++j)
-            std::cout << "< " << vector_to_populate_file[j].first.first << ",  " << vector_to_populate_file[j].first.second << " >"
+            std::cout << "< " << vector_to_populate_file[j]->getKey() << ",  " << vector_to_populate_file[j]->getKey() << " >"
                       << "\t";
-        }                          
+        }
 
         SSTFile *new_file = SSTFile::createNewSSTFile(level_to_flush_in);
         int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
         new_file->next_file_ptr = end_ptr;
-        //SSTFile *moving_head = head_level_1;
+        // SSTFile *moving_head = head_level_1;
 
-        if (moving_head == DiskMetaFile::getSSTFileHead(level_to_flush_in) && i==0 && flag!=2)    //Further Optimize?
+        if (moving_head == DiskMetaFile::getSSTFileHead(level_to_flush_in) && i == 0 && flag != 2) // Further Optimize?
         {
           DiskMetaFile::setSSTFileHead(new_file, level_to_flush_in);
           hasHeadChanged = 1;
         }
 
-        if (flag == 1 && hasHeadChanged == 0)   //This means file to be inserted in between with no overlapping
+        if (flag == 1 && hasHeadChanged == 0) // This means file to be inserted in between with no overlapping
         {
           moving_head_prev->next_file_ptr = new_file;
         }
@@ -217,7 +222,7 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
           moving_head_prev->next_file_ptr = new_file;
           moving_head_prev = new_file;
         }
-        
+
         vector_to_populate_file.clear();
       }
       break;
@@ -225,21 +230,22 @@ void Utility::compactAndFlush(vector < pair < pair < long, long >, string > > ve
   }
 }
 
-void Utility::sortAndWrite(vector < pair < pair < long, long >, string > > vector_to_compact, int level_to_flush_in)
+void Utility::sortAndWrite(vector<Entry*> vector_to_compact, int level_to_flush_in)
 {
   EmuEnv *_env = EmuEnv::getInstance();
   SSTFile *head_level_1 = DiskMetaFile::getSSTFileHead(level_to_flush_in);
   int entries_per_file = _env->entries_per_page * _env->buffer_size_in_pages;
 
   std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
-  long startval =  vector_to_compact[0].first.first;
-  long endval =  vector_to_compact[vector_to_compact.size()-1].first.first;
+  std::string startval = vector_to_compact[0]->getKey();
+  std::string endval = vector_to_compact[vector_to_compact.size() - 1]->getKey();
 
   if (!head_level_1)
   {
     if (MemoryBuffer::verbosity == 2)
       std::cout << "NULL" << std::endl;
 
+    // TODO: check why this `getDeleteTileSize` is required ???
     if (vector_to_compact.size() % _env->getDeleteTileSize(level_to_flush_in) != 0 && vector_to_compact.size() / _env->getDeleteTileSize(level_to_flush_in) < 1)
     {
       std::cout << " ERROR " << std::endl;
@@ -261,55 +267,61 @@ void Utility::sortAndWrite(vector < pair < pair < long, long >, string > > vecto
 
     if (MemoryBuffer::verbosity == 2)
       std::cout << "Vector size before merging : " << vector_to_compact.size() << std::endl;
-    
+
+    // Find the right place to flush the MemTable
     while (moving_head)
     {
-      if (moving_head->min_sort_key >= endval || moving_head->max_sort_key <= startval )
+      if (moving_head->min_sort_key >= endval || moving_head->max_sort_key <= startval)
       {
         moving_head = moving_head->next_file_ptr;
         continue;
       }
-      //cout << "Performed Optimization :: Overlap FOUND" << endl;
-      
-      for (int k = 0; k < moving_head->tile_vector.size(); k++)
-      {
-        DeleteTile delete_tile = moving_head->tile_vector[k];
-        for (int l = 0; l < delete_tile.page_vector.size(); l++)
-        {
-          Page page = delete_tile.page_vector[l];
-          for (int m = 0; m < page.kv_vector.size(); m++)
-          {
-            for(int p = 0; p < vector_to_compact.size(); p++) {
-              if (vector_to_compact[p].first.first == page.kv_vector[m].first.first) {
-                match++;
-              }
-            }
-            if (match == 0)
-              vector_to_compact.push_back(page.kv_vector[m]);
-            else 
-              match = 0;
-          }
-        }
-      }
+      // cout << "Performed Optimization :: Overlap FOUND" << endl;
+
+      // TODO: Uncomment below and update for DeleteTile implementation!
+      // for (int k = 0; k < moving_head->tile_vector.size(); k++)
+      // {
+      //   DeleteTile delete_tile = moving_head->tile_vector[k];
+      //   for (int l = 0; l < delete_tile.page_vector.size(); l++)
+      //   {
+      //     Page page = delete_tile.page_vector[l];
+      //     for (int m = 0; m < page.kv_vector.size(); m++)
+      //     {
+      //       for (int p = 0; p < vector_to_compact.size(); p++)
+      //       {
+      //         if (vector_to_compact[p].first.first == page.kv_vector[m].first.first)
+      //         {
+      //           match++;
+      //         }
+      //       }
+      //       if (match == 0)
+      //         vector_to_compact.push_back(page.kv_vector[m]);
+      //       else
+      //         match = 0;
+      //     }
+      //   }
+      // }
       moving_head = moving_head->next_file_ptr;
     }
 
     if (MemoryBuffer::verbosity == 2)
       std::cout << "Vector size after merging : " << vector_to_compact.size() << std::endl;
 
-    std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
-    
-    if (MemoryBuffer::verbosity == 1)   //UNCOMMENT
+    // Commenting, since the sorting was already done before
+    // std::sort(vector_to_compact.entries.begin(), vector_to_compact.entries.end(), Utility::sortbysortkey);
+
+    if (MemoryBuffer::verbosity == 1) // UNCOMMENT
     {
       std::cout << "\nprinting before compacting " << std::endl;
       for (int j = 0; j < vector_to_compact.size(); ++j)
       {
-        std::cout << "< " << vector_to_compact[j].first.first << ",  " << vector_to_compact[j].first.second << " >"
+        std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getValue() << " >"
                   << "\t" << std::endl;
-        if (j%8 == 7) cout << std::endl;
+        if (j % 8 == 7)
+          cout << std::endl;
       }
     }
-    
+
     compactAndFlush(vector_to_compact, level_to_flush_in);
   }
   int saturation = DiskMetaFile::checkAndAdjustLevelSaturation(level_to_flush_in);
@@ -317,89 +329,100 @@ void Utility::sortAndWrite(vector < pair < pair < long, long >, string > > vecto
 
 // Class : WorkloadExecutor
 
-int WorkloadExecutor::insert(long sortkey, long deletekey, string value)
+// int WorkloadExecutor::insert(long sortkey, long deletekey, string value)
+// {
+//   EmuEnv* _env = EmuEnv::getInstance();
+//   bool found = false;
+//   //For UPDATES in inserts
+//   for (int i = 0; i < MemoryBuffer::buffer.size(); ++i)
+//   {
+//     if (MemoryBuffer::buffer[i].first.first == sortkey)
+//     {
+//       MemoryBuffer::setCurrentBufferStatistics(0, (value.size() - MemoryBuffer::buffer[i].second.size()));
+//       MemoryBuffer::buffer[i].second = value;
+//       found = true;
+//       //std::cout << "key updated : " << key << std::endl;
+//       //MemoryBuffer::getCurrentBufferStatistics();
+
+//       total_insert_count++;
+//       buffer_update_count++;
+//       break;
+//     }
+//   }
+
+//   //For INSERTS in inserts
+//   if (!found)
+//   {
+//     MemoryBuffer::setCurrentBufferStatistics(1, (sizeof(sortkey) + sizeof(deletekey) + value.size()));
+//     MemoryBuffer::buffer.push_back(make_pair(make_pair(sortkey, deletekey), value));
+//     //std::cout << "key inserted : " << key << std::endl;
+//     //MemoryBuffer::getCurrentBufferStatistics();
+//     total_insert_count++;
+//     buffer_insert_count++;
+//   }
+
+//   if (MemoryBuffer::current_buffer_saturation >= MemoryBuffer::buffer_flush_threshold)
+//   {
+//     //MemoryBuffer::getCurrentBufferStatistics();
+//     // MemoryBuffer::printBufferEntries();
+//     // if(MemoryBuffer::verbosity == 2)
+//     //std::cout << "Buffer full :: Sorting buffer " ;
+
+//     //DiskMetaFile::printAllEntries(0);     //Comment
+
+//     if (MemoryBuffer::verbosity == 1)
+//     {
+//       std::cout << ":::: Buffer full :: Flushing buffer to Level 1 " << std::endl;
+//       MemoryBuffer::printBufferEntries();
+//     }
+
+//     int status = MemoryBuffer::initiateBufferFlush(1);
+//     if (status)
+//     {
+//       if (MemoryBuffer::verbosity == 2)
+//         std::cout << "Buffer flushed :: Resizing buffer ( size = " << MemoryBuffer::buffer.size() << " ) ";
+//       MemoryBuffer::buffer.resize(0);
+//       if (MemoryBuffer::verbosity == 2)
+//         std::cout << ":::: Buffer resized ( size = " << MemoryBuffer::buffer.size() << " ) " << std::endl;
+//       MemoryBuffer::current_buffer_entry_count = 0;
+//       MemoryBuffer::current_buffer_saturation = 0;
+//       MemoryBuffer::current_buffer_size = 0;
+//     }
+//   }
+//   counter++;
+
+//   // if(counter % (_env->num_inserts/100) == 0 && _env->verbosity < 2)
+//   //     showProgress(_env->num_inserts, counter);
+
+//   return 1;
+// }
+
+// int WorkloadExecutor::search(long key, int possible_level_of_occurrence)
+// {
+//   SSTFile *level_head_reference = DiskMetaFile::getSSTFileHead(possible_level_of_occurrence);
+//   // while (level_head_reference != NULL) {
+//   //   for(int i = 0; i<level_head_reference->file_instance.size(); ++i) {
+//   //     if(level_head_reference->file_instance[i].first == key) {
+//   //       //std::cout << "Match found for key " << key << std::endl;
+//   //       return 1;
+//   //     }
+//   //   }
+//   //   level_head_reference = level_head_reference->next_file_ptr;
+//   // }
+//   return 0;
+// }
+
+int WorkloadExecutor::insert(std::string key, std::string value)
 {
-  EmuEnv* _env = EmuEnv::getInstance();
-  bool found = false;
-  //For UPDATES in inserts
-  for (int i = 0; i < MemoryBuffer::buffer.size(); ++i)
-  {
-    if (MemoryBuffer::buffer[i].first.first == sortkey)
-    {
-      MemoryBuffer::setCurrentBufferStatistics(0, (value.size() - MemoryBuffer::buffer[i].second.size()));
-      MemoryBuffer::buffer[i].second = value;
-      found = true;
-      //std::cout << "key updated : " << key << std::endl;
-      //MemoryBuffer::getCurrentBufferStatistics();
-
-      total_insert_count++;
-      buffer_update_count++;
-      break;
-    }
-  }
-
-  //For INSERTS in inserts
-  if (!found)
-  {
-    MemoryBuffer::setCurrentBufferStatistics(1, (sizeof(sortkey) + sizeof(deletekey) + value.size()));
-    MemoryBuffer::buffer.push_back(make_pair(make_pair(sortkey, deletekey), value));
-    //std::cout << "key inserted : " << key << std::endl;
-    //MemoryBuffer::getCurrentBufferStatistics();
-    total_insert_count++;
-    buffer_insert_count++;
-  }
-
-  if (MemoryBuffer::current_buffer_saturation >= MemoryBuffer::buffer_flush_threshold)
-  {
-    //MemoryBuffer::getCurrentBufferStatistics();
-    // MemoryBuffer::printBufferEntries();
-    // if(MemoryBuffer::verbosity == 2)
-    //std::cout << "Buffer full :: Sorting buffer " ;
-
-    //DiskMetaFile::printAllEntries(0);     //Comment
-
-    if (MemoryBuffer::verbosity == 1)
-    {
-      std::cout << ":::: Buffer full :: Flushing buffer to Level 1 " << std::endl;
-      MemoryBuffer::printBufferEntries();
-    }
-
-    int status = MemoryBuffer::initiateBufferFlush(1);
-    if (status)
-    {
-      if (MemoryBuffer::verbosity == 2)
-        std::cout << "Buffer flushed :: Resizing buffer ( size = " << MemoryBuffer::buffer.size() << " ) ";
-      MemoryBuffer::buffer.resize(0);
-      if (MemoryBuffer::verbosity == 2)
-        std::cout << ":::: Buffer resized ( size = " << MemoryBuffer::buffer.size() << " ) " << std::endl;
-      MemoryBuffer::current_buffer_entry_count = 0;
-      MemoryBuffer::current_buffer_saturation = 0;
-      MemoryBuffer::current_buffer_size = 0;
-    }
-  }
-  counter++;
-
-  // if(counter % (_env->num_inserts/100) == 0 && _env->verbosity < 2)
-  //     showProgress(_env->num_inserts, counter);
-
-  return 1;
+  std::cout << "Inserting Key :" << key << " Value : " << value << std::endl;
+  Entry entry(key, value, EntryType::POINT_ENTRY);
+  return MemoryBuffer::buffer->insert(entry);
 }
 
-int WorkloadExecutor::search(long key, int possible_level_of_occurrence)
-{
-  SSTFile *level_head_reference = DiskMetaFile::getSSTFileHead(possible_level_of_occurrence);
-  // while (level_head_reference != NULL) {
-  //   for(int i = 0; i<level_head_reference->file_instance.size(); ++i) {
-  //     if(level_head_reference->file_instance[i].first == key) {
-  //       //std::cout << "Match found for key " << key << std::endl;
-  //       return 1;
-  //     }
-  //   }
-  //   level_head_reference = level_head_reference->next_file_ptr;
-  // }
-  return 0;
+int WorkloadExecutor::remove(std::string key) {
+  Entry entry(key, std::string(""), EntryType::POINT_TOMBSTONE);
+  return MemoryBuffer::buffer->remove(entry);
 }
-
 
 int WorkloadExecutor::getWorkloadStatictics(EmuEnv *_env)
 {
@@ -414,8 +437,8 @@ int WorkloadExecutor::getWorkloadStatictics(EmuEnv *_env)
     total_compactions += DiskMetaFile::compaction_through_sortmerge_counter[i];
     total_files_in_compcations += DiskMetaFile::compaction_file_counter[i];
   }
-  //int disk_pages_per_file = _env->buffer_size_in_pages/_env->buffer_split_factor;
-  int disk_pages_per_file = _env->buffer_size_in_pages; //Doubt
+  // int disk_pages_per_file = _env->buffer_size_in_pages/_env->buffer_split_factor;
+  int disk_pages_per_file = _env->buffer_size_in_pages; // Doubt
   std::cout << "#compactions = " << total_compactions << ", #files_in_compactions = " << total_files_in_compcations << ", #IOs = " << 2 * total_files_in_compcations * disk_pages_per_file
             << " (#IOs does not include IOs for only writing or pointer manipulation)" << std::endl;
 

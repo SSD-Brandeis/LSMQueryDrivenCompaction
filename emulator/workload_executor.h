@@ -24,18 +24,20 @@ namespace workload_exec {
     static long buffer_insert_count;
     static uint32_t counter;
 
-    static int insert(long sortkey, long deletekey, string value);
-    static int pointGet(long key);
+    static int insert(std::string key, std::string value);
+    static int remove(std::string key);
+    // static int insert(long sortkey, long deletekey, string value);
+    static int get(std::string key);
     static int search(long key, int possible_level_of_occurrence);
     static int getWorkloadStatictics(EmuEnv* _env);
   };
 
   class Utility {
       public:
-      static void sortAndWrite(vector < pair < pair < long, long >, string > > vector_to_compact, int level_to_flush_in);
-      static void compactAndFlush(vector < pair < pair < long, long >, string > > vector_to_compact, int level_to_flush_in);
-      static bool sortbysortkey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b);
-      static bool sortbydeletekey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b);
+      static void sortAndWrite(vector<Entry*> vector_to_compact, int level_to_flush_in);
+      static void compactAndFlush(vector<Entry*> vector_to_compact, int level_to_flush_in);
+      static bool sortbysortkey(const Entry *a, const Entry *b);
+      // static bool sortbydeletekey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b);
       static int minInt(int a, int b);
   };
 

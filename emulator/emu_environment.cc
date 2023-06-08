@@ -10,10 +10,10 @@ EmuEnv::EmuEnv()
 {
   size_ratio = 2;
 
-  buffer_size_in_pages = 128;
-  entries_per_page = 128;
-  entry_size = 128;                                                   // in Bytes
-  buffer_size = buffer_size_in_pages * entries_per_page * entry_size; // M = P*B*E = 128 * 128 * 128 B = 2 MB
+  buffer_size_in_pages = 2;                                           // default 2 buffers
+  entries_per_page = 8;                                               // setting to 8 entries per page
+  entry_size = 8;                                                     // default which is specified in load_gen in Bytes
+  buffer_size = buffer_size_in_pages * entries_per_page * entry_size; // M = P*B*E = 8 * 8 * 2 B = 128B
 
   delete_tile_size_in_pages = 2; // h
   file_size = buffer_size;       // file_size = M/s = 2 MB / 8 = 256 KB
@@ -26,7 +26,7 @@ EmuEnv::EmuEnv()
   num_range_queries = 0;
   range_query_selectivity = 0;
 
-  verbosity = 0;
+  verbosity = 1; // print all entries by default
   lethe_new = 0; // 0 for classical lethe, 1 for optimal Kiwi, 2 for Kiwi++
   srd_count = 1;
   epq_count = 1;

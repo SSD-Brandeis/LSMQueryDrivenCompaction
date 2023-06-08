@@ -57,82 +57,82 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
   }
 }
 
-void Query::checkDeleteCount (int deletekey)
-{
-  Query::complete_delete_count = 0;
-  Query::not_possible_delete_count = 0;
-  Query::partial_delete_count = 0;
+// void Query::checkDeleteCount (int deletekey)
+// {
+//   Query::complete_delete_count = 0;
+//   Query::not_possible_delete_count = 0;
+//   Query::partial_delete_count = 0;
 
-  for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
-  {
-    SSTFile *level_i_head = DiskMetaFile::getSSTFileHead(i);
-    SSTFile *moving_head = level_i_head;
-    while (moving_head)
-    {
-      for (int k = 0; k < moving_head->tile_vector.size(); k++)
-      {
-        DeleteTile delete_tile = moving_head->tile_vector[k];
-        for (int l = 0; l < delete_tile.page_vector.size(); l++)
-        {
-          Page page = delete_tile.page_vector[l];
-          if (page.max_delete_key > 0)
-          {
-            if (page.max_delete_key < deletekey) {
-              complete_delete_count++;
-            }
-            else if (page.min_delete_key > deletekey) {
-              not_possible_delete_count++;
-            }
-            else {
-              partial_delete_count++;
-            }
-          }
-        }
-      }
-      moving_head = moving_head->next_file_ptr;
-    }
+//   for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
+//   {
+//     SSTFile *level_i_head = DiskMetaFile::getSSTFileHead(i);
+//     SSTFile *moving_head = level_i_head;
+//     while (moving_head)
+//     {
+//       for (int k = 0; k < moving_head->tile_vector.size(); k++)
+//       {
+//         DeleteTile delete_tile = moving_head->tile_vector[k];
+//         for (int l = 0; l < delete_tile.page_vector.size(); l++)
+//         {
+//           Page page = delete_tile.page_vector[l];
+//           if (page.max_delete_key > 0)
+//           {
+//             if (page.max_delete_key < deletekey) {
+//               complete_delete_count++;
+//             }
+//             else if (page.min_delete_key > deletekey) {
+//               not_possible_delete_count++;
+//             }
+//             else {
+//               partial_delete_count++;
+//             }
+//           }
+//         }
+//       }
+//       moving_head = moving_head->next_file_ptr;
+//     }
 
-  }
-  // std::cout << "(Delete Query)" << std::endl;
-  // std::cout << "Compelte Possible Delete Count : " << complete_delete_count << std::endl;
-  // std::cout << "Partial Possible Delete Count : " << partial_delete_count << std::endl;
-  // std::cout << "Impossible Delete Count : " << not_possible_delete_count << std::endl;
-  // std::cout << std::endl;
-}
+//   }
+//   // std::cout << "(Delete Query)" << std::endl;
+//   // std::cout << "Compelte Possible Delete Count : " << complete_delete_count << std::endl;
+//   // std::cout << "Partial Possible Delete Count : " << partial_delete_count << std::endl;
+//   // std::cout << "Impossible Delete Count : " << not_possible_delete_count << std::endl;
+//   // std::cout << std::endl;
+// }
 
-void Query::delete_query_experiment()
-{
-  EmuEnv* _env = EmuEnv::getInstance();
-  // int selectivity[3] = {7, 30, 60};
-  double selectivity[20] = {100000, 50000, 10000, 7500, 5000, 2500, 1000, 750, 500, 250};
-  double increment = 0.01;
-  int j = 10;
-  // for (float i = 0.005 ; i < 1; i+= 0.005)
-  // {
-  //   selectivity[j] = (100/i);
-  //   j++;
-  // }
-  for (float i = 1 ; i <= 10; i++)
-  {
-    selectivity[j] = (100/i);
-    j++;
-  }
-  int delete_key1;
+// void Query::delete_query_experiment()
+// {
+//   EmuEnv* _env = EmuEnv::getInstance();
+//   // int selectivity[3] = {7, 30, 60};
+//   double selectivity[20] = {100000, 50000, 10000, 7500, 5000, 2500, 1000, 750, 500, 250};
+//   double increment = 0.01;
+//   int j = 10;
+//   // for (float i = 0.005 ; i < 1; i+= 0.005)
+//   // {
+//   //   selectivity[j] = (100/i);
+//   //   j++;
+//   // }
+//   for (float i = 1 ; i <= 10; i++)
+//   {
+//     selectivity[j] = (100/i);
+//     j++;
+//   }
+//   int delete_key1;
 
-  fstream fout1;
-  fout1.open("out_delete_srq.csv", ios::out | ios::app);
-  fout1 << "SRQ Count" << ", " << "Fraction" << "," << "Delete Key" << "," << "Full Drop" << "," << "Partial Drop" << "," << "Impossible Drop" << "\n";
+//   fstream fout1;
+//   fout1.open("out_delete_srq.csv", ios::out | ios::app);
+//   fout1 << "SRQ Count" << ", " << "Fraction" << "," << "Delete Key" << "," << "Full Drop" << "," << "Partial Drop" << "," << "Impossible Drop" << "\n";
 
-  for (int i = 0 ; i < 20; i++)
-  {
-    delete_key1 = _env->num_inserts/selectivity[i];
-    Query::checkDeleteCount(delete_key1);
-    fout1 << _env->srq_count << "," << "1/"+ to_string(selectivity[i])  << "," << delete_key1 << "," << Query::complete_delete_count << "," << Query::partial_delete_count 
-      << "," << Query::not_possible_delete_count << endl;
-  }
+//   for (int i = 0 ; i < 20; i++)
+//   {
+//     delete_key1 = _env->num_inserts/selectivity[i];
+//     Query::checkDeleteCount(delete_key1);
+//     fout1 << _env->srq_count << "," << "1/"+ to_string(selectivity[i])  << "," << delete_key1 << "," << Query::complete_delete_count << "," << Query::partial_delete_count 
+//       << "," << Query::not_possible_delete_count << endl;
+//   }
 
-  fout1.close();
-}
+//   fout1.close();
+// }
 
 // void Query::range_query_experiment()
 // {
@@ -164,40 +164,40 @@ void Query::delete_query_experiment()
 //   fout2.close();
 // }
 
-void Query::sec_range_query_experiment()
-{
-  EmuEnv* _env = EmuEnv::getInstance();
-  int range_iterval_1, range_query_start_1, range_query_end_1;
-  float selectivity[35] = {0.0001, 0.0005, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.1, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
+// void Query::sec_range_query_experiment()
+// {
+//   EmuEnv* _env = EmuEnv::getInstance();
+//   int range_iterval_1, range_query_start_1, range_query_end_1;
+//   float selectivity[35] = {0.0001, 0.0005, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.1, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
 
-  fstream fout3;
-  fout3.open("out_sec_range_srq.csv", ios::out | ios::app);
-  fout3 << "SRQ Count" << ", " << "Selectivity" << "," <<  "Sec Range Start" << "," << "Sec Range End" << "," << "Occurrences" << "\n";
+//   fstream fout3;
+//   fout3.open("out_sec_range_srq.csv", ios::out | ios::app);
+//   fout3 << "SRQ Count" << ", " << "Selectivity" << "," <<  "Sec Range Start" << "," << "Sec Range End" << "," << "Occurrences" << "\n";
 
-  for (int i = 0; i < 35 ; i++ )
-  {
-    range_iterval_1 = _env->num_inserts * selectivity[i]/100;  
-    range_query_start_1 = _env->num_inserts/2 - range_iterval_1/2;
-    range_query_end_1 = _env->num_inserts/2 + range_iterval_1/2;
-    Query::secondaryRangeQuery(range_query_start_1, range_query_end_1);
-    fout3 << _env->srq_count << "," << selectivity[i] << "%" << "," << range_query_start_1 << "," << range_query_end_1 << "," << Query::secondary_range_occurances << endl;
-  }
+//   for (int i = 0; i < 35 ; i++ )
+//   {
+//     range_iterval_1 = _env->num_inserts * selectivity[i]/100;  
+//     range_query_start_1 = _env->num_inserts/2 - range_iterval_1/2;
+//     range_query_end_1 = _env->num_inserts/2 + range_iterval_1/2;
+//     Query::secondaryRangeQuery(range_query_start_1, range_query_end_1);
+//     fout3 << _env->srq_count << "," << selectivity[i] << "%" << "," << range_query_start_1 << "," << range_query_end_1 << "," << Query::secondary_range_occurances << endl;
+//   }
 
-  fout3.close();
-}
+//   fout3.close();
+// }
 
-void Query::point_query_experiment()
-{
-  EmuEnv* _env = EmuEnv::getInstance();
-  int point_query_iteration1 = 100000;
-  fstream fout4;
-  fout4.open("out_point.csv", ios::out | ios::app);
+// void Query::point_query_experiment()
+// {
+//   EmuEnv* _env = EmuEnv::getInstance();
+//   int point_query_iteration1 = 100000;
+//   fstream fout4;
+//   fout4.open("out_point.csv", ios::out | ios::app);
 
-  Query::pointQueryRunner(point_query_iteration1);
-  fout4 << _env->delete_tile_size_in_pages << "," << point_query_iteration1 << "," << Query::sum_page_id << "," << Query::sum_page_id/(Query::found_count * 1.0) << "," << Query::found_count << "," << Query::not_found_count << endl;
-  fout4.close();
+//   Query::pointQueryRunner(point_query_iteration1);
+//   fout4 << _env->delete_tile_size_in_pages << "," << point_query_iteration1 << "," << Query::sum_page_id << "," << Query::sum_page_id/(Query::found_count * 1.0) << "," << Query::found_count << "," << Query::not_found_count << endl;
+//   fout4.close();
 
-}
+// }
 
 // void Query::new_point_query_experiment ()
 // {
@@ -235,7 +235,7 @@ void Query::point_query_experiment()
 //   fout4.close();
 // }
 
-void Query::rangeQuery (int lowerlimit, int upperlimit) {
+void Query::rangeQuery (std::string lowerlimit, std::string upperlimit) {
 
   range_occurances = 0;
 
@@ -252,25 +252,21 @@ void Query::rangeQuery (int lowerlimit, int upperlimit) {
         continue;
       } 
       else {
-        for (int k = 0; k < moving_head->tile_vector.size(); k++)
+        for (int k = 0; k < moving_head->pages.size(); k++)
         {
-          DeleteTile delete_tile = moving_head->tile_vector[k];
-          if (delete_tile.min_sort_key > upperlimit || delete_tile.max_sort_key < lowerlimit) {
+          Page page = moving_head->pages[k];
+          if (page.min_sort_key > upperlimit || page.max_sort_key < lowerlimit) {
             continue;
           }
           else {
-            for (int l = 0; l < delete_tile.page_vector.size(); l++)
+            for (int l = 0; l < page.entries_vector.size(); l++)
             {
-              Page page = delete_tile.page_vector[l];
-              if (page.min_sort_key > 0)
-              {
                 if (page.min_sort_key > upperlimit || page.max_sort_key < lowerlimit) {
                 continue;
                 }
                 else {
                   range_occurances++;
                 }
-              }
             }
           }
         }
@@ -278,56 +274,56 @@ void Query::rangeQuery (int lowerlimit, int upperlimit) {
       moving_head = moving_head->next_file_ptr;
     }
   }
-  // std::cout << "(Range Query)" << std::endl;
-  // std::cout << "Pages traversed : " << range_occurances << std::endl << std::endl;
+  std::cout << "(Range Query)" << std::endl;
+  std::cout << "Pages traversed : " << range_occurances << std::endl << std::endl;
 }
 
-void Query::secondaryRangeQuery (int lowerlimit, int upperlimit) {
+// void Query::secondaryRangeQuery (int lowerlimit, int upperlimit) {
 
-  secondary_range_occurances = 0;
+//   secondary_range_occurances = 0;
 
-  for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
-  {
-    SSTFile *level_i_head = DiskMetaFile::getSSTFileHead(i);
-    SSTFile *moving_head = level_i_head;
-    while (moving_head)
-    {
-      if (moving_head->min_delete_key > upperlimit || moving_head->max_delete_key < lowerlimit ) {
-        moving_head = moving_head->next_file_ptr;
-        continue;
-      } 
-      else {
-        for (int k = 0; k < moving_head->tile_vector.size(); k++)
-        {
-          DeleteTile delete_tile = moving_head->tile_vector[k];
-          if (delete_tile.min_delete_key > upperlimit || delete_tile.max_delete_key < lowerlimit) {
-            continue;
-          }
-          else {
-            for (int l = 0; l < delete_tile.page_vector.size(); l++)
-            {
-              Page page = delete_tile.page_vector[l];
-              if (page.min_delete_key > 0)
-              {
-                if (page.min_delete_key > upperlimit || page.max_delete_key < lowerlimit) {
-                  continue;
-                }
-                else {
-                  secondary_range_occurances++;
-                }
-              }
-            }
-          }
-        }
-      }
-      moving_head = moving_head->next_file_ptr;
-    }
-  }
-  // std::cout << "(Secondary Range Query)" << std::endl;
-  // std::cout << "Pages traversed : " << secondary_range_occurances << std::endl << std::endl;
-}
+//   for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
+//   {
+//     SSTFile *level_i_head = DiskMetaFile::getSSTFileHead(i);
+//     SSTFile *moving_head = level_i_head;
+//     while (moving_head)
+//     {
+//       if (moving_head->min_delete_key > upperlimit || moving_head->max_delete_key < lowerlimit ) {
+//         moving_head = moving_head->next_file_ptr;
+//         continue;
+//       } 
+//       else {
+//         for (int k = 0; k < moving_head->tile_vector.size(); k++)
+//         {
+//           DeleteTile delete_tile = moving_head->tile_vector[k];
+//           if (delete_tile.min_delete_key > upperlimit || delete_tile.max_delete_key < lowerlimit) {
+//             continue;
+//           }
+//           else {
+//             for (int l = 0; l < delete_tile.page_vector.size(); l++)
+//             {
+//               Page page = delete_tile.page_vector[l];
+//               if (page.min_delete_key > 0)
+//               {
+//                 if (page.min_delete_key > upperlimit || page.max_delete_key < lowerlimit) {
+//                   continue;
+//                 }
+//                 else {
+//                   secondary_range_occurances++;
+//                 }
+//               }
+//             }
+//           }
+//         }
+//       }
+//       moving_head = moving_head->next_file_ptr;
+//     }
+//   }
+//   // std::cout << "(Secondary Range Query)" << std::endl;
+//   // std::cout << "Pages traversed : " << secondary_range_occurances << std::endl << std::endl;
+// }
 
-int Query::pointQuery (int key)
+int Query::pointQuery (std::string key)
 {
   for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
   {
@@ -338,18 +334,17 @@ int Query::pointQuery (int key)
       if (moving_head->min_sort_key > key)
         break;
       if (moving_head->min_sort_key <= key && key <= moving_head->max_sort_key) {
-        for (int k = 0; k < moving_head->tile_vector.size(); k++)
+        for (int k = 0; k < moving_head->pages.size(); k++)
         {
-          DeleteTile delete_tile = moving_head->tile_vector[k];
-          if (delete_tile.min_sort_key > key)
+          Page page = moving_head->pages[k];
+          if (page.min_sort_key > key)
             break;
-          if (delete_tile.min_sort_key <= key && key <= delete_tile.max_sort_key) {
-            for (int l = 0; l < delete_tile.page_vector.size(); l++)
+          if (page.min_sort_key <= key && key <= page.max_sort_key) {
+            for (int l = 0; l < page.entries_vector.size(); l++)
             {
-              Page page = delete_tile.page_vector[l];
               if (page.min_sort_key <= key && key <= page.max_sort_key) {
-                for (int m = 0; m < page.kv_vector.size(); m++) {
-                  if (key == page.kv_vector[m].first.first) {
+                for (int m = 0; m < page.entries_vector.size(); m++) {
+                  if (key == page.entries_vector[m].getKey()) {
                     return l + 1;
                   }
                 }

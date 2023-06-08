@@ -34,9 +34,9 @@ public:
     static long not_found_count;
 
     static void checkDeleteCount (int deletekey);
-    static int pointQuery (int key);
+    static int pointQuery (std::string key);
     static void pointQueryRunner (int iterations);
-    static void rangeQuery (int lowerlimit, int upperlimit);
+    static void rangeQuery (std::string lowerlimit, std::string upperlimit);
     static void secondaryRangeQuery (int lowerlimit, int upperlimit);
 
     static void range_query_experiment();

@@ -1,48 +1,112 @@
 #include <algorithm>
 #include <iostream>
 
-#include "memtable.h"
+#include "tree_builder.h"
+#include "emu_environment.h"
+#include "workload_executor.h"
+#include "vector_memtable.h"
 
-class VectorMemTable : public MemTable
+using namespace tree_builder;
+using namespace workload_exec;
+
+
+void VectorMemTable::checkMemTableFull()
 {
-public:
-    VectorMemTable() {}
-
-    bool virtual insert(Entry &entry)
+    if (MemoryBuffer::current_buffer_saturation >= MemoryBuffer::buffer_flush_threshold)
     {
-        if (entry.getType() != EntryType::POINT_ENTRY) {
-            std::cout << "ERROR: Entry should be Point Entry" << std::endl;
-            exit(1);
-        }
-        std::vector<Entry *>::iterator it;
-        it = std::find(entries.begin(), entries.end(), entry);
+        MemoryBuffer::getCurrentBufferStatistics();
+        // DiskMetaFile::printAllEntries(0);  // To print all levels entries
 
-        // Check if entry already exists & UPDATE
-        if (it != entries.end())
+        if (MemoryBuffer::verbosity == 1)
         {
-            entries[it - entries.begin()] = &entry;
-        }
-        else
-        {
-            entries.push_back(&entry);
+            std::cout << ":::: Buffer full :: Flushing buffer to Level 1 " << std::endl;
+            MemoryBuffer::printBufferEntries();
         }
 
-        // TODO: check if needs to flush based on threshold
+        int status = MemoryBuffer::initiateBufferFlush(1);
+        if (status)
+        {
+            if (MemoryBuffer::verbosity == 2)
+                std::cout << "Buffer flushed :: Resizing buffer ( size = " << MemoryBuffer::buffer->entries.size() << " ) ";
+
+            MemoryBuffer::buffer->entries.clear();
+            if (MemoryBuffer::verbosity == 2)
+                std::cout << ":::: Buffer resized ( size = " << MemoryBuffer::buffer->entries.size() << " ) " << std::endl;
+
+            MemoryBuffer::current_buffer_entry_count = 0;
+            MemoryBuffer::current_buffer_saturation = 0;
+            MemoryBuffer::current_buffer_size = 0;
+        }
+    }
+}
+
+VectorMemTable::VectorMemTable(): MemTable() {}
+
+bool VectorMemTable::insert(Entry &entry)
+{
+    if (entry.getType() != EntryType::POINT_ENTRY)
+    {
+        std::cout << "ERROR: Entry should be Point Entry" << std::endl;
+        exit(1);
     }
 
-    bool virtual remove(Entry &entry)
-    {
-        if (entry.getType() != EntryType::POINT_TOMBSTONE) {
-            std::cout << "ERROR: Entry should be Point Tombstone" << std::endl;
-            exit(1);
-        }
-        std::vector<Entry *>::iterator it;
-        it = std::find(entries.begin(), entries.end(), entry);
+    std::vector<Entry *>::iterator it;
+    it = std::find_if(entries.begin(), entries.end(), [&](const Entry *stored_entry)
+                      { return stored_entry->getKey().compare(entry.getKey()) == 0; });
 
-        // Check if entry already exists in MemTable
-        if (it != entries.end()) {
-            entries.erase(it);
-        }
-        entries.push_back(&entry);
+    // Check if entry already exists & UPDATE
+    if (it != entries.end())
+    {
+        MemoryBuffer::setCurrentBufferStatistics(0, (entry.getValue().size() - entries[it - entries.begin()]->getValue().size()));
+        entries[it - entries.begin()] = &entry;
+        std::cout << "Value updated : " << entry.getKey() << std::endl;
+        WorkloadExecutor::total_insert_count++;
+        WorkloadExecutor::buffer_insert_count++;
     }
-};
+    else
+    {
+        MemoryBuffer::setCurrentBufferStatistics(1, (entry.getKey().size() + entry.getValue().size()));
+        Entry *new_entry = new Entry{entry};
+        entries.push_back(new_entry);
+        std::cout << "Key inserted : " << entry.getKey() << std::endl;
+        WorkloadExecutor::total_insert_count++;
+        WorkloadExecutor::buffer_insert_count++;
+    }
+    WorkloadExecutor::counter++;
+
+    checkMemTableFull();
+
+    return 1;
+}
+
+bool VectorMemTable::remove(Entry &entry)
+{
+    if (entry.getType() != EntryType::POINT_TOMBSTONE)
+    {
+        std::cout << "ERROR: Entry should be Point Tombstone" << std::endl;
+        exit(1);
+    }
+
+    std::vector<Entry *>::iterator it;
+    it = std::find_if(entries.begin(), entries.end(), [&](const Entry *stored_entry)
+                      { return stored_entry->getKey().compare(entry.getKey()) == 0; });
+
+    // Check if entry already exists in MemTable
+    if (it != entries.end())
+    {
+        MemoryBuffer::setCurrentBufferStatistics(-1, (-(entries[it - entries.begin()]->getValue().size() + entries[it - entries.begin()]->getKey().size())));
+        entries.erase(it);
+        std::cout << "Key removed from buffer : " << entry.getKey() << std::endl;
+        WorkloadExecutor::total_insert_count--;
+        WorkloadExecutor::buffer_insert_count--;
+    }
+    MemoryBuffer::setCurrentBufferStatistics(1, (entries[it - entries.begin()]->getKey().size()));
+    entries.push_back(&entry);
+    WorkloadExecutor::total_insert_count++;
+    WorkloadExecutor::buffer_insert_count++;
+    WorkloadExecutor::counter++;
+
+    checkMemTableFull();
+    return 1;
+}
+VectorMemTable::~VectorMemTable() {}

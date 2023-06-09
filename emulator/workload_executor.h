@@ -2,23 +2,27 @@
  *  Created on: May 14, 2019
  *  Author: Subhadeep, Papon
  */
- 
+
 #ifndef AWESOME_H_
 #define AWESOME_H_
 
 #include "emu_environment.h"
+#include "sstfile.h"
 
 #include <iostream>
 #include <vector>
 
 using namespace std;
+using namespace tree_builder;
 
-namespace workload_exec {
 
-  class WorkloadExecutor {
-    private:
-    
-    public:
+namespace workload_exec
+{
+
+  class WorkloadExecutor
+  {
+  private:
+  public:
     static long total_insert_count;
     static long buffer_update_count;
     static long buffer_insert_count;
@@ -26,22 +30,22 @@ namespace workload_exec {
 
     static int insert(std::string key, std::string value);
     static int remove(std::string key);
-    // static int insert(long sortkey, long deletekey, string value);
     static int get(std::string key);
     static int search(long key, int possible_level_of_occurrence);
-    static int getWorkloadStatictics(EmuEnv* _env);
+    static int getWorkloadStatictics(EmuEnv *_env);
   };
 
-  class Utility {
-      public:
-      static void sortAndWrite(vector<Entry*> vector_to_compact, int level_to_flush_in);
-      static void compactAndFlush(vector<Entry*> vector_to_compact, int level_to_flush_in);
-      static bool sortbysortkey(const Entry *a, const Entry *b);
-      // static bool sortbydeletekey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b);
-      static int minInt(int a, int b);
+  class Utility
+  {
+  public:
+    static SSTFile &trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file);
+    static void mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file);
+    static void sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush_in);
+    static void compactAndFlush(vector<Entry *> vector_to_compact, int level_to_flush_in);
+    static bool sortbysortkey(const Entry *a, const Entry *b);
+    static int minInt(int a, int b);
   };
 
-
-} // namespace awesome
+}
 
 #endif /*EMU_ENVIRONMENT_H_*/

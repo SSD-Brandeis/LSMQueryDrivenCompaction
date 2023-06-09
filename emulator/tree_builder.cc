@@ -21,7 +21,6 @@ using namespace std;
 using namespace tree_builder;
 using namespace workload_exec;
 
-
 /*Set up the singleton object with the experiment wide options*/
 MemoryBuffer *MemoryBuffer::buffer_instance = 0;
 long MemoryBuffer::max_buffer_size = 0;
@@ -156,8 +155,8 @@ long DiskMetaFile::getLevelEntryCount(int level)
   {
     for (int k = 0; k < moving_head->pages.size(); k++)
     {
-      Page page = moving_head->pages[k];
-      for (int m = 0; m < page.entries_vector.size(); m++)
+      Page *page = moving_head->pages[k];
+      for (int m = 0; m < page->entries_vector.size(); m++)
       {
         level_size_in_entries++;
       }
@@ -185,11 +184,12 @@ int DiskMetaFile::getTotalLevelCount()
   return level_count;
 }
 
-int DiskMetaFile::checkOverlapping(SSTFile *file, int level)
+int DiskMetaFile::checkOverlapping(SSTFile *file, int next_level)
 {
-  SSTFile *head_level_1 = DiskMetaFile::getSSTFileHead(level);
-  SSTFile *moving_head = head_level_1;
-  int overlap_count = 0;
+  SSTFile *next_level_head = DiskMetaFile::getSSTFileHead(next_level);
+  SSTFile *moving_head = next_level_head;
+
+  int overlap_files_count = 0;
   while (moving_head)
   {
     if (moving_head->max_sort_key <= file->min_sort_key || moving_head->min_sort_key >= file->max_sort_key)
@@ -197,10 +197,11 @@ int DiskMetaFile::checkOverlapping(SSTFile *file, int level)
       moving_head = moving_head->next_file_ptr;
       continue;
     }
-    overlap_count++;
+    overlap_files_count++;
     moving_head = moving_head->next_file_ptr;
   }
-  return overlap_count;
+
+  return overlap_files_count;
 }
 
 int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
@@ -238,7 +239,7 @@ int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
     // DiskMetaFile::setSSTFileHead(level_head->next_file_ptr, level);
 
     // If that file is level head, update head
-    if (min_overlap_file == DiskMetaFile::getSSTFileHead(level))
+    if (min_overlap_file == level_head)
     {
       DiskMetaFile::setSSTFileHead(level_head->next_file_ptr, level);
     }
@@ -256,15 +257,15 @@ int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
     }
 
     // Converting to vector (only that file)
-    vector<Entry*> vector_to_compact;
+    vector<Entry *> vector_to_compact;
 
     for (int k = 0; k < min_overlap_file->pages.size(); k++)
     {
-      Page page = min_overlap_file->pages[k];
-        for (int m = 0; m < page.entries_vector.size(); m++)
-        {
-          vector_to_compact.push_back(&page.entries_vector[m]);
-        }
+      Page *page = min_overlap_file->pages[k];
+      for (int m = 0; m < page->entries_vector.size(); m++)
+      {
+        vector_to_compact.push_back(&page->entries_vector[m]);
+      }
     }
 
     // Sending it to next level.
@@ -574,20 +575,20 @@ int DiskMetaFile::printAllEntries(int only_file_meta_data)
       {
         for (int k = 0; k < moving_head->pages.size(); k++)
         {
-          Page page = moving_head->pages[k];
-          std::cout << "\033[1;32m\tPage : " << k << " (Min_Sort_Key : " << page.min_sort_key
-                    << ", Max_Sort_Key : " << page.max_sort_key << ")"
+          Page *page = moving_head->pages[k];
+          std::cout << "\033[1;32m\tPage : " << k << " (Min_Sort_Key : " << page->min_sort_key
+                    << ", Max_Sort_Key : " << page->max_sort_key << ")"
                     // << ", Min_Delete_Key : " << delete_tile.min_delete_key
                     // << ", Max_Delete_Key : " << delete_tile.max_delete_key << ")"
                     << "\033[0m" << std::endl;
-          std::cout << "\t\t\t\tEntry count: " << page.entries_vector.size() << std::endl;
+          std::cout << "\t\t\t\tEntry count: " << page->entries_vector.size() << std::endl;
           // for (int l = 0; l < page.entries_vector.size(); l++)
           // {
           //   Page page = delete_tile.page_vector[l];
           //   std::cout << "\033[1;33m\t\t\tPage : " << l << " (Min_Sort_Key : " << page.min_sort_key
           //             << ", Max_Sort_Key : " << page.max_sort_key << ", Min_Delete_Key : " << page.min_delete_key << ", Max_Delete_Key : " << page.max_delete_key << ")"
           //             << "\033[0m" << std::endl;
-          std::cout << "\t\t\t\tEntry count: " << page.entries_vector.size() << std::endl;
+          // std::cout << "\t\t\t\tEntry count: " << page->entries_vector.size() << std::endl;
           // Uncomment the following to print all entries
           // for (int m = 0; m < page.kv_vector.size(); m++)
           // {
@@ -627,10 +628,10 @@ int DiskMetaFile::clearAllEntries()
       moving_head_prev = moving_head;
       for (int k = 0; k < moving_head->pages.size(); k++)
       {
-        Page page = moving_head->pages[k];
-        page.entries_vector.clear();
-        page.min_sort_key = nullptr;
-        page.max_sort_key = nullptr;
+        Page *page = moving_head->pages[k];
+        page->entries_vector.clear();
+        page->min_sort_key = nullptr;
+        page->max_sort_key = nullptr;
       }
       moving_head->pages.clear();
       moving_head->max_sort_key = nullptr;

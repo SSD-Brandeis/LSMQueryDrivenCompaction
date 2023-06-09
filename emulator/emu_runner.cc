@@ -112,7 +112,7 @@ int main(int argc, char *argvx[])
     // WorkloadGenerator workload_generator;
     // workload_generator.generateWorkload((long)_env->num_inserts, (long)_env->entry_size, _env->correlation);
     // int argc = argc;
-    generate_workload(argc, argvx, _env->num_inserts, _env->num_updates, _env->num_point_deletes, _env->num_point_queries, _env->num_range_queries, _env->range_query_selectivity);
+    // generate_workload(argc, argvx, _env->num_inserts, _env->num_updates, _env->num_point_deletes, _env->num_point_queries, _env->num_range_queries, _env->range_query_selectivity);
 
     std::cout << "Workload Generated!" << std::endl;
 

@@ -9,13 +9,12 @@
 using namespace tree_builder;
 using namespace workload_exec;
 
-
 void VectorMemTable::checkMemTableFull()
 {
     if (MemoryBuffer::current_buffer_saturation >= MemoryBuffer::buffer_flush_threshold)
     {
         MemoryBuffer::getCurrentBufferStatistics();
-        // DiskMetaFile::printAllEntries(0);  // To print all levels entries
+        DiskMetaFile::printAllEntries(0); // To print all levels entries
 
         if (MemoryBuffer::verbosity == 1)
         {
@@ -40,7 +39,7 @@ void VectorMemTable::checkMemTableFull()
     }
 }
 
-VectorMemTable::VectorMemTable(): MemTable() {}
+VectorMemTable::VectorMemTable() : MemTable() {}
 
 bool VectorMemTable::insert(Entry &entry)
 {

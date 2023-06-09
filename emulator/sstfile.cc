@@ -11,7 +11,7 @@ using namespace workload_exec;
 
 namespace tree_builder
 {
-    SSTFile *SSTFile::createNewSSTFile(int level_to_flush_in)
+    SSTFile *SSTFile::createNewSSTFile(int total_entries, int level_to_flush_in)
     {
         EmuEnv *_env = EmuEnv::getInstance();
 
@@ -19,7 +19,7 @@ namespace tree_builder
         new_file->max_sort_key = "";
         new_file->min_sort_key = "";
 
-        new_file->pages = Page::createNewPages(ceil((_env->buffer_size_in_pages * 1.0) / (_env->entries_per_page)));  // TODO: Validate this buffer_size_in_pages / entries_per_page ???
+        new_file->pages = Page::createNewPages(ceil((total_entries * 1.0) / (_env->entries_per_page)));
 
         new_file->file_level = level_to_flush_in;
         new_file->next_file_ptr = NULL;
@@ -35,9 +35,12 @@ namespace tree_builder
         EmuEnv *_env = EmuEnv::getInstance();
 
         int page_count = file->pages.size();
+        file->min_sort_key = vector_to_populate_file[0]->getKey();
+        file->max_sort_key = vector_to_populate_file[vector_to_populate_file.size() - 1]->getKey();
 
         if (MemoryBuffer::verbosity == 2)
             std::cout << "In PopulateFile() ... " << std::endl;
+        std::cout << "File to Populate with Entries Count : " << vector_to_populate_file.size() << std::endl;
 
         for (int i = 0; i < page_count; i++)
         {
@@ -56,9 +59,6 @@ namespace tree_builder
                 std::cout << "< " << vector_to_populate_file[j]->getKey() << ",  " << vector_to_populate_file[j]->getValue() << " >"
                           << "\t";
 
-            if (MemoryBuffer::verbosity == 2)
-                std::cout << "populating delete tile ... \n";
-
             int status = SSTFile::PopulatePage(file, vector_to_populate_tile, i, level_to_flush_in);
             vector_to_populate_tile.clear();
         }
@@ -73,20 +73,22 @@ namespace tree_builder
         }
 
         EmuEnv *_env = EmuEnv::getInstance();
-        Page page = file->pages[index];
-        std::vector<Entry> entries_to_populate;
+        Page *page = file->pages[index];
+        page->entries_vector.clear();
+        page->min_sort_key = entries_to_write[0]->getKey();
+        page->max_sort_key = entries_to_write[entries_to_write.size() - 1]->getKey();
 
         for (int i = 0; i < entries_to_write.size(); i++)
         {
-            entries_to_populate.push_back(*entries_to_write[i]);
+            Entry *new_entry = new Entry(*entries_to_write[i]);
+            page->entries_vector.push_back(*new_entry);
+            delete new_entry;
         }
 
-        page.entries_vector = entries_to_populate;
-
         if (MemoryBuffer::verbosity == 2)
-            std::cout << "populated page : " << index << " at Level : " << level_to_flush_in << std::endl;
-        
-        entries_to_populate.clear();
+            std::cout << "Populated Page : " << index << " at Level : " << level_to_flush_in << std::endl;
+        std::cout << "Page populated Entries Count : " << entries_to_write.size() << std::endl;
+
         return 1;
     }
 

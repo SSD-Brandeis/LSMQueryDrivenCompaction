@@ -1,0 +1,1615 @@
+Workload Generated!
+Key inserted : 1770967777
+=                                                                                                   1%Key inserted : 727324915
+==                                                                                                  2%Key inserted : 3469547381
+===                                                                                                 3%Key inserted : 2009137215
+====                                                                                                4%Key inserted : 1431659717
+=====                                                                                               5%Key inserted : 2283159597
+======                                                                                              6%Key inserted : 4152647235
+=======                                                                                             7%Key inserted : 2571205049
+========                                                                                            8%Key inserted : 342537466
+=========                                                                                           9%Key inserted : 1758709346
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 138
+Current buffer saturation = 1.07812
+Update count = 0
+Total buffer flushes  = 0
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+No Files Present at Level : 1  ->  Making Trivial Move
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 4152647235,  gDew >	< 727324915,  QCoE >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+==========                                                                                         10%Key inserted : 1140252073
+===========                                                                                        11%Key inserted : 4242607633
+============                                                                                       12%Key inserted : 274229210
+=============                                                                                      13%Key inserted : 2756207952
+==============                                                                                     14%Key inserted : 2052473970
+===============                                                                                    15%Key inserted : 2338053646
+================                                                                                   16%Key inserted : 2714830625
+=================                                                                                  17%Key inserted : 3602243601
+==================                                                                                 18%Key inserted : 922057045
+===================                                                                                19%Key inserted : 3304984540
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 138
+Current buffer saturation = 1.07812
+Update count = 0
+Total buffer flushes  = 1
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F1 (Min_Sort_Key : 1431659717, Max_Sort_Key : 727324915)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1431659717, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 4152647235, Max_Sort_Key : 727324915)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2571205049,  acIO >	< 2714830625,  gUuM >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 727324915,  QCoE >	< 922057045,  TokY >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 1140252073,  Qoqm >	
+< 1431659717,  pXiq >	
+< 1758709346,  wcsG >	
+< 1770967777,  bHhK >	
+< 2009137215,  WDwF >	
+< 2052473970,  btrw >	
+< 2283159597,  uYtD >	
+< 2338053646,  NsaD >	
+< 2571205049,  acIO >	
+< 2714830625,  gUuM >	
+
+writing 1 file(s)
+No Files Present at Level : 2  ->  Making Trivial Move
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2571205049,  acIO >	< 2714830625,  gUuM >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+====================                                                                               20%Key inserted : 2551482946
+=====================                                                                              21%Key inserted : 762400031
+======================                                                                             22%Key inserted : 3693704048
+=======================                                                                            23%Key inserted : 3552838868
+========================                                                                           24%Key inserted : 527953674
+=========================                                                                          25%Key inserted : 1285602703
+==========================                                                                         26%Key inserted : 2066512202
+===========================                                                                        27%Key inserted : 2241865413
+============================                                                                       28%Key inserted : 1913945231
+=============================                                                                      29%Key inserted : 3034956943
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 138
+Current buffer saturation = 1.07812
+Update count = 0
+Total buffer flushes  = 2
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F3 (Min_Sort_Key : 274229210, Max_Sort_Key : 922057045)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 274229210, Max_Sort_Key : 4242607633)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 727324915, Max_Sort_Key : 922057045)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F1 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2714830625)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2338053646)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2571205049, Max_Sort_Key : 2714830625)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3304984540,  oaCH >	< 342537466,  Rdtq >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 762400031,  RYXL >	< 922057045,  TokY >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 3469547381,  toMf >	
+< 3552838868,  Agml >	
+< 3602243601,  cDRU >	
+< 3693704048,  dQTu >	
+< 4152647235,  gDew >	
+< 4242607633,  OAgU >	
+< 527953674,  uUkw >	
+< 727324915,  QCoE >	
+< 762400031,  RYXL >	
+< 922057045,  TokY >	
+
+writing 1 file(s)
+Performing Trivial Move at Level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 762400031,  RYXL >	< 922057045,  TokY >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+==============================                                                                     30%Key inserted : 3696307000
+===============================                                                                    31%Key inserted : 3566931835
+================================                                                                   32%Key inserted : 4273518602
+=================================                                                                  33%Key inserted : 1530886684
+==================================                                                                 34%Key inserted : 3666540952
+===================================                                                                35%Key inserted : 2543841860
+====================================                                                               36%Key inserted : 1398685411
+=====================================                                                              37%Key inserted : 562946200
+======================================                                                             38%Key inserted : 2235168611
+=======================================                                                            39%Key inserted : 4205405133
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 139
+Current buffer saturation = 1.08594
+Update count = 0
+Total buffer flushes  = 3
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F4 (Min_Sort_Key : 1285602703, Max_Sort_Key : 342537466)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1285602703, Max_Sort_Key : 3034956943)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3304984540, Max_Sort_Key : 342537466)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F1 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2714830625)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2338053646)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2571205049, Max_Sort_Key : 2714830625)[0m
+				Entry count: 2
+[1;34m	File : L2F2 (Min_Sort_Key : 3469547381, Max_Sort_Key : 922057045)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 727324915)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 762400031, Max_Sort_Key : 922057045)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2551482946,  VMxX >	< 274229210,  nyQX >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 4273518602,  yOYp >	< 562946200,  BiPZ >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 1285602703,  Bxub >	
+< 1398685411,  kpgG >	
+< 1530886684,  UlYE >	
+< 1913945231,  iAjx >	
+< 2066512202,  eNme >	
+< 2235168611,  ZUCx >	
+< 2241865413,  tdrM >	
+< 2543841860,  RIiC >	
+< 2551482946,  VMxX >	
+< 274229210,  nyQX >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2009137215,  WDwF >	< 2052473970,  btrw >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2714830625,  gUuM >	< 274229210,  nyQX >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3469547381,  toMf >	< 3469547381,  toMf >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+========================================                                                           40%Key inserted : 487638633
+=========================================                                                          41%Key inserted : 666987583
+==========================================                                                         42%Key inserted : 599180180
+===========================================                                                        43%Key inserted : 1805559466
+============================================                                                       44%Key inserted : 602792249
+=============================================                                                      45%Key inserted : 2021337450
+==============================================                                                     46%Key inserted : 1554327595
+===============================================                                                    47%Key inserted : 815116899
+================================================                                                   48%Key inserted : 3995487861
+=================================================                                                  49%Key inserted : 3824253938
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 135
+Current buffer saturation = 1.05469
+Update count = 0
+Total buffer flushes  = 4
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F7 (Min_Sort_Key : 2756207952, Max_Sort_Key : 562946200)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2756207952, Max_Sort_Key : 4205405133)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 4273518602, Max_Sort_Key : 562946200)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F3 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L2F4 (Min_Sort_Key : 2066512202, Max_Sort_Key : 274229210)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2066512202, Max_Sort_Key : 2571205049)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2714830625, Max_Sort_Key : 274229210)[0m
+				Entry count: 2
+[1;34m	File : L2F5 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3666540952,  UotE >	< 3696307000,  Zhlv >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 666987583,  GIoO >	< 815116899,  ppHA >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 3824253938,  dhiI >	
+< 3995487861,  nspu >	
+< 4205405133,  LUdF >	
+< 4273518602,  yOYp >	
+< 487638633,  GRUo >	
+< 562946200,  BiPZ >	
+< 599180180,  PPLe >	
+< 602792249,  naDQ >	
+< 666987583,  GIoO >	
+< 815116899,  ppHA >	
+
+writing 1 file(s)
+Performing Trivial Move at Level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 666987583,  GIoO >	< 815116899,  ppHA >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 2 Calling sort and write from Disk Saturation Checker............................
+< 1140252073,  Qoqm >	
+< 1285602703,  Bxub >	
+< 1398685411,  kpgG >	
+< 1431659717,  pXiq >	
+< 1530886684,  UlYE >	
+< 1758709346,  wcsG >	
+< 1770967777,  bHhK >	
+< 1913945231,  iAjx >	
+< 2009137215,  WDwF >	
+< 2052473970,  btrw >	
+
+writing 1 file(s)
+No Files Present at Level : 3  ->  Making Trivial Move
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2009137215,  WDwF >	< 2052473970,  btrw >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+==================================================                                                 50%Key inserted : 1223791308
+===================================================                                                51%Key inserted : 2818360269
+====================================================                                               52%Key inserted : 1038906659
+=====================================================                                              53%Key inserted : 1053948163
+======================================================                                             54%Key inserted : 125013498
+=======================================================                                            55%Key inserted : 10499696
+========================================================                                           56%Key inserted : 3460808503
+=========================================================                                          57%Key inserted : 2233951302
+==========================================================                                         58%Key inserted : 2932145895
+===========================================================                                        59%Key inserted : 1104467022
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 137
+Current buffer saturation = 1.07031
+Update count = 0
+Total buffer flushes  = 5
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F8 (Min_Sort_Key : 1554327595, Max_Sort_Key : 3696307000)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1554327595, Max_Sort_Key : 3566931835)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3666540952, Max_Sort_Key : 3696307000)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F4 (Min_Sort_Key : 2066512202, Max_Sort_Key : 274229210)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2066512202, Max_Sort_Key : 2571205049)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2714830625, Max_Sort_Key : 274229210)[0m
+				Entry count: 2
+[1;34m	File : L2F5 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 2
+[1;34m	File : L2F6 (Min_Sort_Key : 3824253938, Max_Sort_Key : 815116899)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3824253938, Max_Sort_Key : 602792249)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 666987583, Max_Sort_Key : 815116899)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F1 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2021337450,  cNVw >	< 2233951302,  ebEO >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3666540952,  UotE >	< 3696307000,  Zhlv >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 1038906659,  uyIB >	
+< 10499696,  ymze >	
+< 1053948163,  BmwS >	
+< 1104467022,  IxTI >	
+< 1223791308,  MBfJ >	
+< 125013498,  yOYg >	
+< 1554327595,  XjBM >	
+< 1805559466,  wpHa >	
+< 2021337450,  cNVw >	
+< 2233951302,  ebEO >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2021337450,  cNVw >	< 2066512202,  eNme >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2714830625,  gUuM >	< 274229210,  nyQX >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3469547381,  toMf >	< 3469547381,  toMf >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 2 Calling sort and write from Disk Saturation Checker............................
+< 2233951302,  ebEO >	
+< 2235168611,  ZUCx >	
+< 2241865413,  tdrM >	
+< 2283159597,  uYtD >	
+< 2338053646,  NsaD >	
+< 2543841860,  RIiC >	
+< 2551482946,  VMxX >	
+< 2571205049,  acIO >	
+< 2714830625,  gUuM >	
+< 274229210,  nyQX >	
+
+writing 1 file(s)
+Performing Trivial Move at Level : 3
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2714830625,  gUuM >	< 274229210,  nyQX >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+============================================================                                       60%Key inserted : 2611515781
+=============================================================                                      61%Key inserted : 1744459540
+==============================================================                                     62%Key inserted : 1710086139
+===============================================================                                    63%Key inserted : 1372423563
+================================================================                                   64%Key inserted : 3087224947
+=================================================================                                  65%Key inserted : 4277523584
+==================================================================                                 66%Key inserted : 1959354889
+===================================================================                                67%Key inserted : 892946282
+====================================================================                               68%Key inserted : 3224978051
+=====================================================================                              69%Key inserted : 289462831
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 138
+Current buffer saturation = 1.07812
+Update count = 0
+Total buffer flushes  = 6
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F11 (Min_Sort_Key : 2756207952, Max_Sort_Key : 3696307000)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2756207952, Max_Sort_Key : 3566931835)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3666540952, Max_Sort_Key : 3696307000)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F7 (Min_Sort_Key : 1038906659, Max_Sort_Key : 2066512202)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1805559466)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2021337450, Max_Sort_Key : 2066512202)[0m
+				Entry count: 2
+[1;34m	File : L2F9 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 2
+[1;34m	File : L2F6 (Min_Sort_Key : 3824253938, Max_Sort_Key : 815116899)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3824253938, Max_Sort_Key : 602792249)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 666987583, Max_Sort_Key : 815116899)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F1 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L3F2 (Min_Sort_Key : 2233951302, Max_Sort_Key : 274229210)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2571205049)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2714830625, Max_Sort_Key : 274229210)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2932145895,  uFtS >	< 3034956943,  GHIq >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 4277523584,  hseN >	< 892946282,  dbuO >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 1372423563,  xzTq >	
+< 1710086139,  lrJq >	
+< 1744459540,  hZdf >	
+< 1959354889,  pKqT >	
+< 2611515781,  iEEh >	
+< 2756207952,  lGdG >	
+< 2818360269,  CVUD >	
+< 289462831,  RfxJ >	
+< 2932145895,  uFtS >	
+< 3034956943,  GHIq >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 1710086139,  lrJq >	< 1744459540,  hZdf >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2932145895,  uFtS >	< 3034956943,  GHIq >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3469547381,  toMf >	< 3469547381,  toMf >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 2 Calling sort and write from Disk Saturation Checker............................
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+< 3469547381,  toMf >	
+
+writing 1 file(s)
+Performing Trivial Move at Level : 3
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3469547381,  toMf >	< 3469547381,  toMf >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+======================================================================                             70%Key inserted : 693624467
+=======================================================================                            71%Key inserted : 2533150518
+========================================================================                           72%Key inserted : 1115166591
+=========================================================================                          73%Key inserted : 670311551
+==========================================================================                         74%Key inserted : 2149796409
+===========================================================================                        75%Key inserted : 2524553504
+============================================================================                       76%Key inserted : 4282643351
+=============================================================================                      77%Key inserted : 3719870285
+==============================================================================                     78%Key inserted : 1014089060
+===============================================================================                    79%Key inserted : 3395564486
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 138
+Current buffer saturation = 1.07812
+Update count = 0
+Total buffer flushes  = 7
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F13 (Min_Sort_Key : 3087224947, Max_Sort_Key : 892946282)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3696307000)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 4277523584, Max_Sort_Key : 892946282)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F10 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1744459540)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1554327595)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1710086139, Max_Sort_Key : 1744459540)[0m
+				Entry count: 2
+[1;34m	File : L2F11 (Min_Sort_Key : 1805559466, Max_Sort_Key : 3034956943)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1805559466, Max_Sort_Key : 289462831)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2932145895, Max_Sort_Key : 3034956943)[0m
+				Entry count: 2
+[1;34m	File : L2F6 (Min_Sort_Key : 3824253938, Max_Sort_Key : 815116899)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3824253938, Max_Sort_Key : 602792249)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 666987583, Max_Sort_Key : 815116899)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F1 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L3F2 (Min_Sort_Key : 2233951302, Max_Sort_Key : 274229210)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2571205049)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2714830625, Max_Sort_Key : 274229210)[0m
+				Entry count: 2
+[1;34m	File : L3F3 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3395564486,  Fspq >	< 342537466,  Rdtq >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 693624467,  jDDN >	< 892946282,  dbuO >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 3460808503,  PZVj >	
+< 3566931835,  JOuv >	
+< 3666540952,  UotE >	
+< 3696307000,  Zhlv >	
+< 3719870285,  qZDZ >	
+< 4277523584,  hseN >	
+< 4282643351,  PbPi >	
+< 670311551,  yAuB >	
+< 693624467,  jDDN >	
+< 892946282,  dbuO >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 4273518602,  yOYp >	< 4277523584,  hseN >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 815116899,  ppHA >	< 892946282,  dbuO >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 2 Calling sort and write from Disk Saturation Checker............................
+< 4282643351,  PbPi >	
+< 487638633,  GRUo >	
+< 562946200,  BiPZ >	
+< 599180180,  PPLe >	
+< 602792249,  naDQ >	
+< 666987583,  GIoO >	
+< 670311551,  yAuB >	
+< 693624467,  jDDN >	
+< 815116899,  ppHA >	
+< 892946282,  dbuO >	
+
+writing 1 file(s)
+Performing Trivial Move at Level : 3
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 815116899,  ppHA >	< 892946282,  dbuO >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+================================================================================                   80%Key inserted : 2954700841
+=================================================================================                  81%Key inserted : 2953999532
+==================================================================================                 82%Key inserted : 1656324007
+===================================================================================                83%Key inserted : 389136892
+====================================================================================               84%Key inserted : 3285715985
+=====================================================================================              85%Key inserted : 1731230764
+======================================================================================             86%Key inserted : 2245642254
+=======================================================================================            87%Key inserted : 556285024
+========================================================================================           88%Key inserted : 3402559065
+=========================================================================================          89%Key inserted : 436811134
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 137
+Current buffer saturation = 1.07031
+Update count = 0
+Total buffer flushes  = 8
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F14 (Min_Sort_Key : 1014089060, Max_Sort_Key : 342537466)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1014089060, Max_Sort_Key : 3304984540)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3395564486, Max_Sort_Key : 342537466)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F10 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1744459540)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1554327595)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1710086139, Max_Sort_Key : 1744459540)[0m
+				Entry count: 2
+[1;34m	File : L2F11 (Min_Sort_Key : 1805559466, Max_Sort_Key : 3034956943)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1805559466, Max_Sort_Key : 289462831)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2932145895, Max_Sort_Key : 3034956943)[0m
+				Entry count: 2
+[1;34m	File : L2F13 (Min_Sort_Key : 3460808503, Max_Sort_Key : 4277523584)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3460808503, Max_Sort_Key : 4205405133)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 4273518602, Max_Sort_Key : 4277523584)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F1 (Min_Sort_Key : 1140252073, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1140252073, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L3F2 (Min_Sort_Key : 2233951302, Max_Sort_Key : 274229210)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2571205049)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2714830625, Max_Sort_Key : 274229210)[0m
+				Entry count: 2
+[1;34m	File : L3F3 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 2
+[1;34m	File : L3F4 (Min_Sort_Key : 4282643351, Max_Sort_Key : 892946282)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 4282643351, Max_Sort_Key : 693624467)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 815116899, Max_Sort_Key : 892946282)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2953999532,  OVyd >	< 2954700841,  WuZi >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 436811134,  wPpa >	< 556285024,  iUPF >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 3087224947,  vBsP >	
+< 3224978051,  bqCW >	
+< 3285715985,  GfdX >	
+< 3304984540,  oaCH >	
+< 3395564486,  Fspq >	
+< 3402559065,  ZBkn >	
+< 342537466,  Rdtq >	
+< 389136892,  czmg >	
+< 436811134,  wPpa >	
+< 556285024,  iUPF >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3566931835,  JOuv >	< 3666540952,  UotE >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 436811134,  wPpa >	< 556285024,  iUPF >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 2 Calling sort and write from Disk Saturation Checker............................
+< 1038906659,  uyIB >	
+< 10499696,  ymze >	
+< 1053948163,  BmwS >	
+< 1104467022,  IxTI >	
+< 1223791308,  MBfJ >	
+< 125013498,  yOYg >	
+< 1372423563,  xzTq >	
+< 1554327595,  XjBM >	
+< 1710086139,  lrJq >	
+< 1744459540,  hZdf >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 3
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 1372423563,  xzTq >	< 1398685411,  kpgG >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2009137215,  WDwF >	< 2052473970,  btrw >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2233951302,  ebEO >	< 2233951302,  ebEO >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+==========================================================================================         90%Key inserted : 54662139
+===========================================================================================        91%Key inserted : 1711836489
+============================================================================================       92%Key inserted : 2627761921
+=============================================================================================      93%Key inserted : 1914499702
+==============================================================================================     94%Key inserted : 2245532307
+===============================================================================================    95%Key inserted : 680142094
+================================================================================================   96%Key inserted : 3863499932
+=================================================================================================  97%Key inserted : 1952505657
+================================================================================================== 98%Key inserted : 882617694
+===================================================================================================99%Key inserted : 946287614
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 10
+Current buffer size = 135
+Current buffer saturation = 1.05469
+Update count = 0
+Total buffer flushes  = 9
+********************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer entry count: 10
+[1;31mLevel : 1[0m
+[1;34m	File : L1F16 (Min_Sort_Key : 1014089060, Max_Sort_Key : 2954700841)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1014089060, Max_Sort_Key : 2533150518)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2953999532, Max_Sort_Key : 2954700841)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F11 (Min_Sort_Key : 1805559466, Max_Sort_Key : 3034956943)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1805559466, Max_Sort_Key : 289462831)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2932145895, Max_Sort_Key : 3034956943)[0m
+				Entry count: 2
+[1;34m	File : L2F15 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3666540952)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3460808503)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3566931835, Max_Sort_Key : 3666540952)[0m
+				Entry count: 2
+[1;34m	File : L2F16 (Min_Sort_Key : 3696307000, Max_Sort_Key : 556285024)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3696307000, Max_Sort_Key : 4277523584)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 436811134, Max_Sort_Key : 556285024)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F5 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1398685411)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1285602703)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1372423563, Max_Sort_Key : 1398685411)[0m
+				Entry count: 2
+[1;34m	File : L3F6 (Min_Sort_Key : 1431659717, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1431659717, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L3F7 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+				Entry count: 2
+[1;34m	File : L3F3 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3469547381, Max_Sort_Key : 3469547381)[0m
+				Entry count: 2
+[1;34m	File : L3F4 (Min_Sort_Key : 4282643351, Max_Sort_Key : 892946282)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 4282643351, Max_Sort_Key : 693624467)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 815116899, Max_Sort_Key : 892946282)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+Calling sort and write from Buffer............................
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 1
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2245532307,  moXE >	< 2245642254,  lsPL >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 882617694,  cCna >	< 946287614,  hsvE >	In PopulatePage() ...
+Populated Page : 0 at Level : 1
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 1
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 1 Calling sort and write from Disk Saturation Checker............................
+< 1014089060,  dubz >	
+< 1115166591,  Aijv >	
+< 1656324007,  yVvB >	
+< 1711836489,  cdds >	
+< 1731230764,  NUNn >	
+< 1914499702,  rFWc >	
+< 1952505657,  MEaH >	
+< 2149796409,  wPJV >	
+< 2245532307,  moXE >	
+< 2245642254,  lsPL >	
+
+writing 1 file(s)
+Merge new entries with existing files entries at level : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 1959354889,  pKqT >	< 2021337450,  cNVw >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 2932145895,  uFtS >	< 3034956943,  GHIq >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3087224947,  vBsP >	< 3087224947,  vBsP >	In PopulatePage() ...
+Populated Page : 0 at Level : 2
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 2
+Page populated Entries Count : 2
+Saturation Reached......
+Level : 2 Calling sort and write from Disk Saturation Checker............................
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+< 3087224947,  vBsP >	
+
+writing 1 file(s)
+
+Performing Trivial Move at Level : 3
+
+Min Sort Key of Prev File : 2233951302
+Max Sort Key of Prev File : 2233951302
+New File Min Sort Key : 3087224947
+New File Max Sort Key : 3087224947
+Next File Min Sort Key : 3469547381
+Next File Max Sort Key : 3469547381
+Creating new file !!
+In PopulateFile() ... 
+File to Populate with Entries Count : 10
+
+printing after trimming 
+< 3087224947,  vBsP >	< 3087224947,  vBsP >	In PopulatePage() ...
+Populated Page : 0 at Level : 3
+Page populated Entries Count : 8
+
+printing after trimming 
+In PopulatePage() ...
+Populated Page : 1 at Level : 3
+Page populated Entries Count : 2
+Buffer flushed :: Resizing buffer ( size = 10 ) :::: Buffer resized ( size = 0 ) 
+====================================================================================================100%
+=====================================================================================================101%Insert complete ... 
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer is currently empty.
+[1;31mLevel : 1[0m
+[1;34m	File : L1F19 (Min_Sort_Key : 2524553504, Max_Sort_Key : 946287614)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2524553504, Max_Sort_Key : 680142094)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 882617694, Max_Sort_Key : 946287614)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F17 (Min_Sort_Key : 1014089060, Max_Sort_Key : 2021337450)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1014089060, Max_Sort_Key : 1952505657)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1959354889, Max_Sort_Key : 2021337450)[0m
+				Entry count: 2
+[1;34m	File : L2F18 (Min_Sort_Key : 2066512202, Max_Sort_Key : 3034956943)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2066512202, Max_Sort_Key : 289462831)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2932145895, Max_Sort_Key : 3034956943)[0m
+				Entry count: 2
+[1;34m	File : L2F16 (Min_Sort_Key : 3696307000, Max_Sort_Key : 556285024)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3696307000, Max_Sort_Key : 4277523584)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 436811134, Max_Sort_Key : 556285024)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F5 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1398685411)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1285602703)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1372423563, Max_Sort_Key : 1398685411)[0m
+				Entry count: 2
+[1;34m	File : L3F6 (Min_Sort_Key : 1431659717, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1431659717, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L3F7 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+				Entry count: 2
+[1;34m	File : L3F8 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3087224947)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3087224947)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3087224947)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 0
+Current buffer size = 0
+Current buffer saturation = 0
+Update count = 0
+Total buffer flushes  = 10
+********************************************************
+**************************** PRINTING META FILE STATISTICS ****************************
+
+Total number of entries: 80
+
+L	file_count	entry_count	 
+1	       1		10
+2	       3		30
+3	       4		40
+***************************************************************************************
+**************************** PARAMETERS ****************************
+Buffer size in pages (P): 2
+Entries per pages (B): 8
+Entry Size (E): 8
+Buffer Size (PBE): 128
+Delete Tile Size in Pages (H): 1
+Size Ratio: 2
+********************************************************************
+
+*************************************************** PRINTING ALL ENTRIES *********************************************************
+
+[1;31mBuffer : [0m
+				Buffer is currently empty.
+[1;31mLevel : 1[0m
+[1;34m	File : L1F19 (Min_Sort_Key : 2524553504, Max_Sort_Key : 946287614)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2524553504, Max_Sort_Key : 680142094)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 882617694, Max_Sort_Key : 946287614)[0m
+				Entry count: 2
+[1;31mLevel : 2[0m
+[1;34m	File : L2F17 (Min_Sort_Key : 1014089060, Max_Sort_Key : 2021337450)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1014089060, Max_Sort_Key : 1952505657)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1959354889, Max_Sort_Key : 2021337450)[0m
+				Entry count: 2
+[1;34m	File : L2F18 (Min_Sort_Key : 2066512202, Max_Sort_Key : 3034956943)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2066512202, Max_Sort_Key : 289462831)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2932145895, Max_Sort_Key : 3034956943)[0m
+				Entry count: 2
+[1;34m	File : L2F16 (Min_Sort_Key : 3696307000, Max_Sort_Key : 556285024)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3696307000, Max_Sort_Key : 4277523584)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 436811134, Max_Sort_Key : 556285024)[0m
+				Entry count: 2
+[1;31mLevel : 3[0m
+[1;34m	File : L3F5 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1398685411)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1038906659, Max_Sort_Key : 1285602703)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 1372423563, Max_Sort_Key : 1398685411)[0m
+				Entry count: 2
+[1;34m	File : L3F6 (Min_Sort_Key : 1431659717, Max_Sort_Key : 2052473970)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 1431659717, Max_Sort_Key : 1913945231)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2009137215, Max_Sort_Key : 2052473970)[0m
+				Entry count: 2
+[1;34m	File : L3F7 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 2233951302, Max_Sort_Key : 2233951302)[0m
+				Entry count: 2
+[1;34m	File : L3F8 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3087224947)[0m
+[1;32m	Page : 0 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3087224947)[0m
+				Entry count: 8
+[1;32m	Page : 1 (Min_Sort_Key : 3087224947, Max_Sort_Key : 3087224947)[0m
+				Entry count: 2
+
+**********************************************************************************************************************************
+
+********** PRINTING CURRENT BUFFER STATISTICS **********
+Current buffer entry count = 0
+Current buffer size = 0
+Current buffer saturation = 0
+Update count = 0
+Total buffer flushes  = 10
+********************************************************
+**************************** PRINTING META FILE STATISTICS ****************************
+
+Total number of entries: 80
+
+L	file_count	entry_count	 
+1	       1		10
+2	       3		30
+3	       4		40
+***************************************************************************************
+T, P, B, E, M, h, file_size, #I 
+2, 2, 8, 8, 128, 1, 128, 100
+Kiwi++,	SRD,	EPQ,	PQ,	SRQ
+0	1	1000000	1000000	10000	

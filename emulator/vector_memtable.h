@@ -5,13 +5,14 @@
 
 class VectorMemTable : public MemTable
 {
-    protected:
-        void virtual checkMemTableFull() override;
-    public:
-        VectorMemTable();
-        ~VectorMemTable();
-        bool virtual insert(Entry &entry) override;
-        bool virtual remove(Entry &entry) override;
+protected:
+    void virtual checkMemTableFull() override;
+
+public:
+    VectorMemTable();
+    ~VectorMemTable();
+    bool virtual insert(Entry &entry) override;
+    bool virtual remove(Entry &entry) override;
 };
 
 #endif // _VECTOR_MEMTABLE_H_

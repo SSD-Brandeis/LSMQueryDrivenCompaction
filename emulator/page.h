@@ -14,7 +14,8 @@ namespace tree_builder
         std::string min_sort_key;
         std::string max_sort_key;
         std::vector<Entry> entries_vector;
-        static struct std::vector<Page> createNewPages(int page_count);
+
+        static std::vector<Page *> createNewPages(int page_count);
     };
 }
 

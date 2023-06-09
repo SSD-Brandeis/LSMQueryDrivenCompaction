@@ -27,14 +27,14 @@ private:
     EntryType entry_type;
     std::string key;
     std::string value;
-    long timetag;  // TODO: assign insert time 
+    long timetag; // TODO: assign insert time
 
 public:
     Entry(std::string key, std::string value);
     Entry(std::string key, std::string value, EntryType entry_type); // Constructor
     Entry(const Entry &other);                                       // copy constructor
 
-    bool operator==(const Entry &other);                             // comparison operator
+    bool operator==(const Entry &other); // comparison operator
     EntryType getType()
     {
         return this->entry_type;

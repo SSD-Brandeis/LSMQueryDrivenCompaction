@@ -35,7 +35,7 @@ public:
 
   long num_inserts;              // I
   long num_updates;              // U
-  long num_point_deletes;         // D
+  long num_point_deletes;        // D
   long num_point_queries;        // Q
   long num_range_queries;        // S
   float range_query_selectivity; // Y

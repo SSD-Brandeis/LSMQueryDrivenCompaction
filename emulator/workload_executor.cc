@@ -26,8 +26,6 @@ uint32_t WorkloadExecutor::counter = 0;
 
 inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 {
-
-  // std::cout << "counter = " << counter << std::endl;
   if (counter / (workload_size / 100) >= 1)
   {
     for (int i = 0; i < 104; i++)
@@ -52,16 +50,10 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
   }
 }
 
-// This is used to sort the whole file based on sort key
 bool Utility::sortbysortkey(const Entry *a, const Entry *b)
 {
   return (a->getKey() < b->getKey());
 }
-// This is used to sort the whole file based on delete key
-// bool Utility::sortbydeletekey(const pair<pair<long, long>, string> &a, const pair<pair<long, long>, string> &b)
-// {
-//   return (a.first.second < b.first.second);
-// }
 
 int Utility::minInt(int a, int b)
 {
@@ -73,7 +65,140 @@ int Utility::minInt(int a, int b)
   }
 }
 
-void Utility::compactAndFlush(vector<Entry*> vector_to_compact, int level_to_flush_in)
+SSTFile &Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file)
+{
+  SSTFile *moving_head = head;
+  for (int i = 0; i < file_count; i++) // Though this is not required because on each entry saturation is checked and this would trigger compaction
+  {
+    vector<Entry *> vector_to_populate_file;
+    entries_per_file = Utility::minInt(entries_per_file, entries_to_flush.size());
+
+    for (int j = 0; j < entries_per_file; ++j)
+    {
+      vector_to_populate_file.push_back(entries_to_flush[j]);
+    }
+
+    entries_to_flush.erase(entries_to_flush.begin(), entries_to_flush.begin() + entries_per_file);
+    SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
+
+    if (moving_head == nullptr)
+    {
+      moving_head = new_file;
+      DiskMetaFile::setSSTFileHead(moving_head, level_to_flush_in);
+      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+    }
+    else
+    {
+      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      moving_head->next_file_ptr = new_file;
+      moving_head = new_file;
+    }
+    vector_to_populate_file.clear();
+  }
+  return *moving_head;
+}
+
+// TODO: Handle tombstones in the file and new entries to discard values
+void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file)
+{
+  SSTFile *prev_file_ptr = head; // this will be used for linking previous file to new files
+  SSTFile *moving_head = head;   // moving_head would move while merging
+
+  bool make_first_file_head = false;
+
+  if (prev_file_ptr == nullptr)
+  {
+    make_first_file_head = true;
+    moving_head = DiskMetaFile::getSSTFileHead(level_to_flush_in);
+  }
+  else
+  {
+    moving_head = moving_head->next_file_ptr;
+  }
+
+  SSTFile *end_head = moving_head; // last file overlapping with new entries
+  std::string largest_key = entries_to_flush[entries_to_flush.size() - 1]->getKey();
+
+  while (end_head)
+  {
+    if (end_head->min_sort_key.compare(largest_key) <= 0)
+    {
+      end_head = end_head->next_file_ptr;
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  SSTFile *next_file_after_merge = end_head != NULL ? end_head->next_file_ptr : NULL;
+
+  EntryIterator eit(moving_head, next_file_after_merge);
+  vector<Entry *>::iterator it = entries_to_flush.begin();
+  eit = eit.begin();
+
+  while (eit != eit.end() || it != entries_to_flush.end())
+  {
+    vector<Entry *> vector_to_populate_file;
+    entries_per_file = Utility::minInt(entries_per_file, entries_to_flush.size());
+    int j = 0;
+
+    while (j < entries_per_file && (eit != eit.end() || it != entries_to_flush.end()))
+    {
+      if (eit != eit.end() && it != entries_to_flush.end())
+      {
+        const Entry &entry = *eit;
+        const Entry *new_entry = *it;
+        if (entry.getKey().compare(new_entry->getKey()) <= 0)
+        {
+          Entry *ent = new Entry(entry);
+          vector_to_populate_file.push_back(ent);
+          ++eit;
+        }
+        else if (new_entry->getKey().compare(entry.getKey()) < 0)
+        {
+          Entry *ent = new Entry(*new_entry);
+          vector_to_populate_file.push_back(ent);
+          ++it;
+        }
+      }
+      else if (it == entries_to_flush.end())
+      {
+        const Entry &entry = *eit;
+        Entry *ent = new Entry(entry);
+        vector_to_populate_file.push_back(ent);
+        ++eit;
+      }
+      else if (eit == eit.end())
+      {
+        const Entry *new_entry = *it;
+        Entry *ent = new Entry(*new_entry);
+        vector_to_populate_file.push_back(ent);
+        ++it;
+      }
+
+      j++;
+    }
+
+    SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
+    if (make_first_file_head)
+    {
+      prev_file_ptr = new_file;
+      DiskMetaFile::setSSTFileHead(prev_file_ptr, level_to_flush_in);
+      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      make_first_file_head = false;
+    }
+    else
+    {
+      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      prev_file_ptr->next_file_ptr = new_file;
+      prev_file_ptr = new_file;
+    }
+  }
+  prev_file_ptr->next_file_ptr = next_file_after_merge;
+}
+
+void Utility::compactAndFlush(vector<Entry *> vector_to_compact, int level_to_flush_in)
 {
   EmuEnv *_env = EmuEnv::getInstance();
 
@@ -82,344 +207,95 @@ void Utility::compactAndFlush(vector<Entry*> vector_to_compact, int level_to_flu
   if (MemoryBuffer::verbosity == 2)
     std::cout << "\nwriting " << file_count << " file(s)\n";
 
-  SSTFile *head_level_1 = DiskMetaFile::getSSTFileHead(level_to_flush_in);
-  SSTFile *moving_head = head_level_1;
-  SSTFile *moving_head_prev = head_level_1; // Need this to overwrite current overlapping file
-  SSTFile *end_ptr = moving_head;
+  SSTFile *level_head = DiskMetaFile::getSSTFileHead(level_to_flush_in);
+  // SSTFile *moving_head = level_head;
 
-  if (!head_level_1)
+  if (!level_head)
   {
-    for (int i = 0; i < file_count; i++)
+    if (MemoryBuffer::verbosity == 2)
     {
-      vector<Entry*> vector_to_populate_file;
-      entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
-      for (int j = 0; j < entries_per_file; ++j)
-      {
-        vector_to_populate_file.push_back(vector_to_compact[j]);
-      }
-      vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
-      SSTFile *new_file = SSTFile::createNewSSTFile(level_to_flush_in);
-      SSTFile *moving_head = head_level_1;
-      if (i == 0)
-      {
-        head_level_1 = new_file;
-        DiskMetaFile::setSSTFileHead(head_level_1, level_to_flush_in);
-        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
-      }
-      else
-      {
-        while (moving_head->next_file_ptr)
-        {
-          moving_head = moving_head->next_file_ptr;
-        }
-        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
-        moving_head->next_file_ptr = new_file;
-      }
-      vector_to_populate_file.clear();
+      std::cout << "No Files Present at Level : " << level_to_flush_in
+                << "  ->  Making Trivial Move"
+                << std::endl;
     }
+    SSTFile last_file_ptr = trivialFileMove(level_head, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
   }
   else
   {
-    // Calculating end pointer
-    while (moving_head)
+    SSTFile *overlapping_files_start = level_head;
+    SSTFile *prev_of_overlapping_file_start = level_head;
+    std::string smallest_key = vector_to_compact[0]->getKey();
+    std::string largest_key = vector_to_compact[vector_to_compact.size() - 1]->getKey();
+
+    while (overlapping_files_start->next_file_ptr && smallest_key.compare(overlapping_files_start->max_sort_key) > 0)
     {
-      if (moving_head->max_sort_key <= vector_to_compact[0]->getKey())
-      {
-        end_ptr = NULL;
-        moving_head = moving_head->next_file_ptr;
-        continue;
-      }
-      end_ptr = moving_head; // Need to assign this in case vector gets inserted in between with no overlapping
-      if (moving_head->min_sort_key >= vector_to_compact[vector_to_compact.size() - 1]->getKey())
-      {
-        // safe to say we have calculated end pointer
-        break;
-      }
-      end_ptr = moving_head->next_file_ptr;
-      moving_head = moving_head->next_file_ptr;
+      prev_of_overlapping_file_start = overlapping_files_start;
+      overlapping_files_start = overlapping_files_start->next_file_ptr;
     }
 
-    if (MemoryBuffer::verbosity == 2)
-      cout << "Calculated end pointer" << endl;
-
-    moving_head = head_level_1;
-    int flag = 0;           // 1 means vector to be appended at the begining or vector to be inserted in between two files (NO OVERLAPPING); 2 means not possible to be head; 0 means overlapping
-    int hasHeadChanged = 0; // head?
-
-    while (moving_head)
+    if (overlapping_files_start->next_file_ptr == NULL && smallest_key.compare(overlapping_files_start->max_sort_key) > 0)
     {
-      if (moving_head->max_sort_key <= vector_to_compact[0]->getKey())
+      // Trivial move to the last of level
+      if (MemoryBuffer::verbosity == 2)
       {
-        moving_head_prev = moving_head;
-        flag = 2; // Not possible to be a head anymore
-        if (moving_head->next_file_ptr)
-        {
-          moving_head = moving_head->next_file_ptr;
-          continue;
-        }
+        std::cout << "Performing Trivial Move at Level : " << level_to_flush_in
+                  << std::endl;
       }
-      // cout << "Prev max: " << moving_head_prev->max_sort_key << endl;
-      // cout << "Current max: " << moving_head->max_sort_key << endl;
-      //  if (end_ptr != NULL)
-      //    cout << "End max: " << end_ptr->max_sort_key << endl;
-      if (moving_head->min_sort_key >= vector_to_compact[vector_to_compact.size() - 1]->getKey())
-      {
-        flag = 1; // vector to be appended very begining or vector to be inserted in between with no overlapping
-      }
-      // std::cout << "\nFile Count: " << file_count << std::endl;
-      for (int i = 0; i < file_count; i++)
-      {
-        vector<Entry*> vector_to_populate_file;
-        entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
-        for (int j = 0; j < entries_per_file; ++j)
-        {
-          vector_to_populate_file.push_back(vector_to_compact[j]);
-        }
-
-        if (MemoryBuffer::verbosity == 2)
-        {
-          std::cout << "\nprinting before trimming " << std::endl;
-          for (int j = 0; j < vector_to_compact.size(); ++j)
-            std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getKey() << " >"
-                      << "\t" << std::endl;
-        }
-        vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
-
-        if (MemoryBuffer::verbosity == 2)
-        {
-          std::cout << "\nprinting after trimming " << std::endl;
-          for (int j = 0; j < vector_to_compact.size(); ++j)
-            std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getKey() << " >"
-                      << "\t";
-        }
-        if (MemoryBuffer::verbosity == 2)
-        {
-          std::cout << "\npopulating file " << head_level_1 << std::endl;
-          std::cout << "Vector to populate file: " << endl;
-          for (int j = 0; j < vector_to_populate_file.size(); ++j)
-            std::cout << "< " << vector_to_populate_file[j]->getKey() << ",  " << vector_to_populate_file[j]->getKey() << " >"
-                      << "\t";
-        }
-
-        SSTFile *new_file = SSTFile::createNewSSTFile(level_to_flush_in);
-        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
-        new_file->next_file_ptr = end_ptr;
-        // SSTFile *moving_head = head_level_1;
-
-        if (moving_head == DiskMetaFile::getSSTFileHead(level_to_flush_in) && i == 0 && flag != 2) // Further Optimize?
-        {
-          DiskMetaFile::setSSTFileHead(new_file, level_to_flush_in);
-          hasHeadChanged = 1;
-        }
-
-        if (flag == 1 && hasHeadChanged == 0) // This means file to be inserted in between with no overlapping
-        {
-          moving_head_prev->next_file_ptr = new_file;
-        }
-
-        if (flag != 1)
-        {
-          moving_head_prev->next_file_ptr = new_file;
-          moving_head_prev = new_file;
-        }
-
-        vector_to_populate_file.clear();
-      }
-      break;
+      SSTFile last_file_ptr = trivialFileMove(overlapping_files_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
     }
-  }
-}
-
-void Utility::sortAndWrite(vector<Entry*> vector_to_compact, int level_to_flush_in)
-{
-  EmuEnv *_env = EmuEnv::getInstance();
-  SSTFile *head_level_1 = DiskMetaFile::getSSTFileHead(level_to_flush_in);
-  int entries_per_file = _env->entries_per_page * _env->buffer_size_in_pages;
-
-  std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
-  std::string startval = vector_to_compact[0]->getKey();
-  std::string endval = vector_to_compact[vector_to_compact.size() - 1]->getKey();
-
-  if (!head_level_1)
-  {
-    if (MemoryBuffer::verbosity == 2)
-      std::cout << "NULL" << std::endl;
-
-    // TODO: check why this `getDeleteTileSize` is required ???
-    if (vector_to_compact.size() % _env->getDeleteTileSize(level_to_flush_in) != 0 && vector_to_compact.size() / _env->getDeleteTileSize(level_to_flush_in) < 1)
+    else if (smallest_key.compare(overlapping_files_start->min_sort_key) < 0 && largest_key.compare(overlapping_files_start->min_sort_key) < 0)
     {
-      std::cout << " ERROR " << std::endl;
-      exit(1);
+      // In between or start of level trivial move
+      if (MemoryBuffer::verbosity == 2)
+      {
+        std::cout << "\nPerforming Trivial Move at Level : " << level_to_flush_in
+                  << std::endl;
+        std::cout << "\nMin Sort Key of Prev File : " << prev_of_overlapping_file_start->min_sort_key
+                  << "\nMax Sort Key of Prev File : " << prev_of_overlapping_file_start->max_sort_key
+                  << "\nNew File Min Sort Key : " << smallest_key
+                  << "\nNew File Max Sort Key : " << largest_key
+                  << "\nNext File Min Sort Key : " << overlapping_files_start->min_sort_key
+                  << "\nNext File Max Sort Key : " << overlapping_files_start->max_sort_key
+                  << std::endl;
+      }
+      if (prev_of_overlapping_file_start == overlapping_files_start) // If both are same, it means the start of level
+      {
+        prev_of_overlapping_file_start = nullptr;
+      }
+      SSTFile last_file_ptr = trivialFileMove(prev_of_overlapping_file_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
+      last_file_ptr.next_file_ptr = overlapping_files_start;
     }
     else
     {
-      compactAndFlush(vector_to_compact, level_to_flush_in);
+      // Merge new data with existing SST file data on level 1
+      if (MemoryBuffer::verbosity == 2)
+      {
+        std::cout << "Merge new entries with existing files entries at level : " << level_to_flush_in << std::endl;
+      }
+      if (prev_of_overlapping_file_start == overlapping_files_start) // If both are same, it means the start of level
+      {
+        prev_of_overlapping_file_start = nullptr;
+      }
+      mergeFilesAndFlush(prev_of_overlapping_file_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
     }
   }
+}
 
-  else
-  {
-    if (MemoryBuffer::verbosity == 2)
-      std::cout << "head not null anymore" << std::endl;
-    SSTFile *head_level_1 = DiskMetaFile::getSSTFileHead(level_to_flush_in);
-    SSTFile *moving_head = head_level_1;
-    int match = 0;
-
-    if (MemoryBuffer::verbosity == 2)
-      std::cout << "Vector size before merging : " << vector_to_compact.size() << std::endl;
-
-    // Find the right place to flush the MemTable
-    while (moving_head)
-    {
-      if (moving_head->min_sort_key >= endval || moving_head->max_sort_key <= startval)
-      {
-        moving_head = moving_head->next_file_ptr;
-        continue;
-      }
-      // cout << "Performed Optimization :: Overlap FOUND" << endl;
-
-      // TODO: Uncomment below and update for DeleteTile implementation!
-      // for (int k = 0; k < moving_head->tile_vector.size(); k++)
-      // {
-      //   DeleteTile delete_tile = moving_head->tile_vector[k];
-      //   for (int l = 0; l < delete_tile.page_vector.size(); l++)
-      //   {
-      //     Page page = delete_tile.page_vector[l];
-      //     for (int m = 0; m < page.kv_vector.size(); m++)
-      //     {
-      //       for (int p = 0; p < vector_to_compact.size(); p++)
-      //       {
-      //         if (vector_to_compact[p].first.first == page.kv_vector[m].first.first)
-      //         {
-      //           match++;
-      //         }
-      //       }
-      //       if (match == 0)
-      //         vector_to_compact.push_back(page.kv_vector[m]);
-      //       else
-      //         match = 0;
-      //     }
-      //   }
-      // }
-      moving_head = moving_head->next_file_ptr;
-    }
-
-    if (MemoryBuffer::verbosity == 2)
-      std::cout << "Vector size after merging : " << vector_to_compact.size() << std::endl;
-
-    // Commenting, since the sorting was already done before
-    // std::sort(vector_to_compact.entries.begin(), vector_to_compact.entries.end(), Utility::sortbysortkey);
-
-    if (MemoryBuffer::verbosity == 1) // UNCOMMENT
-    {
-      std::cout << "\nprinting before compacting " << std::endl;
-      for (int j = 0; j < vector_to_compact.size(); ++j)
-      {
-        std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getValue() << " >"
-                  << "\t" << std::endl;
-        if (j % 8 == 7)
-          cout << std::endl;
-      }
-    }
-
-    compactAndFlush(vector_to_compact, level_to_flush_in);
-  }
+void Utility::sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush_in)
+{
+  std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
+  compactAndFlush(vector_to_compact, level_to_flush_in);
   int saturation = DiskMetaFile::checkAndAdjustLevelSaturation(level_to_flush_in);
 }
 
-// Class : WorkloadExecutor
-
-// int WorkloadExecutor::insert(long sortkey, long deletekey, string value)
-// {
-//   EmuEnv* _env = EmuEnv::getInstance();
-//   bool found = false;
-//   //For UPDATES in inserts
-//   for (int i = 0; i < MemoryBuffer::buffer.size(); ++i)
-//   {
-//     if (MemoryBuffer::buffer[i].first.first == sortkey)
-//     {
-//       MemoryBuffer::setCurrentBufferStatistics(0, (value.size() - MemoryBuffer::buffer[i].second.size()));
-//       MemoryBuffer::buffer[i].second = value;
-//       found = true;
-//       //std::cout << "key updated : " << key << std::endl;
-//       //MemoryBuffer::getCurrentBufferStatistics();
-
-//       total_insert_count++;
-//       buffer_update_count++;
-//       break;
-//     }
-//   }
-
-//   //For INSERTS in inserts
-//   if (!found)
-//   {
-//     MemoryBuffer::setCurrentBufferStatistics(1, (sizeof(sortkey) + sizeof(deletekey) + value.size()));
-//     MemoryBuffer::buffer.push_back(make_pair(make_pair(sortkey, deletekey), value));
-//     //std::cout << "key inserted : " << key << std::endl;
-//     //MemoryBuffer::getCurrentBufferStatistics();
-//     total_insert_count++;
-//     buffer_insert_count++;
-//   }
-
-//   if (MemoryBuffer::current_buffer_saturation >= MemoryBuffer::buffer_flush_threshold)
-//   {
-//     //MemoryBuffer::getCurrentBufferStatistics();
-//     // MemoryBuffer::printBufferEntries();
-//     // if(MemoryBuffer::verbosity == 2)
-//     //std::cout << "Buffer full :: Sorting buffer " ;
-
-//     //DiskMetaFile::printAllEntries(0);     //Comment
-
-//     if (MemoryBuffer::verbosity == 1)
-//     {
-//       std::cout << ":::: Buffer full :: Flushing buffer to Level 1 " << std::endl;
-//       MemoryBuffer::printBufferEntries();
-//     }
-
-//     int status = MemoryBuffer::initiateBufferFlush(1);
-//     if (status)
-//     {
-//       if (MemoryBuffer::verbosity == 2)
-//         std::cout << "Buffer flushed :: Resizing buffer ( size = " << MemoryBuffer::buffer.size() << " ) ";
-//       MemoryBuffer::buffer.resize(0);
-//       if (MemoryBuffer::verbosity == 2)
-//         std::cout << ":::: Buffer resized ( size = " << MemoryBuffer::buffer.size() << " ) " << std::endl;
-//       MemoryBuffer::current_buffer_entry_count = 0;
-//       MemoryBuffer::current_buffer_saturation = 0;
-//       MemoryBuffer::current_buffer_size = 0;
-//     }
-//   }
-//   counter++;
-
-//   // if(counter % (_env->num_inserts/100) == 0 && _env->verbosity < 2)
-//   //     showProgress(_env->num_inserts, counter);
-
-//   return 1;
-// }
-
-// int WorkloadExecutor::search(long key, int possible_level_of_occurrence)
-// {
-//   SSTFile *level_head_reference = DiskMetaFile::getSSTFileHead(possible_level_of_occurrence);
-//   // while (level_head_reference != NULL) {
-//   //   for(int i = 0; i<level_head_reference->file_instance.size(); ++i) {
-//   //     if(level_head_reference->file_instance[i].first == key) {
-//   //       //std::cout << "Match found for key " << key << std::endl;
-//   //       return 1;
-//   //     }
-//   //   }
-//   //   level_head_reference = level_head_reference->next_file_ptr;
-//   // }
-//   return 0;
-// }
-
 int WorkloadExecutor::insert(std::string key, std::string value)
 {
-  std::cout << "Inserting Key :" << key << " Value : " << value << std::endl;
   Entry entry(key, value, EntryType::POINT_ENTRY);
   return MemoryBuffer::buffer->insert(entry);
 }
 
-int WorkloadExecutor::remove(std::string key) {
+int WorkloadExecutor::remove(std::string key)
+{
   Entry entry(key, std::string(""), EntryType::POINT_TOMBSTONE);
   return MemoryBuffer::buffer->remove(entry);
 }

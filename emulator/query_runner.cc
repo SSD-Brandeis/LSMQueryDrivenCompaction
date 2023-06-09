@@ -17,7 +17,6 @@
 #include "tree_builder.h"
 #include "workload_generator.h"
 
-
 using namespace std;
 using namespace tree_builder;
 
@@ -34,24 +33,29 @@ long Query::not_found_count = 0;
 
 uint32_t counter = 0;
 
-inline void showProgress(const uint32_t &workload_size, const uint32_t &counter) {
-  
-    // std::cout << "counter = " << counter << std::endl;
-    if (counter / (workload_size/100) >= 1) {
-      for (int i = 0; i<104; i++){
-        std::cout << "\b";
-        fflush(stdout);
-      }
-    }
-    for (int i = 0; i<counter / (workload_size/100); i++){
-      std::cout << "=" ;
-      fflush(stdout);
-    }
-    std::cout << std::setfill(' ') << std::setw(101 - counter / (workload_size/100));
-    std::cout << counter*100/workload_size << "%";
-      fflush(stdout);
+inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
+{
 
-  if (counter == workload_size) {
+  // std::cout << "counter = " << counter << std::endl;
+  if (counter / (workload_size / 100) >= 1)
+  {
+    for (int i = 0; i < 104; i++)
+    {
+      std::cout << "\b";
+      fflush(stdout);
+    }
+  }
+  for (int i = 0; i < counter / (workload_size / 100); i++)
+  {
+    std::cout << "=";
+    fflush(stdout);
+  }
+  std::cout << std::setfill(' ') << std::setw(101 - counter / (workload_size / 100));
+  std::cout << counter * 100 / workload_size << "%";
+  fflush(stdout);
+
+  if (counter == workload_size)
+  {
     std::cout << "\n";
     return;
   }
@@ -127,7 +131,7 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 //   {
 //     delete_key1 = _env->num_inserts/selectivity[i];
 //     Query::checkDeleteCount(delete_key1);
-//     fout1 << _env->srq_count << "," << "1/"+ to_string(selectivity[i])  << "," << delete_key1 << "," << Query::complete_delete_count << "," << Query::partial_delete_count 
+//     fout1 << _env->srq_count << "," << "1/"+ to_string(selectivity[i])  << "," << delete_key1 << "," << Query::complete_delete_count << "," << Query::partial_delete_count
 //       << "," << Query::not_possible_delete_count << endl;
 //   }
 
@@ -176,7 +180,7 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 
 //   for (int i = 0; i < 35 ; i++ )
 //   {
-//     range_iterval_1 = _env->num_inserts * selectivity[i]/100;  
+//     range_iterval_1 = _env->num_inserts * selectivity[i]/100;
 //     range_query_start_1 = _env->num_inserts/2 - range_iterval_1/2;
 //     range_query_end_1 = _env->num_inserts/2 + range_iterval_1/2;
 //     Query::secondaryRangeQuery(range_query_start_1, range_query_end_1);
@@ -215,11 +219,11 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 //     //std::cout << "Generated Random Key" << randomKey << std::endl;
 //     randomKey = WorkloadGenerator::inserted_keys[randomKey];
 //     int pageId = Query::pointQuery(randomKey);
-//     if(pageId < 0) 
+//     if(pageId < 0)
 //     {
 //       not_found_count++;
 //     }
-//     else 
+//     else
 //     {
 //       //cout << pageId << endl;
 //       sum_page_id += pageId;
@@ -235,7 +239,8 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 //   fout4.close();
 // }
 
-void Query::rangeQuery (std::string lowerlimit, std::string upperlimit) {
+void Query::rangeQuery(std::string lowerlimit, std::string upperlimit)
+{
 
   range_occurances = 0;
 
@@ -247,26 +252,32 @@ void Query::rangeQuery (std::string lowerlimit, std::string upperlimit) {
     {
       if (moving_head->min_sort_key > upperlimit)
         break;
-      if (moving_head->max_sort_key < lowerlimit ) {
+      if (moving_head->max_sort_key < lowerlimit)
+      {
         moving_head = moving_head->next_file_ptr;
         continue;
-      } 
-      else {
+      }
+      else
+      {
         for (int k = 0; k < moving_head->pages.size(); k++)
         {
-          Page page = moving_head->pages[k];
-          if (page.min_sort_key > upperlimit || page.max_sort_key < lowerlimit) {
+          Page *page = moving_head->pages[k];
+          if (page->min_sort_key > upperlimit || page->max_sort_key < lowerlimit)
+          {
             continue;
           }
-          else {
-            for (int l = 0; l < page.entries_vector.size(); l++)
+          else
+          {
+            for (int l = 0; l < page->entries_vector.size(); l++)
             {
-                if (page.min_sort_key > upperlimit || page.max_sort_key < lowerlimit) {
+              if (page->min_sort_key > upperlimit || page->max_sort_key < lowerlimit)
+              {
                 continue;
-                }
-                else {
-                  range_occurances++;
-                }
+              }
+              else
+              {
+                range_occurances++;
+              }
             }
           }
         }
@@ -275,7 +286,8 @@ void Query::rangeQuery (std::string lowerlimit, std::string upperlimit) {
     }
   }
   std::cout << "(Range Query)" << std::endl;
-  std::cout << "Pages traversed : " << range_occurances << std::endl << std::endl;
+  std::cout << "Pages traversed : " << range_occurances << std::endl
+            << std::endl;
 }
 
 // void Query::secondaryRangeQuery (int lowerlimit, int upperlimit) {
@@ -291,7 +303,7 @@ void Query::rangeQuery (std::string lowerlimit, std::string upperlimit) {
 //       if (moving_head->min_delete_key > upperlimit || moving_head->max_delete_key < lowerlimit ) {
 //         moving_head = moving_head->next_file_ptr;
 //         continue;
-//       } 
+//       }
 //       else {
 //         for (int k = 0; k < moving_head->tile_vector.size(); k++)
 //         {
@@ -323,7 +335,7 @@ void Query::rangeQuery (std::string lowerlimit, std::string upperlimit) {
 //   // std::cout << "Pages traversed : " << secondary_range_occurances << std::endl << std::endl;
 // }
 
-int Query::pointQuery (std::string key)
+int Query::pointQuery(std::string key)
 {
   for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
   {
@@ -333,18 +345,23 @@ int Query::pointQuery (std::string key)
     {
       if (moving_head->min_sort_key > key)
         break;
-      if (moving_head->min_sort_key <= key && key <= moving_head->max_sort_key) {
+      if (moving_head->min_sort_key <= key && key <= moving_head->max_sort_key)
+      {
         for (int k = 0; k < moving_head->pages.size(); k++)
         {
-          Page page = moving_head->pages[k];
-          if (page.min_sort_key > key)
+          Page *page = moving_head->pages[k];
+          if (page->min_sort_key > key)
             break;
-          if (page.min_sort_key <= key && key <= page.max_sort_key) {
-            for (int l = 0; l < page.entries_vector.size(); l++)
+          if (page->min_sort_key <= key && key <= page->max_sort_key)
+          {
+            for (int l = 0; l < page->entries_vector.size(); l++)
             {
-              if (page.min_sort_key <= key && key <= page.max_sort_key) {
-                for (int m = 0; m < page.entries_vector.size(); m++) {
-                  if (key == page.entries_vector[m].getKey()) {
+              if (page->min_sort_key <= key && key <= page->max_sort_key)
+              {
+                for (int m = 0; m < page->entries_vector.size(); m++)
+                {
+                  if (key == page->entries_vector[m].getKey())
+                  {
                     return l + 1;
                   }
                 }
@@ -369,11 +386,11 @@ int Query::pointQuery (std::string key)
 //     unsigned long long randomKey = rand() %  WorkloadGenerator::KEY_DOMAIN_SIZE;
 //     //std::cout << "Generated Random Key" << randomKey << std::endl;
 //     int pageId = Query::pointQuery(randomKey);
-//     if(pageId < 0) 
+//     if(pageId < 0)
 //     {
 //       not_found_count++;
 //     }
-//     else 
+//     else
 //     {
 //       //cout << pageId << endl;
 //       sum_page_id += pageId;
@@ -392,4 +409,3 @@ int Query::pointQuery (std::string key)
 //     // std::cout << "Total number of found average pageIDs : " <<  sumPageId/(foundCount * 1.0) << std::endl;
 //     // std::cout << "Total number of not found pages : " <<  notFoundCount << std::endl << std::endl;
 // }
-

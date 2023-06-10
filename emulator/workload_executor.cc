@@ -100,7 +100,6 @@ SSTFile *Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flus
   return moving_head;
 }
 
-// TODO: Handle tombstones in the file and new entries to discard values
 void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file)
 {
   SSTFile *prev_file_ptr = head; // this will be used for linking previous file to new files
@@ -159,7 +158,8 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
         }
         else if (new_entry->getKey().compare(entry.getKey()) <= 0)
         {
-          if (new_entry->getKey().compare(entry.getKey()) == 0) {  // If new values have same key, priortize the new key
+          if (new_entry->getKey().compare(entry.getKey()) == 0)
+          { // If new values have same key, priortize the new key
             ++eit;
           }
           Entry *ent = new Entry(*new_entry);
@@ -292,7 +292,6 @@ void Utility::sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush
   int saturation = DiskMetaFile::checkAndAdjustLevelSaturation(level_to_flush_in);
 }
 
-
 // WorkloadExecutor
 
 int WorkloadExecutor::insert(std::string key, std::string value)
@@ -305,6 +304,66 @@ int WorkloadExecutor::remove(std::string key)
 {
   Entry entry(key, std::string(""), EntryType::POINT_TOMBSTONE);
   return MemoryBuffer::buffer->remove(entry);
+}
+
+std::string WorkloadExecutor::get(std::string key)
+{
+  // First Search key in buffer
+  Entry entry(key, std::string(""), EntryType::NO_TYPE);
+
+  std::pair<int, std::string> buffer_response = MemoryBuffer::buffer->get(entry);
+  if (buffer_response.first != -1)
+  {
+    return buffer_response.second;
+  }
+
+  // Else check in Levels starting from 1st
+  for (auto index : DiskMetaFile::getNonEmptyLevels())
+  {
+    SSTFile *level_head = DiskMetaFile::getSSTFileHead(index);
+
+    while (level_head)
+    {
+      if (level_head->min_sort_key.compare(entry.getKey()) > 0)
+      {
+        break;
+      }
+      else if (level_head->max_sort_key.compare(entry.getKey()) >= 0)
+      {
+        auto pages_iterator = std::lower_bound(level_head->pages.begin(), level_head->pages.end(), entry, [](Page *stored_page, Entry entry)
+                                            { return stored_page->max_sort_key.compare(entry.getKey()) < 0; });
+        if (pages_iterator != level_head->pages.end())
+        {
+            Page *page = *pages_iterator;
+            auto entries_iterator = std::lower_bound(page->entries_vector.begin(), page->entries_vector.end(), entry, [](Entry &stored_entry, Entry entry)
+                                          { return stored_entry.getKey().compare(entry.getKey()) < 0; });
+            if (entries_iterator != page->entries_vector.end() 
+                && page->entries_vector[entries_iterator - page->entries_vector.begin()].getKey().compare(entry.getKey()) == 0)
+            {
+              Entry stored_entry = *entries_iterator;
+              if (stored_entry.getType() == EntryType::POINT_TOMBSTONE)
+              {
+                if (MemoryBuffer::verbosity == 2)
+                {
+                  std::cout << "Point Tombstone found for Key : " << stored_entry.getKey() << " Queried with key : " << key << std::endl;
+                }
+                return "Key : " + key + " NOT FOUND!";
+              }
+              else if (stored_entry.getType() == EntryType::POINT_ENTRY)
+              {
+                if (MemoryBuffer::verbosity == 2)
+                {
+                  std::cout << "Found Entry with Key : " << stored_entry.getKey() << " Value : " << stored_entry.getValue() << std::endl;
+                }
+                return stored_entry.getValue();
+              }
+            }
+        }
+      }
+      level_head = level_head->next_file_ptr;
+    }
+  }
+  return "Key : " + key + " NOT FOUND!";
 }
 
 int WorkloadExecutor::getWorkloadStatictics(EmuEnv *_env)

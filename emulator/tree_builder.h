@@ -49,6 +49,7 @@ namespace tree_builder
     static long getLevelEntryCount(int level);
     static int getLevelFileCount(int level);
     static int getTotalLevelCount();
+    static std::vector<int> getNonEmptyLevels();
     static int checkOverlapping(SSTFile *file, int level);
 
     static int setSSTFileHead(SSTFile *arg, int level);

@@ -29,7 +29,7 @@ namespace workload_exec
 
     static int insert(std::string key, std::string value);
     static int remove(std::string key);
-    static int get(std::string key);
+    static std::string get(std::string key);
     static int search(long key, int possible_level_of_occurrence);
     static int getWorkloadStatictics(EmuEnv *_env);
   };

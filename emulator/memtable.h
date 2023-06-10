@@ -30,6 +30,11 @@ public:
      */
     bool virtual remove(Entry &entry);
 
+    /*
+     * Get the key index and value if exists in MemTable
+     */
+    std::pair<int, std::string> virtual get(Entry &entry);
+
     Entry &operator[](int index);
 };
 

@@ -248,6 +248,9 @@ int runWorkload(EmuEnv *_env)
     char instruction;
     std::string sortkey;
     std::string value;
+    std::string result;        // Result of Get Query
+    std::string start_sortkey; // Start of Range Query (inclusive)
+    std::string end_sortkey;   // End of Range Query (inclusive)
     workload_file >> instruction;
     switch (instruction)
     {
@@ -259,6 +262,15 @@ int runWorkload(EmuEnv *_env)
     case 'D':
       workload_file >> sortkey;
       workload_executer.remove(sortkey);
+      break;
+    case 'Q':
+      workload_file >> sortkey;
+      result = workload_executer.get(sortkey);
+      std::cout << "Point Query for Key : " << sortkey
+                << "\n Value : " << result << std::endl;
+      break;
+    case 'R':
+      workload_file >> start_sortkey >> end_sortkey;
       break;
     }
     instruction = '\0';

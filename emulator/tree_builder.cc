@@ -184,6 +184,22 @@ int DiskMetaFile::getTotalLevelCount()
   return level_count;
 }
 
+vector<int> DiskMetaFile::getNonEmptyLevels()
+{
+  vector<int> non_empty_levels{};
+
+  for (int i = 1; i <= 32; i++)
+  {
+    SSTFile *level_head = DiskMetaFile::getSSTFileHead(i);
+    if (level_head)
+    {
+      non_empty_levels.push_back(i);
+    }
+  }
+
+  return non_empty_levels;
+}
+
 int DiskMetaFile::checkOverlapping(SSTFile *file, int next_level)
 {
   SSTFile *next_level_head = DiskMetaFile::getSSTFileHead(next_level);

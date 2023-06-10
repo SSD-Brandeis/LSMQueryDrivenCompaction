@@ -13,6 +13,7 @@ public:
     ~VectorMemTable();
     bool virtual insert(Entry &entry) override;
     bool virtual remove(Entry &entry) override;
+    std::pair<int, std::string> virtual get(Entry &entry) override;
 };
 
 #endif // _VECTOR_MEMTABLE_H_

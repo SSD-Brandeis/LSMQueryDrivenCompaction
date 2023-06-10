@@ -103,8 +103,8 @@ bool VectorMemTable::remove(Entry &entry)
         WorkloadExecutor::total_insert_count--;
         WorkloadExecutor::buffer_insert_count--;
     }
-    MemoryBuffer::setCurrentBufferStatistics(1, (entries[it - entries.begin()]->getKey().size()));
     Entry *new_entry = new Entry{entry};
+    MemoryBuffer::setCurrentBufferStatistics(1, (new_entry->getKey().size()));
     new_entry->setTimeTag((long)std::time(0));
     entries.push_back(new_entry);
     std::cout << "Point Tombstone Added for Key: " << entry.getKey() << std::endl;
@@ -115,4 +115,33 @@ bool VectorMemTable::remove(Entry &entry)
     checkMemTableFull();
     return 1;
 }
+
+std::pair<int, std::string> VectorMemTable::get(Entry &entry)
+{
+    if (entry.getType() != EntryType::NO_TYPE)
+    {
+        std::cout << "ERROR: Entry should be of No Type" << std::endl;
+        exit(1);
+    }
+
+    // TODO: Add stats collector
+    //  - How many buffer hits
+    //  - How many buffer miss
+
+    auto it = std::find_if(entries.rbegin(), entries.rend(), [&](const Entry * stored_entry)
+                        { return stored_entry->getKey().compare(entry.getKey()) == 0; });
+    
+    if (it != entries.rend())
+    {
+        auto index = std::distance(it, entries.rend()) - 1;
+        Entry *stored_entry = *it;
+        if (stored_entry->getType() == EntryType::POINT_TOMBSTONE)
+        {
+            return std::make_pair(index, "Key : " + stored_entry->getKey() + " NOT FOUND!");
+        }
+        return std::make_pair(index, entries[index]->getValue());
+    }
+    return std::make_pair(-1, "Key : " + entry.getKey() + " NOT FOUND!");
+}
+
 VectorMemTable::~VectorMemTable() {}

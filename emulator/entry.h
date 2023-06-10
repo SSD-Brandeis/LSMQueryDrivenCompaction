@@ -27,7 +27,7 @@ private:
     EntryType entry_type;
     std::string key;
     std::string value;
-    long timetag; // TODO: assign insert time
+    long timetag;
 
 public:
     Entry(std::string key, std::string value);
@@ -50,6 +50,10 @@ public:
     void updateKey(std::string value)
     {
         this->value = value;
+    }
+    void setTimeTag(long time_tag)
+    {
+        this->timetag = time_tag;
     }
 };
 

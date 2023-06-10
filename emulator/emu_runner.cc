@@ -77,44 +77,23 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 int main(int argc, char *argvx[])
 {
 
-  // check emu_environment.h for the contents of EmuEnv and also the definitions of the singleton experimental environment
   EmuEnv *_env = EmuEnv::getInstance();
+
   // parse the command line arguments
   if (parse_arguments2(argc, argvx, _env))
   {
     exit(1);
   }
 
-  fstream fout1, fout2, fout3, fout4;
-  // fout1.open("out_delete.csv", ios::out | ios::app);
-  // fout2.open("out_range.csv", ios::out | ios::app);
-  // fout3.open("out_sec_range.csv", ios::out | ios::app);
-  // fout4.open("out_point_nonempty.csv", ios::out | ios::app);
-  // fout4.open("out_point.csv", ios::out | ios::app);
-
-  // fout1 << "Delete tile size" << ", " << "Fraction" << "," << "Delete Key" << "," << "Full Drop" << "," << "Partial Drop" << "," << "Impossible Drop" << "\n";
-  // fout2 << "Delete tile size" << ", " << "Selectivity" << "," << "Range Start" << "," << "Range End" << "," << "Occurrences" << "\n";
-  // fout3 << "Delete tile size" << ", " << "Selectivity" << "," <<  "Sec Range Start" << "," << "Sec Range End" << "," << "Occurrences" << "\n";
-  // fout4 << "Delete tile size" << ", " << "Iterations" << "," <<  "Sum_Page_Id" << "," << "Avg_Page_Id" << "," << "Found" << "," << "Not Found" << "\n";
-
-  // fout1.close();
-  // fout2.close();
-  // fout3.close();
-  // fout4.close();
-
   // Issuing INSERTS
   if (_env->num_inserts > 0)
   {
-    // if (_env->verbosity >= 1)
-    std::cerr << "Issuing inserts ... " << std::endl
-              << std::flush;
-
-    // WorkloadGenerator workload_generator;
-    // workload_generator.generateWorkload((long)_env->num_inserts, (long)_env->entry_size, _env->correlation);
-    // int argc = argc;
-    // generate_workload(argc, argvx, _env->num_inserts, _env->num_updates, _env->num_point_deletes, _env->num_point_queries, _env->num_range_queries, _env->range_query_selectivity);
+    generate_workload(argc, argvx);
 
     std::cout << "Workload Generated!" << std::endl;
+
+    std::cerr << "Issuing inserts ... " << std::endl
+              << std::flush;
 
     int only_file_meta_data = 0;
 
@@ -269,17 +248,18 @@ int runWorkload(EmuEnv *_env)
     char instruction;
     std::string sortkey;
     std::string value;
-    workload_file >> instruction >> sortkey >> value;
+    workload_file >> instruction;
     switch (instruction)
     {
     case 'I':
-      // std::cout << instruction << " " << sortkey << " " << deletekey << " " << value << std::endl;
+    case 'U':
+      workload_file >> sortkey >> value;
       workload_executer.insert(sortkey, value);
-
       break;
-
-      // default:
-      // break;
+    case 'D':
+      workload_file >> sortkey;
+      workload_executer.remove(sortkey);
+      break;
     }
     instruction = '\0';
     counter++;

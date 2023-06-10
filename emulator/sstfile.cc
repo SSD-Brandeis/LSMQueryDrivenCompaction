@@ -25,8 +25,6 @@ namespace tree_builder
         new_file->next_file_ptr = NULL;
         DiskMetaFile::global_level_file_counter[level_to_flush_in]++;
         new_file->file_id = "L" + std::to_string(level_to_flush_in) + "F" + std::to_string(DiskMetaFile::global_level_file_counter[level_to_flush_in]);
-        std::cout << "Creating new file !!" << std::endl;
-
         return new_file;
     }
 
@@ -39,8 +37,10 @@ namespace tree_builder
         file->max_sort_key = vector_to_populate_file[vector_to_populate_file.size() - 1]->getKey();
 
         if (MemoryBuffer::verbosity == 2)
+        {
             std::cout << "In PopulateFile() ... " << std::endl;
-        std::cout << "File to Populate with Entries Count : " << vector_to_populate_file.size() << std::endl;
+            std::cout << "File to Populate with Entries Count : " << vector_to_populate_file.size() << std::endl;
+        }
 
         for (int i = 0; i < page_count; i++)
         {
@@ -51,13 +51,7 @@ namespace tree_builder
                 vector_to_populate_tile.push_back(vector_to_populate_file[j]);
             }
             std::sort(vector_to_populate_tile.begin(), vector_to_populate_tile.end(), Utility::sortbysortkey);
-
             vector_to_populate_file.erase(vector_to_populate_file.begin(), vector_to_populate_file.begin() + entries_per_page);
-
-            std::cout << "\nprinting after trimming " << std::endl;
-            for (int j = 0; j < vector_to_populate_file.size(); ++j)
-                std::cout << "< " << vector_to_populate_file[j]->getKey() << ",  " << vector_to_populate_file[j]->getValue() << " >"
-                          << "\t";
 
             int status = SSTFile::PopulatePage(file, vector_to_populate_tile, i, level_to_flush_in);
             vector_to_populate_tile.clear();
@@ -86,8 +80,10 @@ namespace tree_builder
         }
 
         if (MemoryBuffer::verbosity == 2)
+        {
             std::cout << "Populated Page : " << index << " at Level : " << level_to_flush_in << std::endl;
-        std::cout << "Page populated Entries Count : " << entries_to_write.size() << std::endl;
+            std::cout << "Page populated Entries Count : " << entries_to_write.size() << std::endl;
+        }
 
         return 1;
     }

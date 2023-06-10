@@ -15,7 +15,6 @@
 using namespace std;
 using namespace tree_builder;
 
-
 namespace workload_exec
 {
 
@@ -37,9 +36,11 @@ namespace workload_exec
 
   class Utility
   {
-  public:
-    static SSTFile &trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file);
+  private:
+    static SSTFile *trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file);
     static void mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file);
+
+  public:
     static void sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush_in);
     static void compactAndFlush(vector<Entry *> vector_to_compact, int level_to_flush_in);
     static bool sortbysortkey(const Entry *a, const Entry *b);

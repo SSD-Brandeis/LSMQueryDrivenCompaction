@@ -50,6 +50,8 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
   }
 }
 
+// Utility
+
 bool Utility::sortbysortkey(const Entry *a, const Entry *b)
 {
   return (a->getKey() < b->getKey());
@@ -65,7 +67,7 @@ int Utility::minInt(int a, int b)
   }
 }
 
-SSTFile &Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file)
+SSTFile *Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file)
 {
   SSTFile *moving_head = head;
   for (int i = 0; i < file_count; i++) // Though this is not required because on each entry saturation is checked and this would trigger compaction
@@ -95,7 +97,7 @@ SSTFile &Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flus
     }
     vector_to_populate_file.clear();
   }
-  return *moving_head;
+  return moving_head;
 }
 
 // TODO: Handle tombstones in the file and new entries to discard values
@@ -149,14 +151,17 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
       {
         const Entry &entry = *eit;
         const Entry *new_entry = *it;
-        if (entry.getKey().compare(new_entry->getKey()) <= 0)
+        if (entry.getKey().compare(new_entry->getKey()) < 0)
         {
           Entry *ent = new Entry(entry);
           vector_to_populate_file.push_back(ent);
           ++eit;
         }
-        else if (new_entry->getKey().compare(entry.getKey()) < 0)
+        else if (new_entry->getKey().compare(entry.getKey()) <= 0)
         {
+          if (new_entry->getKey().compare(entry.getKey()) == 0) {  // If new values have same key, priortize the new key
+            ++eit;
+          }
           Entry *ent = new Entry(*new_entry);
           vector_to_populate_file.push_back(ent);
           ++it;
@@ -208,7 +213,6 @@ void Utility::compactAndFlush(vector<Entry *> vector_to_compact, int level_to_fl
     std::cout << "\nwriting " << file_count << " file(s)\n";
 
   SSTFile *level_head = DiskMetaFile::getSSTFileHead(level_to_flush_in);
-  // SSTFile *moving_head = level_head;
 
   if (!level_head)
   {
@@ -218,7 +222,7 @@ void Utility::compactAndFlush(vector<Entry *> vector_to_compact, int level_to_fl
                 << "  ->  Making Trivial Move"
                 << std::endl;
     }
-    SSTFile last_file_ptr = trivialFileMove(level_head, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
+    SSTFile *last_file_ptr = trivialFileMove(level_head, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
   }
   else
   {
@@ -241,7 +245,7 @@ void Utility::compactAndFlush(vector<Entry *> vector_to_compact, int level_to_fl
         std::cout << "Performing Trivial Move at Level : " << level_to_flush_in
                   << std::endl;
       }
-      SSTFile last_file_ptr = trivialFileMove(overlapping_files_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
+      SSTFile *last_file_ptr = trivialFileMove(overlapping_files_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
     }
     else if (smallest_key.compare(overlapping_files_start->min_sort_key) < 0 && largest_key.compare(overlapping_files_start->min_sort_key) < 0)
     {
@@ -262,8 +266,8 @@ void Utility::compactAndFlush(vector<Entry *> vector_to_compact, int level_to_fl
       {
         prev_of_overlapping_file_start = nullptr;
       }
-      SSTFile last_file_ptr = trivialFileMove(prev_of_overlapping_file_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
-      last_file_ptr.next_file_ptr = overlapping_files_start;
+      SSTFile *last_file_ptr = trivialFileMove(prev_of_overlapping_file_start, vector_to_compact, level_to_flush_in, file_count, entries_per_file);
+      last_file_ptr->next_file_ptr = overlapping_files_start;
     }
     else
     {
@@ -287,6 +291,9 @@ void Utility::sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush
   compactAndFlush(vector_to_compact, level_to_flush_in);
   int saturation = DiskMetaFile::checkAndAdjustLevelSaturation(level_to_flush_in);
 }
+
+
+// WorkloadExecutor
 
 int WorkloadExecutor::insert(std::string key, std::string value)
 {

@@ -137,20 +137,13 @@ std::vector<std::string> StringSplit(const std::string &arg, char delim)
     return splits;
 }
 
-void generate_workload(int argc, char *argv[], long num_inserts, long num_updates, long num_point_deletes, long num_point_queries, long num_range_queries, float range_query_sel)
+void generate_workload(int argc, char *argv[])
 {
 
     if (parse_arguments2(argc, argv))
     {
         exit(1);
     }
-    insert_count = num_inserts;
-    update_count = num_updates;
-    point_delete_count = num_point_deletes;
-    point_query_count = num_point_queries;
-    range_query_count = num_range_queries;
-    range_query_selectivity = range_query_sel;
-
     if (!entry_size)
     {
         std::cout << "\033[1;31m ERROR:\033[0m entry_size = 0" << std::endl;
@@ -929,7 +922,6 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<int> size_ratio_cmd(group1, "T", "The size ratio of the tree [def: 2]", {'T', "size_ratio"});
     args::ValueFlag<int> buffer_size_in_pages_cmd(group1, "P", "Size of the memory buffer in terms of pages [def: 128]", {'P', "buffer_size_in_pages"});
     args::ValueFlag<int> entries_per_page_cmd(group1, "B", "No of entries in one page [def: 128]", {'B', "entries_per_page"});
-    // args::ValueFlag<int> entry_size_cmd(group1, "E", "Entry size in bytes [def: 128 B]", {'E', "entry_size"});
     args::ValueFlag<long> buffer_size_cmd(group1, "M", "Memory size (PBE) [def: 2 MB]", {'M', "memory_size"});
     args::ValueFlag<int> delete_tile_size_in_pages_cmd(group1, "delete_tile_size_in_pages", "Size of a delete tile in terms of pages [def: -1]", {'h', "delete_tile_size_in_pages"});
     args::ValueFlag<long> file_size_cmd(group1, "file_size", "file size [def: 256 KB]", {"file_size"});
@@ -938,7 +930,6 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<long> num_point_deletes_cmd(group1, "#point_deletes", "The number of point deletes to issue in the experiment [def: 0]", {'D', "num_point_deletes"});
     args::ValueFlag<long> num_point_queries_cmd(group1, "#point_queries", "The number of point queries to issue in the experiment [def: 0]", {'Q', "num_point_queries"});
     args::ValueFlag<long> num_range_queries_cmd(group1, "#range_queries", "The number of range queries to issue in the experiment [def: 0]", {'S', "num_range_queries"});
-    // args::ValueFlag<float> range_query_selectivity_cmd(group1, "#selectivity", "The range query selectivity to issue range queries [def: 0]", {'Y', "range_query_selectivity"});
     args::ValueFlag<int> cor_cmd(group1, "#correlation", "Correlation between sort key and delete key [def: 0]", {'c', "correlation"});
     args::ValueFlag<int> verbosity_cmd(group1, "verbosity", "The verbosity level of execution [0,1,2; def:0]", {'V', "verbosity"});
     args::ValueFlag<int> lethe_new_cmd(group1, "lethe_new", "Specific h across tree(0), Optimal h across tree(1) or different optimal h in each levels(2) [0, 1, 2; def:0]", {'X', "lethe_new"});

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <ctime>
 
 #include "tree_builder.h"
 #include "emu_environment.h"
@@ -57,7 +58,9 @@ bool VectorMemTable::insert(Entry &entry)
     if (it != entries.end())
     {
         MemoryBuffer::setCurrentBufferStatistics(0, (entry.getValue().size() - entries[it - entries.begin()]->getValue().size()));
-        entries[it - entries.begin()] = &entry;
+        Entry *new_entry = new Entry(entry);
+        new_entry->setTimeTag((long)std::time(0));
+        entries[it - entries.begin()] = new_entry;
         std::cout << "Value updated : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count++;
         WorkloadExecutor::buffer_insert_count++;
@@ -66,6 +69,7 @@ bool VectorMemTable::insert(Entry &entry)
     {
         MemoryBuffer::setCurrentBufferStatistics(1, (entry.getKey().size() + entry.getValue().size()));
         Entry *new_entry = new Entry{entry};
+        new_entry->setTimeTag((long)std::time(0));
         entries.push_back(new_entry);
         std::cout << "Key inserted : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count++;
@@ -100,7 +104,10 @@ bool VectorMemTable::remove(Entry &entry)
         WorkloadExecutor::buffer_insert_count--;
     }
     MemoryBuffer::setCurrentBufferStatistics(1, (entries[it - entries.begin()]->getKey().size()));
-    entries.push_back(&entry);
+    Entry *new_entry = new Entry{entry};
+    new_entry->setTimeTag((long)std::time(0));
+    entries.push_back(new_entry);
+    std::cout << "Point Tombstone Added for Key: " << entry.getKey() << std::endl;
     WorkloadExecutor::total_insert_count++;
     WorkloadExecutor::buffer_insert_count++;
     WorkloadExecutor::counter++;

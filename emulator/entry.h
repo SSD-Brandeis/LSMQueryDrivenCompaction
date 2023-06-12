@@ -55,6 +55,10 @@ public:
     {
         this->timetag = time_tag;
     }
+    long getTimeTag() const
+    {
+        return this->timetag;
+    }
 };
 
 #endif // _ENTRY_H_

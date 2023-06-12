@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <iostream>
-#include <ctime>
+#include <chrono>
 
 #include "tree_builder.h"
 #include "emu_environment.h"
@@ -40,8 +40,6 @@ void VectorMemTable::checkMemTableFull()
     }
 }
 
-VectorMemTable::VectorMemTable() : MemTable() {}
-
 bool VectorMemTable::insert(Entry &entry)
 {
     if (entry.getType() != EntryType::POINT_ENTRY)
@@ -59,7 +57,8 @@ bool VectorMemTable::insert(Entry &entry)
     {
         MemoryBuffer::setCurrentBufferStatistics(0, (entry.getValue().size() - entries[it - entries.begin()]->getValue().size()));
         Entry *new_entry = new Entry(entry);
-        new_entry->setTimeTag((long)std::time(0));
+        auto now = std::chrono::system_clock::now();
+        new_entry->setTimeTag(static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count()));
         entries[it - entries.begin()] = new_entry;
         std::cout << "Value updated : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count++;
@@ -69,7 +68,8 @@ bool VectorMemTable::insert(Entry &entry)
     {
         MemoryBuffer::setCurrentBufferStatistics(1, (entry.getKey().size() + entry.getValue().size()));
         Entry *new_entry = new Entry{entry};
-        new_entry->setTimeTag((long)std::time(0));
+        auto now = std::chrono::system_clock::now();
+        new_entry->setTimeTag(static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count()));
         entries.push_back(new_entry);
         std::cout << "Key inserted : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count++;
@@ -105,7 +105,8 @@ bool VectorMemTable::remove(Entry &entry)
     }
     Entry *new_entry = new Entry{entry};
     MemoryBuffer::setCurrentBufferStatistics(1, (new_entry->getKey().size()));
-    new_entry->setTimeTag((long)std::time(0));
+    auto now = std::chrono::system_clock::now();
+    new_entry->setTimeTag(static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count()));
     entries.push_back(new_entry);
     std::cout << "Point Tombstone Added for Key: " << entry.getKey() << std::endl;
     WorkloadExecutor::total_insert_count++;
@@ -143,5 +144,3 @@ std::pair<int, std::string> VectorMemTable::get(Entry &entry)
     }
     return std::make_pair(-1, "Key : " + entry.getKey() + " NOT FOUND!");
 }
-
-VectorMemTable::~VectorMemTable() {}

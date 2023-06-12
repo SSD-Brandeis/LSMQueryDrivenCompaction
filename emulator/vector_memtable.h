@@ -9,8 +9,7 @@ protected:
     void virtual checkMemTableFull() override;
 
 public:
-    VectorMemTable();
-    ~VectorMemTable();
+    virtual ~VectorMemTable() {}
     bool virtual insert(Entry &entry) override;
     bool virtual remove(Entry &entry) override;
     std::pair<int, std::string> virtual get(Entry &entry) override;

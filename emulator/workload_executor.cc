@@ -331,39 +331,102 @@ std::string WorkloadExecutor::get(std::string key)
       else if (level_head->max_sort_key.compare(entry.getKey()) >= 0)
       {
         auto pages_iterator = std::lower_bound(level_head->pages.begin(), level_head->pages.end(), entry, [](Page *stored_page, Entry entry)
-                                            { return stored_page->max_sort_key.compare(entry.getKey()) < 0; });
+                                               { return stored_page->max_sort_key.compare(entry.getKey()) < 0; });
         if (pages_iterator != level_head->pages.end())
         {
-            Page *page = *pages_iterator;
-            auto entries_iterator = std::lower_bound(page->entries_vector.begin(), page->entries_vector.end(), entry, [](Entry &stored_entry, Entry entry)
-                                          { return stored_entry.getKey().compare(entry.getKey()) < 0; });
-            if (entries_iterator != page->entries_vector.end() 
-                && page->entries_vector[entries_iterator - page->entries_vector.begin()].getKey().compare(entry.getKey()) == 0)
+          Page *page = *pages_iterator;
+          auto entries_iterator = std::lower_bound(page->entries_vector.begin(), page->entries_vector.end(), entry, [](Entry &stored_entry, Entry entry)
+                                                   { return stored_entry.getKey().compare(entry.getKey()) < 0; });
+          if (entries_iterator != page->entries_vector.end() && page->entries_vector[entries_iterator - page->entries_vector.begin()].getKey().compare(entry.getKey()) == 0)
+          {
+            Entry stored_entry = *entries_iterator;
+            if (stored_entry.getType() == EntryType::POINT_TOMBSTONE)
             {
-              Entry stored_entry = *entries_iterator;
-              if (stored_entry.getType() == EntryType::POINT_TOMBSTONE)
+              if (MemoryBuffer::verbosity == 2)
               {
-                if (MemoryBuffer::verbosity == 2)
-                {
-                  std::cout << "Point Tombstone found for Key : " << stored_entry.getKey() << " Queried with key : " << key << std::endl;
-                }
-                return "Key : " + key + " NOT FOUND!";
+                std::cout << "Point Tombstone found for Key : " << stored_entry.getKey() << " Queried with key : " << key << std::endl;
               }
-              else if (stored_entry.getType() == EntryType::POINT_ENTRY)
-              {
-                if (MemoryBuffer::verbosity == 2)
-                {
-                  std::cout << "Found Entry with Key : " << stored_entry.getKey() << " Value : " << stored_entry.getValue() << std::endl;
-                }
-                return stored_entry.getValue();
-              }
+              return "Key : " + key + " NOT FOUND!";
             }
+            else if (stored_entry.getType() == EntryType::POINT_ENTRY)
+            {
+              if (MemoryBuffer::verbosity == 2)
+              {
+                std::cout << "Found Entry with Key : " << stored_entry.getKey() << " Value : " << stored_entry.getValue() << std::endl;
+              }
+              return stored_entry.getValue();
+            }
+          }
         }
       }
       level_head = level_head->next_file_ptr;
     }
   }
   return "Key : " + key + " NOT FOUND!";
+}
+
+RangeIterator WorkloadExecutor::getRange(std::string start_key, std::string end_key)
+{
+
+  // Create a Dummy level out of buffer entries to perform the range query
+  EmuEnv *_env = EmuEnv::getInstance();
+  int level_to_flush_in = 0;
+
+  vector<Entry *> vector_to_compact = MemoryBuffer::buffer->entries;
+  int entries_per_file = Utility::minInt(_env->entries_per_page * _env->buffer_size_in_pages, vector_to_compact.size());
+  int file_count = ceil(vector_to_compact.size() / (entries_per_file * 1.0));
+  SSTFile *moving_head = nullptr;
+  SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_compact.size(), level_to_flush_in);
+
+  for (int i = 0; i < file_count; i++) // Though this is not required because on each entry saturation is checked and this would trigger compaction
+  {
+    vector<Entry *> vector_to_populate_file;
+    entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
+
+    for (int j = 0; j < entries_per_file; ++j)
+    {
+      vector_to_populate_file.push_back(vector_to_compact[j]);
+    }
+
+    vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
+
+    if (moving_head == nullptr)
+    {
+      moving_head = new_file;
+      DiskMetaFile::setSSTFileHead(moving_head, level_to_flush_in);
+      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+    }
+    else
+    {
+      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      moving_head->next_file_ptr = new_file;
+      moving_head = new_file;
+    }
+    vector_to_populate_file.clear();
+  }
+
+  // set-up the level iterators
+  vector<LevelIterator> level_its;
+  LevelIterator first_level(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
+  first_level.begin();
+
+  if (first_level != first_level.end())
+  {
+    level_its.push_back(first_level.begin());
+  }
+
+  for (auto index : DiskMetaFile::getNonEmptyLevels())
+  {
+    auto level_it = LevelIterator(index, start_key).begin();
+    if (level_it != level_it.end())
+    {
+      level_its.push_back(level_it);
+    }
+  }
+
+  RangeIterator merge_itr(level_its, start_key);
+
+  return merge_itr;
 }
 
 int WorkloadExecutor::getWorkloadStatictics(EmuEnv *_env)

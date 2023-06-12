@@ -28,46 +28,46 @@ namespace tree_builder
     class EntryIterator
     {
     private:
-        const SSTFile *endSSTFile_;
-        SSTFile *start;
-        SSTFile *sstFile_;
-        int pageIndex_;
-        int entryIndex_;
+        const SSTFile *end_sst_file_;
+        const SSTFile *start_sst_file;
+        SSTFile *start_sst_file_;
+        int page_index_;
+        int entry_index_;
 
     public:
-        EntryIterator(SSTFile *sstFile, const SSTFile *endSSTFile)
-            : start(sstFile), sstFile_(sstFile), endSSTFile_(endSSTFile), pageIndex_(0), entryIndex_(0) {}
+        EntryIterator(SSTFile *start_sst_file, const SSTFile *end_sst_file)
+            : start_sst_file(start_sst_file), start_sst_file_(start_sst_file), end_sst_file_(end_sst_file), page_index_(0), entry_index_(0) {}
 
         // Dereference operator
         const Entry &operator*() const
         {
-            return sstFile_->pages[pageIndex_]->entries_vector[entryIndex_];
+            return start_sst_file_->pages[page_index_]->entries_vector[entry_index_];
         }
 
         // Pre-increment operator
         EntryIterator &operator++()
         {
             // Move to the next entry
-            ++entryIndex_;
+            ++entry_index_;
 
             // Check if we reached the end of the current page
-            if (entryIndex_ >= sstFile_->pages[pageIndex_]->entries_vector.size())
+            if (entry_index_ >= start_sst_file_->pages[page_index_]->entries_vector.size())
             {
                 // Move to the next page
-                if (pageIndex_ + 1 < sstFile_->pages.size())
+                if (page_index_ + 1 < start_sst_file_->pages.size())
                 {
-                    pageIndex_++;
+                    page_index_++;
                 }
-                else if (pageIndex_ + 1 >= sstFile_->pages.size() && sstFile_->next_file_ptr != endSSTFile_)
+                else if (page_index_ + 1 >= start_sst_file_->pages.size() && start_sst_file_->next_file_ptr != end_sst_file_)
                 {
-                    sstFile_ = sstFile_->next_file_ptr;
-                    pageIndex_ = 0;
+                    start_sst_file_ = start_sst_file_->next_file_ptr;
+                    page_index_ = 0;
                 }
                 else
                 {
-                    *this = EntryIterator(nullptr, endSSTFile_);
+                    *this = EntryIterator(nullptr, end_sst_file_);
                 }
-                entryIndex_ = 0;
+                entry_index_ = 0;
             }
 
             return *this;
@@ -76,8 +76,8 @@ namespace tree_builder
         // Equality operator
         bool operator==(const EntryIterator &other) const
         {
-            return (sstFile_ == other.sstFile_) &&
-                   (endSSTFile_ == other.endSSTFile_);
+            return (start_sst_file_ == other.start_sst_file_) &&
+                   (end_sst_file_ == other.end_sst_file_);
         }
 
         // Inequality operator
@@ -89,19 +89,68 @@ namespace tree_builder
         // Iterator methods
         EntryIterator begin() const
         {
-            if (sstFile_)
+            if (start_sst_file_)
             {
-                return EntryIterator(start, endSSTFile_);
+                return EntryIterator(start_sst_file_, end_sst_file_);
             }
             return end();
         }
 
         EntryIterator end() const
         {
-            return EntryIterator(nullptr, endSSTFile_);
+            return EntryIterator(nullptr, end_sst_file_);
+        }
+
+        // fast-forward iterator
+        void seek(std::string target)
+        {
+            if (!start_sst_file_)
+            {
+                return;
+            }
+
+            while (start_sst_file_)
+            {
+                if (start_sst_file_->max_sort_key.compare(target) < 0)
+                {
+                    start_sst_file_ = start_sst_file_->next_file_ptr;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (!start_sst_file_)
+            {
+                return;
+            }
+            auto pages_iterator = std::lower_bound(start_sst_file_->pages.begin(), start_sst_file_->pages.end(), target, [](Page *stored_page, std::string key)
+                                                   { return stored_page->max_sort_key.compare(key) < 0; });
+            if (pages_iterator != start_sst_file_->pages.end())
+            {
+                page_index_ = pages_iterator - start_sst_file_->pages.begin();
+                Page *page = *pages_iterator;
+                auto entries_iterator = std::lower_bound(page->entries_vector.begin(), page->entries_vector.end(), target, [](Entry &stored_entry, std::string key)
+                                                         { return stored_entry.getKey().compare(key) < 0; });
+
+                if (entries_iterator != page->entries_vector.end())
+                {
+                    Entry stored_entry = *entries_iterator;
+                    entry_index_ = entries_iterator - page->entries_vector.begin();
+                }
+                else
+                {
+                    entry_index_ = page->entries_vector.size();
+                }
+            }
+            else
+            {
+                page_index_ = start_sst_file_->pages.size();
+                entry_index_ = start_sst_file_->pages[page_index_ - 1]->entries_vector.size();
+            }
         }
     };
-
 }
 
 #endif // _SSTFILE_H_

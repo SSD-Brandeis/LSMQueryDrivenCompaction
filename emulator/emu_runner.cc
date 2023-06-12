@@ -269,8 +269,21 @@ int runWorkload(EmuEnv *_env)
       std::cout << "Point Query for Key : " << sortkey
                 << "\n Value : " << result << std::endl;
       break;
-    case 'R':
+    case 'S':
       workload_file >> start_sortkey >> end_sortkey;
+      std::cout << "Range Query from Start Key : " << start_sortkey
+                << " End Key : " << end_sortkey << std::endl;
+      RangeIterator range_iterator = workload_executer.getRange(start_sortkey, end_sortkey);
+
+      for (auto it = range_iterator.begin(); it != range_iterator.end(); ++it)
+      {
+        Entry entry = *it;
+        if (entry.getKey().compare(end_sortkey) > 0)
+        {
+          break;
+        }
+        std::cout << "Key: " << entry.getKey() << " Value: " << entry.getValue() << std::endl;
+      }
       break;
     }
     instruction = '\0';
@@ -290,6 +303,7 @@ int parse_arguments2(int argc, char *argvx[], EmuEnv *_env)
 
   args::Group group1(parser, "This group is all exclusive:", args::Group::Validators::DontCare);
 
+  args::ValueFlag<long> range_query_cmd(group1, "S", "Number of range queries [def: 0]", {'S', "range_query"});
   args::ValueFlag<int> size_ratio_cmd(group1, "T", "The size ratio of the tree [def: 2]", {'T', "size_ratio"});
   args::ValueFlag<int> buffer_size_in_pages_cmd(group1, "P", "Size of the memory buffer in terms of pages [def: 128]", {'P', "buffer_size_in_pages"});
   args::ValueFlag<int> entries_per_page_cmd(group1, "B", "No of entries in one page [def: 128]", {'B', "entries_per_page"});

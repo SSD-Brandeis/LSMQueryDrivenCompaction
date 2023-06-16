@@ -101,3 +101,10 @@ third-party/folly/
 **/__pycache__/**
 .cache
 *.sublime-*
+
+# .log and .txt files
+*.log
+*.txt
+
+# simple_example exe
+simple_example

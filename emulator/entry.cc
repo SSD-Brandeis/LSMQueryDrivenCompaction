@@ -4,10 +4,10 @@ Entry::Entry(std::string key, std::string value) : key{key}, value{value}, entry
 
 Entry::Entry(std::string key, std::string value, EntryType entry_type) : key{key}, value{value}, entry_type{entry_type} {}
 
-Entry::Entry(const Entry &other) : Entry{other.key, other.value, other.entry_type}
-{
-    this->timetag = other.timetag;
-}
+Entry::Entry(const Entry &other) : entry_type(other.entry_type),
+                                   key(other.key),
+                                   value(other.value),
+                                   timetag(other.timetag) {}
 
 bool Entry::operator==(const Entry &other)
 {

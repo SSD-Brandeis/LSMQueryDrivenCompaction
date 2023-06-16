@@ -23,7 +23,7 @@
 #define PD_THRESHOLD 0.1  // PD_THRESHOLD*insert_count number of inserts must be made before Point Deletes may take place (applicable when an empty database is being populated)
 #define RD_THRESHOLD 0.75 // RD_THRESHOLD*insert_count number of inserts must be made before Range Deletes may take place (applicable when an empty database is being populated)
 #define PQ_THRESHOLD 0.1  // PQ_THRESHOLD*insert_count number of inserts must be made before Point Queries may take place (applicable when an empty database is being populated)
-#define RQ_THRESHOLD 0.1  // RQ_THRESHOLD*insert_count number of inserts must be made before Range Queries may take place (applicable when an empty database is being populated)
+#define RQ_THRESHOLD 0.1  // RQ_THRESHOLD*insert_count number of inserts must be made before Range Queries may take place (applicable when an empty database is being populated)   # HACK: .... SET TO 1 For TESTING
 #define STRING_KEY_ENABLED false
 #define FILENAME "workload.txt"
 
@@ -937,6 +937,7 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<int> EPQ_cmd(group1, "EPQ", "Count of empty point queries [def:1000000]", {'J', "EPQ"});
     args::ValueFlag<int> PQ_cmd(group1, "PQ", "Count of non-empty point queries [def:1000000]", {'K', "PQ"});
     args::ValueFlag<int> SRQ_cmd(group1, "SRQ", "Count of short range queries [def:1]", {'L', "SRQ"});
+    args::ValueFlag<int> enable_rq_compaction_cmd(group1, "rc-on", "Enable Range Query Compaction [def:1]", {"rc-on", "enable_rq_compaction"});
 
     args::ValueFlag<int> delete_key_cmd(group1, "delete_key", "Delete all keys less than DK [def:700]", {'D', "delete_key"});
     args::ValueFlag<int> range_start_key_cmd(group1, "range_start_key", "Starting key of the range query [def:2000]", {'S', "range_start_key"});

@@ -227,7 +227,7 @@ int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
   EmuEnv *_env = EmuEnv::getInstance();
   int max_entry_count_in_level = DiskMetaFile::level_max_size[level] / _env->entry_size;
   int max_file_count_in_level = DiskMetaFile::level_max_file_count[level];
-  if (file_count_in_level >= max_file_count_in_level)
+  while (file_count_in_level >= max_file_count_in_level)
   {
     if (MemoryBuffer::verbosity == 2)
       std::cout << "Saturation Reached......" << endl;
@@ -294,6 +294,10 @@ int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
     }
 
     Utility::sortAndWrite(vector_to_compact, level + 1);
+
+    // Check again to the same level
+    entry_count_in_level = getLevelEntryCount(level);
+    file_count_in_level = getLevelFileCount(level);
   }
   return 1;
 }
@@ -485,14 +489,14 @@ void DiskMetaFile::getMetaStatistics()
   long total_entry_count = 0;
   std::cout << "**************************** PRINTING META FILE STATISTICS ****************************" << std::endl;
 
-  for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
+  for (int i : DiskMetaFile::getNonEmptyLevels())
   {
     total_entry_count += DiskMetaFile::getLevelEntryCount(i);
   }
   std::cout << "\nTotal number of entries: " << total_entry_count << "\n"
             << std::endl;
   std::cout << "L\tfile_count\tentry_count\t " << std::endl;
-  for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
+  for (int i : DiskMetaFile::getNonEmptyLevels())
   {
     std::cout << i << "\t" << setfill(' ') << setw(8) << DiskMetaFile::getLevelFileCount(i) << "\t\t"
               << DiskMetaFile::getLevelEntryCount(i) << std::endl;
@@ -566,13 +570,27 @@ int DiskMetaFile::printAllEntries(int only_file_meta_data)
   { // UNCOMMENT
     std::cout << "\t\t\t\tBuffer entry count: " << MemoryBuffer::current_buffer_entry_count << std::endl;
     // Uncomment the following to print all entries
-    // for (int i = 0; i < MemoryBuffer::current_buffer_entry_count; i++) {
-    //   std::cout << "\t\t\t\tEntry : " << i << " (Sort_Key : " << MemoryBuffer::buffer[i].first.first
-    //             << ", Delete_Key : " << MemoryBuffer::buffer[i].first.second << ")" << std::endl;
-    // }
+    for (int i = 0; i < MemoryBuffer::current_buffer_entry_count; i++)
+    {
+      std::string type_name;
+      switch (MemoryBuffer::buffer->entries[i]->getType())
+      {
+      case EntryType::POINT_ENTRY:
+        type_name = "Point Entry";
+        break;
+      case EntryType::POINT_TOMBSTONE:
+        type_name = "Point Tombstone";
+        break;
+      default:
+        break;
+      }
+      std::cout << "\t\t\t\tEntry : " << i << " (Sort_Key : " << MemoryBuffer::buffer->entries[i]->getKey()
+                << ", Value : " << MemoryBuffer::buffer->entries[i]->getValue() 
+                << ", Type : " << type_name << ")" << std::endl;
+    }
   }
 
-  for (int i = 1; i <= DiskMetaFile::getTotalLevelCount(); i++)
+  for (int i : DiskMetaFile::getNonEmptyLevels())
   {
     SSTFile *level_i_head = DiskMetaFile::getSSTFileHead(i);
     SSTFile *moving_head = level_i_head;
@@ -580,12 +598,8 @@ int DiskMetaFile::printAllEntries(int only_file_meta_data)
     std::cout << "\033[1;31mLevel : " << i << "\033[0m" << std::endl;
     while (moving_head)
     {
-      // std::cout << "File : " << j << " Min Sort Key : " << moving_head -> min_sort_key << " Max Sort Key : " << moving_head -> max_sort_key << std::endl;
-      // std::cout << "File : " << j << " Min Delete Key : " << moving_head -> min_delete_key << " Max Delete Key : " << moving_head -> max_delete_key << std::endl;
       std::cout << "\033[1;34m\tFile : " << moving_head->file_id << " (Min_Sort_Key : " << moving_head->min_sort_key
                 << ", Max_Sort_Key : " << moving_head->max_sort_key << ")"
-                // << ", Min_Delete_Key : " << moving_head->min_delete_key
-                // << ", Max_Delete_Key : " << moving_head->max_delete_key << ")"
                 << "\033[0m" << std::endl;
       if (!only_file_meta_data)
       {
@@ -594,24 +608,28 @@ int DiskMetaFile::printAllEntries(int only_file_meta_data)
           Page *page = moving_head->pages[k];
           std::cout << "\033[1;32m\tPage : " << k << " (Min_Sort_Key : " << page->min_sort_key
                     << ", Max_Sort_Key : " << page->max_sort_key << ")"
-                    // << ", Min_Delete_Key : " << delete_tile.min_delete_key
-                    // << ", Max_Delete_Key : " << delete_tile.max_delete_key << ")"
                     << "\033[0m" << std::endl;
+
           std::cout << "\t\t\t\tEntry count: " << page->entries_vector.size() << std::endl;
-          // for (int l = 0; l < page.entries_vector.size(); l++)
-          // {
-          //   Page page = delete_tile.page_vector[l];
-          //   std::cout << "\033[1;33m\t\t\tPage : " << l << " (Min_Sort_Key : " << page.min_sort_key
-          //             << ", Max_Sort_Key : " << page.max_sort_key << ", Min_Delete_Key : " << page.min_delete_key << ", Max_Delete_Key : " << page.max_delete_key << ")"
-          //             << "\033[0m" << std::endl;
-          // std::cout << "\t\t\t\tEntry count: " << page->entries_vector.size() << std::endl;
-          // Uncomment the following to print all entries
-          // for (int m = 0; m < page.kv_vector.size(); m++)
-          // {
-          //   std::cout << "\t\t\t\tEntry : " << m << " (Sort_Key : " << page.kv_vector[m].first.first
-          //             << ", Delete_Key : " << page.kv_vector[m].first.second << ")" << std::endl;
-          // }
-          // }
+
+          for (int m = 0; m < page->entries_vector.size(); m++)
+          {
+            std::string type_name;
+            switch (page->entries_vector[m].getType())
+            {
+            case EntryType::POINT_ENTRY:
+              type_name = "Point Entry";
+              break;
+            case EntryType::POINT_TOMBSTONE:
+              type_name = "Point Tombstone";
+              break;
+            default:
+              break;
+            }
+            std::cout << "\t\t\t\tEntry : " << m << " (Sort_Key : " << page->entries_vector[m].getKey()
+                      << ", Value : " << page->entries_vector[m].getValue()
+                      << ", Type : " << type_name << ")" << std::endl;
+          }
         }
       }
       moving_head = moving_head->next_file_ptr;
@@ -662,4 +680,65 @@ int DiskMetaFile::clearAllEntries()
     DiskMetaFile::setSSTFileHead(NULL, i);
   }
   return 1;
+}
+
+namespace tree_builder
+{
+  SSTFile *trivialFileMoveForIterator(SSTFile *head, vector<Entry *> &entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file)
+  {
+    SSTFile *moving_head = head;
+    for (int i = 0; i < file_count; i++) // Though this is not required because on each entry saturation is checked and this would trigger compaction
+    {
+      vector<Entry *> vector_to_populate_file;
+      entries_per_file = std::min(entries_per_file, (int)entries_to_flush.size());
+
+      for (int j = 0; j < entries_per_file; ++j)
+      {
+        vector_to_populate_file.push_back(entries_to_flush[j]);
+      }
+
+      entries_to_flush.erase(entries_to_flush.begin(), entries_to_flush.begin() + entries_per_file);
+      SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
+
+      if (moving_head == nullptr)
+      {
+        moving_head = new_file;
+        DiskMetaFile::setSSTFileHead(moving_head, level_to_flush_in);
+        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      }
+      else
+      {
+        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+        moving_head->next_file_ptr = new_file;
+        moving_head = new_file;
+      }
+      vector_to_populate_file.clear();
+    }
+    return moving_head;
+  }
+
+  std::string getMinKeyFromSSTFile(SSTFile *sst_file)
+  {
+    for (Page *page : sst_file->pages)
+    {
+      for (Entry entry : page->entries_vector)
+      {
+        return entry.getKey();
+      }
+    }
+    return std::string();
+  }
+
+  std::string getMaxKeyFromSSTFile(SSTFile *sst_file)
+  {
+    for (Page *page : std::vector<Page *>(sst_file->pages.rbegin(), sst_file->pages.rend()))
+    {
+      for (Entry entry : std::vector<Entry>(page->entries_vector.rbegin(), page->entries_vector.rend()))
+      {
+        return entry.getKey();
+      }
+    }
+    return std::string();
+  }
+
 }

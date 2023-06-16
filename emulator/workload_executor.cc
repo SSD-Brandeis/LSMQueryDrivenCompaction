@@ -132,7 +132,7 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
     }
   }
 
-  SSTFile *next_file_after_merge = end_head != NULL ? end_head->next_file_ptr : NULL;
+  SSTFile *next_file_after_merge = end_head == moving_head ? end_head->next_file_ptr : end_head;
 
   EntryIterator eit(moving_head, next_file_after_merge);
   vector<Entry *>::iterator it = entries_to_flush.begin();
@@ -141,7 +141,6 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
   while (eit != eit.end() || it != entries_to_flush.end())
   {
     vector<Entry *> vector_to_populate_file;
-    entries_per_file = Utility::minInt(entries_per_file, entries_to_flush.size());
     int j = 0;
 
     while (j < entries_per_file && (eit != eit.end() || it != entries_to_flush.end()))
@@ -365,68 +364,91 @@ std::string WorkloadExecutor::get(std::string key)
   return "Key : " + key + " NOT FOUND!";
 }
 
-RangeIterator WorkloadExecutor::getRange(std::string start_key, std::string end_key)
+RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end_key)
 {
-
   // Create a Dummy level out of buffer entries to perform the range query
   EmuEnv *_env = EmuEnv::getInstance();
   int level_to_flush_in = 0;
 
-  vector<Entry *> vector_to_compact = MemoryBuffer::buffer->entries;
-  int entries_per_file = Utility::minInt(_env->entries_per_page * _env->buffer_size_in_pages, vector_to_compact.size());
-  int file_count = ceil(vector_to_compact.size() / (entries_per_file * 1.0));
-  SSTFile *moving_head = nullptr;
-  SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_compact.size(), level_to_flush_in);
-
-  for (int i = 0; i < file_count; i++) // Though this is not required because on each entry saturation is checked and this would trigger compaction
+  if (MemoryBuffer::buffer->entries.size() > 0)
   {
-    vector<Entry *> vector_to_populate_file;
-    entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
+    vector<Entry *> vector_to_compact = MemoryBuffer::buffer->entries;
+    int entries_per_file = Utility::minInt(_env->entries_per_page * _env->buffer_size_in_pages, vector_to_compact.size());
+    int file_count = ceil(vector_to_compact.size() / (entries_per_file * 1.0));
+    SSTFile *moving_head = nullptr;
 
-    for (int j = 0; j < entries_per_file; ++j)
+    for (int i = 0; i < file_count; i++) // Though this is not required because on each entry saturation is checked and this would trigger compaction
     {
-      vector_to_populate_file.push_back(vector_to_compact[j]);
-    }
+      SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_compact.size(), level_to_flush_in);
+      vector<Entry *> vector_to_populate_file;
+      entries_per_file = Utility::minInt(entries_per_file, vector_to_compact.size());
 
-    vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
+      for (int j = 0; j < entries_per_file; ++j)
+      {
+        vector_to_populate_file.push_back(vector_to_compact[j]);
+      }
 
-    if (moving_head == nullptr)
-    {
-      moving_head = new_file;
-      DiskMetaFile::setSSTFileHead(moving_head, level_to_flush_in);
-      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
+
+      if (moving_head == nullptr)
+      {
+        moving_head = new_file;
+        DiskMetaFile::setSSTFileHead(moving_head, level_to_flush_in);
+        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+      }
+      else
+      {
+        int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
+        moving_head->next_file_ptr = new_file;
+        moving_head = new_file;
+      }
+      vector_to_populate_file.clear();
     }
-    else
-    {
-      int status = SSTFile::PopulateFile(new_file, vector_to_populate_file, level_to_flush_in);
-      moving_head->next_file_ptr = new_file;
-      moving_head = new_file;
-    }
-    vector_to_populate_file.clear();
   }
 
   // set-up the level iterators
-  vector<LevelIterator> level_its;
-  LevelIterator first_level(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
-  first_level.begin();
-
-  if (first_level != first_level.end())
-  {
-    level_its.push_back(first_level.begin());
-  }
+  vector<LevelIterator *> level_its;
 
   for (auto index : DiskMetaFile::getNonEmptyLevels())
   {
-    auto level_it = LevelIterator(index, start_key).begin();
-    if (level_it != level_it.end())
+    LevelIterator *level_it = new LevelIterator(index, start_key);
+    level_it->begin();
+    if (*level_it != level_it->end())
     {
       level_its.push_back(level_it);
     }
   }
 
-  RangeIterator merge_itr(level_its, start_key);
+  LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
+  first_level->begin();
 
-  return merge_itr;
+  if (*first_level != first_level->end())
+  {
+    level_its.push_back(first_level);
+  }
+
+  // If only one level has data for the range query always do state of the art
+  if (level_its.size() == 1 or !_env->enable_rq_compaction)
+  {
+    if (MemoryBuffer::verbosity == 2)
+    {
+      std::cout << "Doing Normal Range Query This Time ..." << std::endl;
+    }
+    RangeIterator *merge_itr = new RangeQueryIterator(level_its, start_key, end_key);
+
+    return merge_itr;
+  }
+  else
+  {
+    // Do the range query compaction
+    if (MemoryBuffer::verbosity == 2)
+    {
+      std::cout << "Doing Range Query Driven Compaction This Time ..." << std::endl;
+    }
+    RangeIterator *merge_itr = new RangeQueryDrivenCompactionIterator(level_its, start_key, end_key);
+
+    return merge_itr;
+  }
 }
 
 int WorkloadExecutor::getWorkloadStatictics(EmuEnv *_env)

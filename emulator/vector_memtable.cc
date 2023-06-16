@@ -58,7 +58,7 @@ bool VectorMemTable::insert(Entry &entry)
         MemoryBuffer::setCurrentBufferStatistics(0, (entry.getValue().size() - entries[it - entries.begin()]->getValue().size()));
         Entry *new_entry = new Entry(entry);
         auto now = std::chrono::system_clock::now();
-        new_entry->setTimeTag(static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count()));
+        new_entry->setTimeTag(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
         entries[it - entries.begin()] = new_entry;
         std::cout << "Value updated : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count++;
@@ -66,10 +66,11 @@ bool VectorMemTable::insert(Entry &entry)
     }
     else
     {
-        MemoryBuffer::setCurrentBufferStatistics(1, (entry.getKey().size() + entry.getValue().size()));
+        size_t entry_key_size = sizeof static_cast<uint32_t>(std::stoi(entry.getKey()));
+        MemoryBuffer::setCurrentBufferStatistics(1, (entry_key_size + entry.getValue().size()));
         Entry *new_entry = new Entry{entry};
         auto now = std::chrono::system_clock::now();
-        new_entry->setTimeTag(static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count()));
+        new_entry->setTimeTag(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
         entries.push_back(new_entry);
         std::cout << "Key inserted : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count++;
@@ -93,20 +94,21 @@ bool VectorMemTable::remove(Entry &entry)
     std::vector<Entry *>::iterator it;
     it = std::find_if(entries.begin(), entries.end(), [&](const Entry *stored_entry)
                       { return stored_entry->getKey().compare(entry.getKey()) == 0; });
+    size_t entry_key_size = sizeof static_cast<uint32_t>(std::stoi(entry.getKey()));
 
     // Check if entry already exists in MemTable
     if (it != entries.end())
     {
-        MemoryBuffer::setCurrentBufferStatistics(-1, (-(entries[it - entries.begin()]->getValue().size() + entries[it - entries.begin()]->getKey().size())));
+        MemoryBuffer::setCurrentBufferStatistics(-1, (-(entries[it - entries.begin()]->getValue().size() + entry_key_size)));
         entries.erase(it);
         std::cout << "Key removed from buffer : " << entry.getKey() << std::endl;
         WorkloadExecutor::total_insert_count--;
         WorkloadExecutor::buffer_insert_count--;
     }
     Entry *new_entry = new Entry{entry};
-    MemoryBuffer::setCurrentBufferStatistics(1, (new_entry->getKey().size()));
+    MemoryBuffer::setCurrentBufferStatistics(1, entry_key_size);
     auto now = std::chrono::system_clock::now();
-    new_entry->setTimeTag(static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count()));
+    new_entry->setTimeTag(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
     entries.push_back(new_entry);
     std::cout << "Point Tombstone Added for Key: " << entry.getKey() << std::endl;
     WorkloadExecutor::total_insert_count++;
@@ -129,9 +131,9 @@ std::pair<int, std::string> VectorMemTable::get(Entry &entry)
     //  - How many buffer hits
     //  - How many buffer miss
 
-    auto it = std::find_if(entries.rbegin(), entries.rend(), [&](const Entry * stored_entry)
-                        { return stored_entry->getKey().compare(entry.getKey()) == 0; });
-    
+    auto it = std::find_if(entries.rbegin(), entries.rend(), [&](const Entry *stored_entry)
+                           { return stored_entry->getKey().compare(entry.getKey()) == 0; });
+
     if (it != entries.rend())
     {
         auto index = std::distance(it, entries.rend()) - 1;

@@ -20,7 +20,6 @@ namespace workload_exec
 
   class WorkloadExecutor
   {
-  private:
   public:
     static long total_insert_count;
     static long buffer_update_count;
@@ -30,7 +29,7 @@ namespace workload_exec
     static int insert(std::string key, std::string value);
     static int remove(std::string key);
     static std::string get(std::string key);
-    static RangeIterator getRange(std::string start_key, std::string end_key);
+    static RangeIterator* getRange(std::string start_key, std::string end_key);
     static int getWorkloadStatictics(EmuEnv *_env);
   };
 

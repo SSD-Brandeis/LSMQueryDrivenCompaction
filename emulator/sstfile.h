@@ -20,23 +20,31 @@ namespace tree_builder
         std::vector<Page *> pages;
         struct SSTFile *next_file_ptr;
 
+        SSTFile();
+        SSTFile(const SSTFile &other);
+
         static struct SSTFile *createNewSSTFile(int total_entries, int level_to_flush_in);
         static int PopulateFile(SSTFile *file, std::vector<Entry *> vector_to_populate_file, int level_to_flush_in);
         static int PopulatePage(SSTFile *file, std::vector<Entry *> entries_to_write, int index, int level_to_flush_in);
     };
 
+    /*
+     * Entry Iterator iterates through all SSTFilles that are connected
+     * together with pointer `next_file_ptr` and return entries stored in them
+     */
     class EntryIterator
     {
     private:
         const SSTFile *end_sst_file_;
         const SSTFile *start_sst_file;
-        SSTFile *start_sst_file_;
+        SSTFile *prev_sst_file_;             // Keeps track of prev of start_sst_file_ before seek
+        SSTFile *start_sst_file_;            // Keeps track of current sst_file
         int page_index_;
         int entry_index_;
 
     public:
         EntryIterator(SSTFile *start_sst_file, const SSTFile *end_sst_file)
-            : start_sst_file(start_sst_file), start_sst_file_(start_sst_file), end_sst_file_(end_sst_file), page_index_(0), entry_index_(0) {}
+            : start_sst_file(start_sst_file), start_sst_file_(start_sst_file), end_sst_file_(end_sst_file), page_index_(0), entry_index_(0), prev_sst_file_(nullptr) {}
 
         // Dereference operator
         const Entry &operator*() const
@@ -86,6 +94,18 @@ namespace tree_builder
             return !(*this == other);
         }
 
+        // getter method for prev_sst_file pointer
+        SSTFile *getPrevSSTFile()
+        {
+            return this->prev_sst_file_;
+        }
+
+        // getter method for start_sst_file_ ptr
+        SSTFile *getCurrentSSTFile()
+        {
+            return this->start_sst_file_;
+        }
+
         // Iterator methods
         EntryIterator begin() const
         {
@@ -113,6 +133,7 @@ namespace tree_builder
             {
                 if (start_sst_file_->max_sort_key.compare(target) < 0)
                 {
+                    prev_sst_file_ = start_sst_file_;
                     start_sst_file_ = start_sst_file_->next_file_ptr;
                 }
                 else

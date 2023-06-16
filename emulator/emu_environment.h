@@ -51,6 +51,8 @@ public:
 
   int variable_delete_tile_size_in_pages[20] = {-1, 1, 2, 3, 4, 5};
 
+  bool enable_rq_compaction;  // enable range query driven compaction
+
   int getDeleteTileSize(int level);
 };
 

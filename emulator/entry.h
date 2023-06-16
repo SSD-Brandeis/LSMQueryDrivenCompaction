@@ -1,4 +1,5 @@
 #include <string>
+#include <chrono>
 
 #ifndef _ENTRY_H_
 #define _ENTRY_H_
@@ -27,7 +28,7 @@ private:
     EntryType entry_type;
     std::string key;
     std::string value;
-    long timetag;
+    std::chrono::nanoseconds::rep timetag;
 
 public:
     Entry(std::string key, std::string value);
@@ -51,11 +52,11 @@ public:
     {
         this->value = value;
     }
-    void setTimeTag(long time_tag)
+    void setTimeTag(std::chrono::nanoseconds::rep time_tag)
     {
         this->timetag = time_tag;
     }
-    long getTimeTag() const
+    std::chrono::nanoseconds::rep getTimeTag() const
     {
         return this->timetag;
     }

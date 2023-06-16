@@ -11,6 +11,22 @@ using namespace workload_exec;
 
 namespace tree_builder
 {
+    SSTFile::SSTFile() {}
+    SSTFile::SSTFile(const SSTFile &other)
+        : file_level(other.file_level),
+          file_id(other.file_id),
+          min_sort_key(other.min_sort_key),
+          max_sort_key(other.max_sort_key),
+          next_file_ptr(nullptr) // Initialize next_file_ptr to nullptr
+    {
+        // Deep copy pages vector
+        for (const auto *page : other.pages)
+        {
+            Page *newPage = new Page(*page);
+            pages.push_back(newPage);
+        }
+    }
+
     SSTFile *SSTFile::createNewSSTFile(int total_entries, int level_to_flush_in)
     {
         EmuEnv *_env = EmuEnv::getInstance();
@@ -18,8 +34,9 @@ namespace tree_builder
         SSTFile *new_file = new SSTFile();
         new_file->max_sort_key = "";
         new_file->min_sort_key = "";
+        int max_entries_in_file = std::min(total_entries, _env->entries_per_page * _env->buffer_size_in_pages);
 
-        new_file->pages = Page::createNewPages(ceil((total_entries * 1.0) / (_env->entries_per_page)));
+        new_file->pages = Page::createNewPages(ceil((max_entries_in_file * 1.0) / (_env->entries_per_page)));
 
         new_file->file_level = level_to_flush_in;
         new_file->next_file_ptr = NULL;

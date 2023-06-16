@@ -15,6 +15,8 @@ namespace tree_builder
         std::string max_sort_key;
         std::vector<Entry> entries_vector;
 
+        Page();
+        Page(const Page &other); // Deep copy constructor
         static std::vector<Page *> createNewPages(int page_count);
     };
 }

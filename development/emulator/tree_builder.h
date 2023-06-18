@@ -7,6 +7,7 @@
 #include "emu_environment.h"
 #include "memtable.h"
 #include "sstfile.h"
+#include "emulator_stats.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,7 @@
 #include <unordered_map>
 
 using namespace std;
+using namespace emulator;
 
 namespace tree_builder
 {
@@ -66,6 +68,7 @@ namespace tree_builder
     static void getMetaStatistics();
     static int printAllEntries(int only_file_meta_data);
     static int getTotalPageCount();
+    static int getTotalEntriesCount();
     static int clearAllEntries();
 
     static SSTFile *level_head[32];
@@ -558,6 +561,8 @@ namespace tree_builder
       // write file back to levels
       if (hasEntriesInSSTFileCopy(last_sst_file))
       {
+        EmuStats::recordCompaction(last_sst_file->pages.size(), DiskMetaFile::getLevelEntryCount(last_sst_file->file_level));
+
         last_sst_file->min_sort_key = getMinKeyFromSSTFile(last_sst_file);
         last_sst_file->max_sort_key = getMaxKeyFromSSTFile(last_sst_file);
         return last_sst_file;
@@ -665,6 +670,8 @@ namespace tree_builder
         {
           start_sst_file->min_sort_key = getMinKeyFromSSTFile(start_sst_file);
           start_sst_file->max_sort_key = getMaxKeyFromSSTFile(start_sst_file);
+
+          EmuStats::recordCompaction(start_sst_file->pages.size(), DiskMetaFile::getLevelEntryCount(start_sst_file->file_level));
 
           SSTFile *prev_sst_file_pointer = level_prev_sst_file_ptrs[level_sst_file_copy.first];
           if (prev_sst_file_pointer == nullptr)

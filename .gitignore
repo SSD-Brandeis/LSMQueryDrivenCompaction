@@ -4,3 +4,10 @@
 
 ## build
 build
+
+## venv
+venv/*
+
+## FLAT FILES
+*.txt
+*.csv

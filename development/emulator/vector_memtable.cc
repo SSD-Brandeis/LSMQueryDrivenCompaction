@@ -127,10 +127,6 @@ std::pair<int, std::string> VectorMemTable::get(Entry &entry)
         exit(1);
     }
 
-    // TODO: Add stats collector
-    //  - How many buffer hits
-    //  - How many buffer miss
-
     auto it = std::find_if(entries.rbegin(), entries.rend(), [&](const Entry *stored_entry)
                            { return stored_entry->getKey().compare(entry.getKey()) == 0; });
 

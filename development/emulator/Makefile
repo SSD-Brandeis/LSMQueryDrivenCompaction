@@ -26,8 +26,8 @@ all: emu_runner # , load_gen
 # $(info PRINT FLAGS $(CFLAGS))
 
 
-emu_runner: emu_runner.cc emu_environment.cc entry.cc page.cc sstfile.cc vector_memtable.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc load_gen.cc Generator.cc Key.cc
-	$(CXX) $(CXX_FLAGS)  $@.cc -o$@ emu_environment.cc entry.cc page.cc sstfile.cc vector_memtable.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc load_gen.cc Generator.cc Key.cc
+emu_runner: emu_runner.cc emulator_stats.cc emu_environment.cc entry.cc page.cc sstfile.cc vector_memtable.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc load_gen.cc Generator.cc Key.cc
+	$(CXX) $(CXX_FLAGS)  $@.cc -o$@ emulator_stats.cc emu_environment.cc entry.cc page.cc sstfile.cc vector_memtable.cc tree_builder.cc workload_executor.cc workload_generator.cc query_runner.cc load_gen.cc Generator.cc Key.cc
 
 # load_gen: load_gen.cc Generator.cc Key.cc
 # 	$(CXX) $(CXXFLAGS) -o $@ load_gen.cc Generator.cc Key.cc -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)

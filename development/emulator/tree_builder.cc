@@ -104,6 +104,7 @@ int MemoryBuffer::initiateBufferFlush(int level_to_flush_in)
   if (MemoryBuffer::verbosity == 2)
     cout << "Calling sort and write from Buffer............................" << endl;
   Utility::sortAndWrite(MemoryBuffer::buffer->entries, level_to_flush_in);
+  EmuStats::recordBufferFlush();
   MemoryBuffer::buffer_flush_count++;
   return 1;
 }
@@ -484,16 +485,21 @@ int MemoryBuffer::printBufferEntries()
   return 1;
 }
 
-void DiskMetaFile::getMetaStatistics()
+int DiskMetaFile::getTotalEntriesCount()
 {
   long total_entry_count = 0;
-  std::cout << "**************************** PRINTING META FILE STATISTICS ****************************" << std::endl;
-
   for (int i : DiskMetaFile::getNonEmptyLevels())
   {
     total_entry_count += DiskMetaFile::getLevelEntryCount(i);
   }
-  std::cout << "\nTotal number of entries: " << total_entry_count << "\n"
+  return total_entry_count;
+}
+
+void DiskMetaFile::getMetaStatistics()
+{
+  std::cout << "**************************** PRINTING META FILE STATISTICS ****************************" << std::endl;
+
+  std::cout << "\nTotal number of entries: " << DiskMetaFile::getTotalEntriesCount() << "\n"
             << std::endl;
   std::cout << "L\tfile_count\tentry_count\t " << std::endl;
   for (int i : DiskMetaFile::getNonEmptyLevels())
@@ -699,6 +705,7 @@ namespace tree_builder
 
       entries_to_flush.erase(entries_to_flush.begin(), entries_to_flush.begin() + entries_per_file);
       SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
+      EmuStats::recordFileFlushRangeQuery(new_file->pages.size(), vector_to_populate_file.size());
 
       if (moving_head == nullptr)
       {

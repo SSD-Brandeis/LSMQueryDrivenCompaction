@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <cstring>
+#include <chrono>
 
 #include "args.hxx"
 #include "load_gen.h"
@@ -125,6 +126,9 @@ int runWorkload(EmuEnv *_env)
   workload_file.open("workload.txt");
   assert(workload_file);
   int counter = 0;
+  std::chrono::time_point<std::chrono::system_clock> rquery_start, rquery_end;
+  std::chrono::duration<double> total_rquery_time_elapsed {0};
+
   while (!workload_file.eof())
   {
     char instruction;
@@ -158,6 +162,9 @@ int runWorkload(EmuEnv *_env)
       workload_file >> start_sortkey >> end_sortkey;
       std::cout << "Range Query from Start Key : " << start_sortkey
                 << " End Key : " << end_sortkey << std::endl;
+
+      rquery_start = std::chrono::system_clock::now();
+      int entries_count_before = DiskMetaFile::getTotalEntriesCount();
       RangeIterator *range_iterator = WorkloadExecutor::getRange(start_sortkey, end_sortkey);
 
       for (auto it = range_iterator->begin(); range_iterator->isValid(); range_iterator->next())
@@ -165,6 +172,11 @@ int runWorkload(EmuEnv *_env)
         const Entry &entry = **it;
         std::cout << "Key: " << entry.getKey() << " Value: " << entry.getValue() << std::endl;
       }
+
+      rquery_end = std::chrono::system_clock::now();
+      total_rquery_time_elapsed += rquery_end - rquery_start;
+      int entries_count_after = DiskMetaFile::getTotalEntriesCount();
+      EmuStats::recordRangeQueryStats(std::make_pair(entries_count_before, entries_count_after), total_rquery_time_elapsed);
       std::cout << "End Range Query from Start Key : " << start_sortkey
                 << " End Key : " << end_sortkey << std::endl;
       DiskMetaFile::printAllEntries(0);
@@ -178,6 +190,8 @@ int runWorkload(EmuEnv *_env)
       showProgress(_env->num_inserts, counter);
     }
   }
+
+  EmuStats::print();
 
   return 1;
 }

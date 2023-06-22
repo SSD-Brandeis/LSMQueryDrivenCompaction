@@ -353,6 +353,7 @@ namespace tree_builder
     int last_level_;
     std::vector<LevelIterator *> level_iterators_;
     std::unordered_map<int, SSTFile *> level_start_sst_file_copies; // level to start_sst_file copy map
+    std::unordered_map<int, SSTFile *> level_start_old_sst_file;    // level to start_sst_file copy map
     std::unordered_map<int, SSTFile *> level_prev_sst_file_ptrs;    // this would keep prev_file_ptr for each level
     vector<Entry *> valid_entries;
     int entries_per_file = _env->entries_per_page * _env->buffer_size_in_pages;
@@ -386,6 +387,22 @@ namespace tree_builder
         level_prev_sst_file_ptrs[last_level_] = trivialFileMoveForIterator(level_prev_sst_file_ptrs[last_level_], valid_entries, last_level_, file_count, entries_per_file);
       }
 
+      // // delete older files
+      for (auto level_itr : this->level_iterators_)
+      {
+        if (level_itr->getLevel() != 0)
+        {
+          auto old_sst_file = level_start_old_sst_file[level_itr->getLevel()];
+          while (old_sst_file != nullptr && old_sst_file != level_itr->getCurrentSSTFile())
+          {
+            auto tmp = old_sst_file->next_file_ptr;
+            delete old_sst_file;
+            old_sst_file = nullptr;
+            old_sst_file = tmp;
+          }
+        }
+      }
+
       // connect pointer back to the newly created files
       for (auto level_itr : this->level_iterators_)
       {
@@ -413,6 +430,7 @@ namespace tree_builder
             else
             {
               level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr = processLastFileOfEachLevelInRange(level_itr->getCurrentSSTFile());
+              EmuStats::recordCompaction(level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr->pages.size(), DiskMetaFile::getLevelEntryCount(level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr->file_level));
             }
           }
         }
@@ -561,8 +579,6 @@ namespace tree_builder
       // write file back to levels
       if (hasEntriesInSSTFileCopy(last_sst_file))
       {
-        EmuStats::recordCompaction(last_sst_file->pages.size(), DiskMetaFile::getLevelEntryCount(last_sst_file->file_level));
-
         last_sst_file->min_sort_key = getMinKeyFromSSTFile(last_sst_file);
         last_sst_file->max_sort_key = getMaxKeyFromSSTFile(last_sst_file);
         return last_sst_file;
@@ -662,6 +678,8 @@ namespace tree_builder
           for (Page *empty_page : empty_pages)
           {
             start_sst_file->pages.erase(std::remove(start_sst_file->pages.begin(), start_sst_file->pages.end(), empty_page));
+            delete empty_page;
+            empty_page = nullptr;
           }
         }
 
@@ -683,6 +701,12 @@ namespace tree_builder
             prev_sst_file_pointer->next_file_ptr = start_sst_file;
           }
           level_prev_sst_file_ptrs[level_sst_file_copy.first] = start_sst_file;
+        }
+        else
+        {
+          delete start_sst_file;
+          level_start_sst_file_copies[level_sst_file_copy.first] = nullptr;
+          start_sst_file = nullptr;
         }
       }
     }
@@ -723,6 +747,7 @@ namespace tree_builder
           {
             last_level = max(last_level, level_itr->getLevel());
             level_start_sst_file_copies[level_itr->getLevel()] = new SSTFile(*(level_itr->getCurrentSSTFile()));
+            level_start_old_sst_file[level_itr->getLevel()] = level_itr->getCurrentSSTFile();
             level_prev_sst_file_ptrs[level_itr->getLevel()] = level_itr->getPrevSSTFile();
             level_iterators_queue.push(level_itr);
           }
@@ -737,7 +762,45 @@ namespace tree_builder
       return nullptr;
     }
 
-    virtual ~RangeQueryDrivenCompactionIterator() {}
+    virtual ~RangeQueryDrivenCompactionIterator()
+    {
+      for (auto level_itr_ : level_iterators_)
+      {
+        delete level_itr_;
+      }
+      level_iterators_.clear();
+
+      for (auto entry : valid_entries)
+      {
+        delete entry;
+      }
+      valid_entries.clear();
+
+      while (!level_iterators_queue.empty())
+      {
+        delete level_iterators_queue.top();
+        level_iterators_queue.pop();
+      }
+
+      for (auto &entry : level_prev_sst_file_ptrs)
+      {
+        delete entry.second;
+      }
+
+      level_prev_sst_file_ptrs.clear();
+      for (auto &entry : level_start_sst_file_copies)
+      {
+        delete entry.second;
+      }
+
+      level_start_sst_file_copies.clear();
+      for (auto &entry : level_start_old_sst_file)
+      {
+        delete entry.second;
+      }
+
+      level_start_old_sst_file.clear();
+    }
   };
 } // namespace
 

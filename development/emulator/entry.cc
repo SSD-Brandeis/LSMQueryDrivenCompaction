@@ -21,3 +21,15 @@ bool Entry::operator==(const Entry &other)
     }
     return false;
 }
+
+Entry::Entry(Entry &&other) noexcept
+    : entry_type(std::move(other.entry_type)),
+      key(std::move(other.key)),
+      value(std::move(other.value)),
+      timetag(std::move(other.timetag))
+{
+    other.entry_type = EntryType::NO_TYPE;
+    other.key = "";
+    other.value = "";
+    other.timetag = 0;
+}

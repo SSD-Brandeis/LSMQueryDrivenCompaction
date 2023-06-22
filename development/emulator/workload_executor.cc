@@ -426,33 +426,43 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
     }
   }
 
-  LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
-  first_level->begin();
-
-  if (*first_level != first_level->end())
-  {
-    level_its.push_back(first_level);
-  }
-
   // If only one level has data for the range query always do state of the art
   if (level_its.size() == 1 or !_env->enable_rq_compaction)
   {
+    LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
+    first_level->begin();
+
+    if (*first_level != first_level->end())
+    {
+      level_its.push_back(first_level);
+    }
+
     if (MemoryBuffer::verbosity == 2)
     {
       std::cout << "Doing Normal Range Query This Time ..." << std::endl;
     }
     RangeIterator *merge_itr = new RangeQueryIterator(level_its, start_key, end_key);
+    EmuStats::recordVanillaCompaction();
 
     return merge_itr;
   }
   else
   {
+    LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
+    first_level->begin();
+
+    if (*first_level != first_level->end())
+    {
+      level_its.push_back(first_level);
+    }
+
     // Do the range query compaction
     if (MemoryBuffer::verbosity == 2)
     {
       std::cout << "Doing Range Query Driven Compaction This Time ..." << std::endl;
     }
     RangeIterator *merge_itr = new RangeQueryDrivenCompactionIterator(level_its, start_key, end_key);
+    EmuStats::recordRQDCompaction();
 
     return merge_itr;
   }

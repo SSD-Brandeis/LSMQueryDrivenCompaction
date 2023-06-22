@@ -32,9 +32,17 @@ namespace emulator
         // total size of data written
         static int total_entries_written;
 
+        // vanilla compaction
+        static int total_vanilla_compaction;
+
+        // RQC compaction
+        static int total_rqd_compaction;
+
     public:
         static void recordBufferFlush();
         static void recordTrivialFileMove();
+        static void recordVanillaCompaction();
+        static void recordRQDCompaction();
         static void recordCompaction(int page_count, int entries_count);
         static void recordFileFlushRangeQuery(int page_count, int entries_count);
 

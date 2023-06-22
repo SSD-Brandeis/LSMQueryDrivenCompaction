@@ -74,7 +74,6 @@ inline void showProgress(const uint32_t &workload_size, const uint32_t &counter)
 
 int main(int argc, char *argvx[])
 {
-
   EmuEnv *_env = EmuEnv::getInstance();
 
   // parse the command line arguments
@@ -86,9 +85,15 @@ int main(int argc, char *argvx[])
   // Issuing INSERTS
   if (_env->num_inserts > 0)
   {
-    // generate_workload(argc, argvx);
+    ifstream workload_file;
+    workload_file.open("workload.txt");
+    if (!workload_file)
+    {
+      workload_file.close();
+      generate_workload(argc, argvx);
 
-    // std::cout << "Workload Generated!" << std::endl;
+      std::cout << "Workload Generated!" << std::endl;
+    }
 
     std::cerr << "Issuing inserts ... " << std::endl
               << std::flush;
@@ -100,17 +105,17 @@ int main(int argc, char *argvx[])
       int s = runWorkload(_env);
       std::cout << "Insert complete ... " << std::endl
                 << std::flush;
-      DiskMetaFile::printAllEntries(1);
+      // DiskMetaFile::printAllEntries(1);
+      // MemoryBuffer::getCurrentBufferStatistics();
+      // DiskMetaFile::getMetaStatistics();
+
+      // if (MemoryBuffer::verbosity == 1 || MemoryBuffer::verbosity == 2 || MemoryBuffer::verbosity == 3)
+      // {
+      // DiskMetaFile::printAllEntries(only_file_meta_data);
       MemoryBuffer::getCurrentBufferStatistics();
       DiskMetaFile::getMetaStatistics();
-
-      if (MemoryBuffer::verbosity == 1 || MemoryBuffer::verbosity == 2 || MemoryBuffer::verbosity == 3)
-      {
-        DiskMetaFile::printAllEntries(only_file_meta_data);
-        MemoryBuffer::getCurrentBufferStatistics();
-        DiskMetaFile::getMetaStatistics();
-        printEmulationOutput(_env);
-      }
+      printEmulationOutput(_env);
+      // }
     }
   }
   return 0;
@@ -127,7 +132,7 @@ int runWorkload(EmuEnv *_env)
   assert(workload_file);
   int counter = 0;
   std::chrono::time_point<std::chrono::system_clock> rquery_start, rquery_end;
-  std::chrono::duration<double> total_rquery_time_elapsed {0};
+  std::chrono::duration<double> total_rquery_time_elapsed{0};
 
   while (!workload_file.eof())
   {
@@ -152,16 +157,16 @@ int runWorkload(EmuEnv *_env)
     case 'Q':
       workload_file >> sortkey;
       result = workload_executer.get(sortkey);
-      std::cout << "Point Query for Key : " << sortkey
-                << "\n Value : " << result << std::endl;
+      // std::cout << "Point Query for Key : " << sortkey
+      //           << "\n Value : " << result << std::endl;
       break;
     case 'S':
-      DiskMetaFile::printAllEntries(0);
-      DiskMetaFile::getMetaStatistics();
+      // DiskMetaFile::printAllEntries(0);
+      // DiskMetaFile::getMetaStatistics();
 
       workload_file >> start_sortkey >> end_sortkey;
-      std::cout << "Range Query from Start Key : " << start_sortkey
-                << " End Key : " << end_sortkey << std::endl;
+      // std::cout << "Range Query from Start Key : " << start_sortkey
+      //           << " End Key : " << end_sortkey << std::endl;
 
       rquery_start = std::chrono::system_clock::now();
       int entries_count_before = DiskMetaFile::getTotalEntriesCount();
@@ -170,29 +175,31 @@ int runWorkload(EmuEnv *_env)
       for (auto it = range_iterator->begin(); range_iterator->isValid(); range_iterator->next())
       {
         const Entry &entry = **it;
-        std::cout << "Key: " << entry.getKey() << " Value: " << entry.getValue() << std::endl;
+        // std::cout << "Key: " << entry.getKey() << " Value: " << entry.getValue() << std::endl;
       }
 
       rquery_end = std::chrono::system_clock::now();
       total_rquery_time_elapsed += rquery_end - rquery_start;
       int entries_count_after = DiskMetaFile::getTotalEntriesCount();
       EmuStats::recordRangeQueryStats(std::make_pair(entries_count_before, entries_count_after), total_rquery_time_elapsed);
-      std::cout << "End Range Query from Start Key : " << start_sortkey
-                << " End Key : " << end_sortkey << std::endl;
-      DiskMetaFile::printAllEntries(0);
-      DiskMetaFile::getMetaStatistics();
+      // std::cout << "End Range Query from Start Key : " << start_sortkey
+      //           << " End Key : " << end_sortkey << std::endl;
+      // DiskMetaFile::printAllEntries(0);
+      // DiskMetaFile::getMetaStatistics();
       break;
     }
     instruction = '\0';
     counter++;
-    if (!(counter % (_env->num_inserts / 100)))
+    if (MemoryBuffer::verbosity == 2)
     {
-      showProgress(_env->num_inserts, counter);
+      if (!(counter % (_env->num_inserts / 100)))
+      {
+        showProgress(_env->num_inserts, counter);
+      }
     }
   }
 
   EmuStats::print();
-
   return 1;
 }
 

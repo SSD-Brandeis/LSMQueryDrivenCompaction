@@ -29,6 +29,9 @@ using namespace std;
 using namespace tree_builder;
 using namespace workload_exec;
 
+// std::string workload_path = "/Users/shubham/LSMQueryDrivenCompaction/development/emulator/";
+std::string workload_path = "";
+
 /*
  * DECLARATIONS
  */
@@ -86,7 +89,7 @@ int main(int argc, char *argvx[])
   if (_env->num_inserts > 0)
   {
     ifstream workload_file;
-    workload_file.open("workload.txt");
+    workload_file.open(workload_path + "workload.txt");
     if (!workload_file)
     {
       workload_file.close();
@@ -128,7 +131,7 @@ int runWorkload(EmuEnv *_env)
   WorkloadExecutor workload_executer;
   // reading from file
   ifstream workload_file;
-  workload_file.open("workload.txt");
+  workload_file.open(workload_path + "workload.txt");
   assert(workload_file);
   int counter = 0;
   std::chrono::time_point<std::chrono::system_clock> rquery_start, rquery_end;

@@ -353,7 +353,6 @@ namespace tree_builder
     int last_level_;
     std::vector<LevelIterator *> level_iterators_;
     std::unordered_map<int, SSTFile *> level_start_sst_file_copies; // level to start_sst_file copy map
-    std::unordered_map<int, SSTFile *> level_start_old_sst_file;    // level to start_sst_file copy map
     std::unordered_map<int, SSTFile *> level_prev_sst_file_ptrs;    // this would keep prev_file_ptr for each level
     vector<Entry *> valid_entries;
     int entries_per_file = _env->entries_per_page * _env->buffer_size_in_pages;
@@ -385,22 +384,6 @@ namespace tree_builder
       {
         int file_count = ceil(valid_entries.size() / (entries_per_file * 1.0));
         level_prev_sst_file_ptrs[last_level_] = trivialFileMoveForIterator(level_prev_sst_file_ptrs[last_level_], valid_entries, last_level_, file_count, entries_per_file);
-      }
-
-      // // delete older files
-      for (auto level_itr : this->level_iterators_)
-      {
-        if (level_itr->getLevel() != 0)
-        {
-          auto old_sst_file = level_start_old_sst_file[level_itr->getLevel()];
-          while (old_sst_file != nullptr && old_sst_file != level_itr->getCurrentSSTFile())
-          {
-            auto tmp = old_sst_file->next_file_ptr;
-            delete old_sst_file;
-            old_sst_file = nullptr;
-            old_sst_file = tmp;
-          }
-        }
       }
 
       // connect pointer back to the newly created files
@@ -747,7 +730,6 @@ namespace tree_builder
           {
             last_level = max(last_level, level_itr->getLevel());
             level_start_sst_file_copies[level_itr->getLevel()] = new SSTFile(*(level_itr->getCurrentSSTFile()));
-            level_start_old_sst_file[level_itr->getLevel()] = level_itr->getCurrentSSTFile();
             level_prev_sst_file_ptrs[level_itr->getLevel()] = level_itr->getPrevSSTFile();
             level_iterators_queue.push(level_itr);
           }
@@ -794,12 +776,6 @@ namespace tree_builder
       }
 
       level_start_sst_file_copies.clear();
-      for (auto &entry : level_start_old_sst_file)
-      {
-        delete entry.second;
-      }
-
-      level_start_old_sst_file.clear();
     }
   };
 } // namespace

@@ -6,6 +6,9 @@
 
 namespace emulator
 {
+    // std::string rq_path = "/Users/shubham/LSMQueryDrivenCompaction/development/emulator/";
+    std::string rq_path = "";
+
     int EmuStats::num_buffer_flush = 0;
     int EmuStats::num_trivial_file_moves = 0;
     int EmuStats::num_compaction = 0;
@@ -87,11 +90,11 @@ namespace emulator
         std::ofstream outputFile;
         if (_env->enable_rq_compaction)
         {
-            outputFile.open("newRQTime.csv");
+            outputFile.open(rq_path + "newRQTime.csv");
         }
         else
         {
-            outputFile.open("oldRQTime.csv");
+            outputFile.open(rq_path + "oldRQTime.csv");
         }
 
         for (int i = 0; i < EmuStats::num_entries_before_after_range_query.size(); i++)

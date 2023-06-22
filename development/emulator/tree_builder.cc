@@ -501,11 +501,11 @@ void DiskMetaFile::getMetaStatistics()
 
   std::cout << "\nTotal number of entries: " << DiskMetaFile::getTotalEntriesCount() << "\n"
             << std::endl;
-  std::cout << "L\tfile_count\tentry_count\t " << std::endl;
+  std::cout << "L\tfile_count\tentry_count\t\tSaturation" << std::endl;
   for (int i : DiskMetaFile::getNonEmptyLevels())
   {
     std::cout << i << "\t" << setfill(' ') << setw(8) << DiskMetaFile::getLevelFileCount(i) << "\t\t"
-              << DiskMetaFile::getLevelEntryCount(i) << (DiskMetaFile::level_max_size[i] / (DiskMetaFile::getLevelEntryCount(i) * 8)) << std::endl;
+              << DiskMetaFile::getLevelEntryCount(i) << "\t\t" << (((float)DiskMetaFile::getLevelEntryCount(i) * 8 / DiskMetaFile::level_max_size[i])) << std::endl;
   }
   std::cout << "***************************************************************************************" << std::endl;
 }

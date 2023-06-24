@@ -30,6 +30,7 @@
 // using namespace std;
 
 // temporary global variables -- are to be programmed as commandline args
+// std::string file_path = "/Users/shubham/LSMQueryDrivenCompaction/development/emulator/";
 std::string file_path = "";
 long insert_count = 0;
 long update_count = 0;

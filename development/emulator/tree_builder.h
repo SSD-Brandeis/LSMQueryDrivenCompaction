@@ -7,6 +7,7 @@
 #include "emu_environment.h"
 #include "memtable.h"
 #include "sstfile.h"
+#include "emulator_stats.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,7 @@
 #include <unordered_map>
 
 using namespace std;
+using namespace emulator;
 
 namespace tree_builder
 {
@@ -66,6 +68,7 @@ namespace tree_builder
     static void getMetaStatistics();
     static int printAllEntries(int only_file_meta_data);
     static int getTotalPageCount();
+    static int getTotalEntriesCount();
     static int clearAllEntries();
 
     static SSTFile *level_head[32];
@@ -410,6 +413,7 @@ namespace tree_builder
             else
             {
               level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr = processLastFileOfEachLevelInRange(level_itr->getCurrentSSTFile());
+              EmuStats::recordCompaction(level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr->pages.size(), DiskMetaFile::getLevelEntryCount(level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr->file_level));
             }
           }
         }
@@ -657,6 +661,8 @@ namespace tree_builder
           for (Page *empty_page : empty_pages)
           {
             start_sst_file->pages.erase(std::remove(start_sst_file->pages.begin(), start_sst_file->pages.end(), empty_page));
+            delete empty_page;
+            empty_page = nullptr;
           }
         }
 
@@ -665,6 +671,8 @@ namespace tree_builder
         {
           start_sst_file->min_sort_key = getMinKeyFromSSTFile(start_sst_file);
           start_sst_file->max_sort_key = getMaxKeyFromSSTFile(start_sst_file);
+
+          EmuStats::recordCompaction(start_sst_file->pages.size(), DiskMetaFile::getLevelEntryCount(start_sst_file->file_level));
 
           SSTFile *prev_sst_file_pointer = level_prev_sst_file_ptrs[level_sst_file_copy.first];
           if (prev_sst_file_pointer == nullptr)
@@ -676,6 +684,12 @@ namespace tree_builder
             prev_sst_file_pointer->next_file_ptr = start_sst_file;
           }
           level_prev_sst_file_ptrs[level_sst_file_copy.first] = start_sst_file;
+        }
+        else
+        {
+          delete start_sst_file;
+          level_start_sst_file_copies[level_sst_file_copy.first] = nullptr;
+          start_sst_file = nullptr;
         }
       }
     }
@@ -730,7 +744,39 @@ namespace tree_builder
       return nullptr;
     }
 
-    virtual ~RangeQueryDrivenCompactionIterator() {}
+    virtual ~RangeQueryDrivenCompactionIterator()
+    {
+      for (auto level_itr_ : level_iterators_)
+      {
+        delete level_itr_;
+      }
+      level_iterators_.clear();
+
+      for (auto entry : valid_entries)
+      {
+        delete entry;
+      }
+      valid_entries.clear();
+
+      while (!level_iterators_queue.empty())
+      {
+        delete level_iterators_queue.top();
+        level_iterators_queue.pop();
+      }
+
+      for (auto &entry : level_prev_sst_file_ptrs)
+      {
+        delete entry.second;
+      }
+
+      level_prev_sst_file_ptrs.clear();
+      for (auto &entry : level_start_sst_file_copies)
+      {
+        delete entry.second;
+      }
+
+      level_start_sst_file_copies.clear();
+    }
   };
 } // namespace
 

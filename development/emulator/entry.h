@@ -34,6 +34,10 @@ public:
     Entry(std::string key, std::string value);
     Entry(std::string key, std::string value, EntryType entry_type); // Constructor
     Entry(const Entry &other);                                       // copy constructor
+    Entry(Entry &&other) noexcept;                                      // move constructor
+
+    Entry& operator=(const Entry& other) = default; // Copy assignment operator
+    Entry& operator=(Entry&& other) noexcept;       // Move assignment operator
 
     bool operator==(const Entry &other); // comparison operator
     EntryType getType()

@@ -82,6 +82,10 @@ SSTFile *Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flus
 
     entries_to_flush.erase(entries_to_flush.begin(), entries_to_flush.begin() + entries_per_file);
     SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
+    if (level_to_flush_in != 1)
+    {
+      EmuStats::recordTrivialFileMove();
+    }
 
     if (moving_head == nullptr)
     {
@@ -185,6 +189,8 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
     }
 
     SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
+    EmuStats::recordCompaction(new_file->pages.size(), vector_to_populate_file.size());
+
     if (make_first_file_head)
     {
       prev_file_ptr = new_file;
@@ -368,6 +374,7 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
 {
   // Create a Dummy level out of buffer entries to perform the range query
   EmuEnv *_env = EmuEnv::getInstance();
+
   int level_to_flush_in = 0;
 
   if (MemoryBuffer::buffer->entries.size() > 0)
@@ -419,33 +426,43 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
     }
   }
 
-  LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
-  first_level->begin();
-
-  if (*first_level != first_level->end())
-  {
-    level_its.push_back(first_level);
-  }
-
   // If only one level has data for the range query always do state of the art
   if (level_its.size() == 1 or !_env->enable_rq_compaction)
   {
+    LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
+    first_level->begin();
+
+    if (*first_level != first_level->end())
+    {
+      level_its.push_back(first_level);
+    }
+
     if (MemoryBuffer::verbosity == 2)
     {
       std::cout << "Doing Normal Range Query This Time ..." << std::endl;
     }
     RangeIterator *merge_itr = new RangeQueryIterator(level_its, start_key, end_key);
+    EmuStats::recordVanillaCompaction();
 
     return merge_itr;
   }
   else
   {
+    LevelIterator *first_level = new LevelIterator(level_to_flush_in, start_key); // TODO: Can also flush this once the range query is done or even when iterator is created
+    first_level->begin();
+
+    if (*first_level != first_level->end())
+    {
+      level_its.push_back(first_level);
+    }
+
     // Do the range query compaction
     if (MemoryBuffer::verbosity == 2)
     {
       std::cout << "Doing Range Query Driven Compaction This Time ..." << std::endl;
     }
     RangeIterator *merge_itr = new RangeQueryDrivenCompactionIterator(level_its, start_key, end_key);
+    EmuStats::recordRQDCompaction();
 
     return merge_itr;
   }

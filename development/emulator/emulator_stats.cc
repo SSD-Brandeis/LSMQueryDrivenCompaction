@@ -6,19 +6,16 @@
 
 namespace emulator
 {
-    // std::string rq_path = "/Users/shubham/LSMQueryDrivenCompaction/development/emulator/";
-    std::string rq_path = "";
-
-    int EmuStats::num_buffer_flush = 0;
-    int EmuStats::num_trivial_file_moves = 0;
-    int EmuStats::num_compaction = 0;
-    int EmuStats::num_page_flushed = 0;
-    int EmuStats::total_entries_written = 0;
-    int EmuStats::num_files_flush_range_query = 0;
-    int EmuStats::total_vanilla_compaction = 0;
-    int EmuStats::total_rqd_compaction = 0;
-    std::vector<std::pair<int /* before */, int /* after */>> EmuStats::num_entries_before_after_range_query;
-    std::vector<std::chrono::duration<double>> EmuStats::time_duration_for_range_query;
+    long long EmuStats::num_buffer_flush = 0;
+    long long EmuStats::num_trivial_file_moves = 0;
+    long long EmuStats::num_compaction = 0;
+    long long EmuStats::num_page_flushed = 0;
+    long long EmuStats::total_entries_written = 0;
+    long long EmuStats::num_files_flush_range_query = 0;
+    long long EmuStats::total_vanilla_compaction = 0;
+    long long EmuStats::total_rqd_compaction = 0;
+    // std::vector<std::pair<int /* before */, int /* after */>> EmuStats::num_entries_before_after_range_query;
+    // std::vector<std::chrono::duration<double>> EmuStats::time_duration_for_range_query;
 
     void EmuStats::recordBufferFlush()
     {
@@ -44,11 +41,11 @@ namespace emulator
         EmuStats::total_entries_written += entries_count;
     }
 
-    void EmuStats::recordRangeQueryStats(std::pair<int /* before */, int /* after */> entries_counts, std::chrono::duration<double> time_taken)
-    {
-        EmuStats::num_entries_before_after_range_query.push_back(entries_counts);
-        EmuStats::time_duration_for_range_query.push_back(time_taken);
-    }
+    // void EmuStats::recordRangeQueryStats(std::pair<int /* before */, int /* after */> entries_counts, std::chrono::duration<double> time_taken)
+    // {
+    //     EmuStats::num_entries_before_after_range_query.push_back(entries_counts);
+    //     EmuStats::time_duration_for_range_query.push_back(time_taken);
+    // }
 
     void EmuStats::recordVanillaCompaction()
     {
@@ -86,28 +83,5 @@ namespace emulator
         // std::cout << "\t\tBefore Entries\t\t"
         //           << "\tAfter Entries\t\t"
         //           << "\tTime Taken" << std::endl;
-
-        std::ofstream outputFile;
-        if (_env->enable_rq_compaction)
-        {
-            outputFile.open(rq_path + "newRQTime.csv");
-        }
-        else
-        {
-            outputFile.open(rq_path + "oldRQTime.csv");
-        }
-
-        for (int i = 0; i < EmuStats::num_entries_before_after_range_query.size(); i++)
-        {
-            auto entries_pair = EmuStats::num_entries_before_after_range_query[i];
-            auto time_taken = EmuStats::time_duration_for_range_query[i];
-
-            // std::cout << "\t\t" << entries_pair.first << "\t\t\t\t\t\t" << entries_pair.second << "\t\t\t\t\t\t" << time_taken.count() << std::endl;
-            outputFile << entries_pair.first << "," << entries_pair.second << "," << time_taken.count() << std::endl;
-        }
-        outputFile << std::endl;
-
-        // close the file
-        outputFile.close();
     }
 }

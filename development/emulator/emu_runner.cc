@@ -29,9 +29,6 @@ using namespace std;
 using namespace tree_builder;
 using namespace workload_exec;
 
-// std::string workload_path = "/Users/shubham/LSMQueryDrivenCompaction/development/emulator/";
-std::string workload_path = "";
-
 /*
  * DECLARATIONS
  */
@@ -89,7 +86,7 @@ int main(int argc, char *argvx[])
   if (_env->num_inserts > 0)
   {
     ifstream workload_file;
-    workload_file.open(workload_path + "workload.txt");
+    workload_file.open("workload.txt");
     if (!workload_file)
     {
       workload_file.close();
@@ -131,9 +128,19 @@ int runWorkload(EmuEnv *_env)
   WorkloadExecutor workload_executer;
   // reading from file
   ifstream workload_file;
-  workload_file.open(workload_path + "workload.txt");
+  workload_file.open("workload.txt");
   assert(workload_file);
   int counter = 0;
+  std::ofstream outputFile;
+  if (_env->enable_rq_compaction)
+  {
+    outputFile.open( "newRQTime.csv");
+  }
+  else
+  {
+    outputFile.open("oldRQTime.csv");
+  }
+
   std::chrono::time_point<std::chrono::system_clock> rquery_start, rquery_end;
   std::chrono::duration<double> total_rquery_time_elapsed{0};
 
@@ -168,8 +175,6 @@ int runWorkload(EmuEnv *_env)
       // DiskMetaFile::getMetaStatistics();
 
       workload_file >> start_sortkey >> end_sortkey;
-      // std::cout << "Range Query from Start Key : " << start_sortkey
-      //           << " End Key : " << end_sortkey << std::endl;
 
       rquery_start = std::chrono::system_clock::now();
       int entries_count_before = DiskMetaFile::getTotalEntriesCount();
@@ -184,11 +189,8 @@ int runWorkload(EmuEnv *_env)
       rquery_end = std::chrono::system_clock::now();
       total_rquery_time_elapsed += rquery_end - rquery_start;
       int entries_count_after = DiskMetaFile::getTotalEntriesCount();
-      EmuStats::recordRangeQueryStats(std::make_pair(entries_count_before, entries_count_after), total_rquery_time_elapsed);
-      // std::cout << "End Range Query from Start Key : " << start_sortkey
-      //           << " End Key : " << end_sortkey << std::endl;
-      // DiskMetaFile::printAllEntries(0);
-      // DiskMetaFile::getMetaStatistics();
+      outputFile << entries_count_before << "," << entries_count_before << "," << total_rquery_time_elapsed.count() << std::endl;
+
       break;
     }
     instruction = '\0';
@@ -202,6 +204,7 @@ int runWorkload(EmuEnv *_env)
     }
   }
 
+  outputFile.close();
   EmuStats::print();
   return 1;
 }

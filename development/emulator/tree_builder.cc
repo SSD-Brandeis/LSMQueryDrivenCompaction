@@ -16,6 +16,7 @@
 #include "workload_executor.h"
 #include "memtable.h"
 #include "vector_memtable.h"
+#include "query_stats.h"
 
 using namespace std;
 using namespace tree_builder;
@@ -104,7 +105,6 @@ int MemoryBuffer::initiateBufferFlush(int level_to_flush_in)
   if (MemoryBuffer::verbosity == 2)
     cout << "Calling sort and write from Buffer............................" << endl;
   Utility::sortAndWrite(MemoryBuffer::buffer->entries, level_to_flush_in);
-  EmuStats::recordBufferFlush();
   MemoryBuffer::buffer_flush_count++;
   return 1;
 }
@@ -221,6 +221,34 @@ int DiskMetaFile::checkOverlapping(SSTFile *file, int next_level)
   return overlap_files_count;
 }
 
+void DiskMetaFile::shiftLevelAndIncreaseSize(int level)
+{
+  int start_level = level + 1;
+  SSTFile *last_level = DiskMetaFile::level_head[start_level];
+
+  while (last_level)
+  {
+    last_level = DiskMetaFile::level_head[start_level + 1];
+    start_level += 1;
+  }
+
+  while (start_level > level)
+  {
+    if (MemoryBuffer::verbosity >= 1)
+    {
+      std::cout << "Shifting level: " << start_level - 1 << " to level: " << start_level << std::endl;
+    }
+    DiskMetaFile::level_head[start_level] = DiskMetaFile::level_head[start_level - 1];
+    start_level -= 1;
+  }
+
+  if (MemoryBuffer::verbosity >= 1)
+  {
+    std::cout << "Setting level: " << level << " to NULL" << std::endl;
+  }
+  DiskMetaFile::level_head[level] = nullptr;
+}
+
 int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
 {
   int entry_count_in_level = getLevelEntryCount(level);
@@ -233,68 +261,76 @@ int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
     if (MemoryBuffer::verbosity == 2)
       std::cout << "Saturation Reached......" << endl;
 
-    // Push the file with minimum overlapping into the next level
-    SSTFile *level_head = DiskMetaFile::getSSTFileHead(level);
-    SSTFile *moving_head = level_head;
-    // SSTFile *moving_head_prev = level_head;
-    SSTFile *min_overlap_file = level_head;
-    int overlap;
-    int min_overlap = INT32_MAX;
-    // cout << "Level: " << level << " Overlap Count : " << endl;
-    while (moving_head)
+    if (_env->enable_level_shifting && DiskMetaFile::level_head[level+1] == nullptr)
     {
-      overlap = DiskMetaFile::checkOverlapping(moving_head, level + 1);
-      // cout << overlap << endl;
-      if (overlap < min_overlap)
+      DiskMetaFile::shiftLevelAndIncreaseSize(level);
+    }
+
+    else
+    {
+      // Push the file with minimum overlapping into the next level
+      SSTFile *level_head = DiskMetaFile::getSSTFileHead(level);
+      SSTFile *moving_head = level_head;
+      // SSTFile *moving_head_prev = level_head;
+      SSTFile *min_overlap_file = level_head;
+      int overlap;
+      int min_overlap = INT32_MAX;
+      // cout << "Level: " << level << " Overlap Count : " << endl;
+      while (moving_head)
       {
-        min_overlap = overlap;
-        min_overlap_file = moving_head;
+        overlap = DiskMetaFile::checkOverlapping(moving_head, level + 1);
+        // cout << overlap << endl;
+        if (overlap < min_overlap)
+        {
+          min_overlap = overlap;
+          min_overlap_file = moving_head;
+        }
+        moving_head = moving_head->next_file_ptr;
       }
-      moving_head = moving_head->next_file_ptr;
-    }
 
-    // DiskMetaFile::setSSTFileHead(level_head->next_file_ptr, level);
+      // DiskMetaFile::setSSTFileHead(level_head->next_file_ptr, level);
 
-    // If that file is level head, update head
-    if (min_overlap_file == level_head)
-    {
-      DiskMetaFile::setSSTFileHead(level_head->next_file_ptr, level);
-    }
-
-    moving_head = level_head;
-    // moving_head_prev = level_head;
-
-    while (moving_head)
-    {
-      if (moving_head->next_file_ptr == min_overlap_file)
+      // If that file is level head, update head
+      if (min_overlap_file == level_head)
       {
-        moving_head->next_file_ptr = min_overlap_file->next_file_ptr;
+        DiskMetaFile::setSSTFileHead(level_head->next_file_ptr, level);
       }
-      moving_head = moving_head->next_file_ptr;
-    }
 
-    // Converting to vector (only that file)
-    vector<Entry *> vector_to_compact;
+      moving_head = level_head;
+      // moving_head_prev = level_head;
 
-    for (int k = 0; k < min_overlap_file->pages.size(); k++)
-    {
-      Page *page = min_overlap_file->pages[k];
-      for (int m = 0; m < page->entries_vector.size(); m++)
+      while (moving_head)
       {
-        vector_to_compact.push_back(&page->entries_vector[m]);
+        if (moving_head->next_file_ptr == min_overlap_file)
+        {
+          moving_head->next_file_ptr = min_overlap_file->next_file_ptr;
+        }
+        moving_head = moving_head->next_file_ptr;
       }
-    }
 
-    // Sending it to next level.
-    if (MemoryBuffer::verbosity == 2)
-    {
-      cout << "Level : " << level << " Calling sort and write from Disk Saturation Checker............................" << endl;
-      for (int j = 0; j < vector_to_compact.size(); ++j)
-        std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getValue() << " >"
-                  << "\t" << std::endl;
-    }
+      // Converting to vector (only that file)
+      vector<Entry *> vector_to_compact;
 
-    Utility::sortAndWrite(vector_to_compact, level + 1);
+      for (int k = 0; k < min_overlap_file->pages.size(); k++)
+      {
+        Page *page = min_overlap_file->pages[k];
+        for (int m = 0; m < page->entries_vector.size(); m++)
+        {
+          vector_to_compact.push_back(&page->entries_vector[m]);
+        }
+      }
+
+      // Sending it to next level.
+      if (MemoryBuffer::verbosity == 2)
+      {
+        cout << "Level : " << level << " Calling sort and write from Disk Saturation Checker............................" << endl;
+        for (int j = 0; j < vector_to_compact.size(); ++j)
+          std::cout << "< " << vector_to_compact[j]->getKey() << ",  " << vector_to_compact[j]->getValue() << " >"
+                    << "\t" << std::endl;
+      }
+
+      Utility::sortAndWrite(vector_to_compact, level + 1);
+    }
 
     // Check again to the same level
     entry_count_in_level = getLevelEntryCount(level);
@@ -591,7 +627,7 @@ int DiskMetaFile::printAllEntries(int only_file_meta_data)
         break;
       }
       std::cout << "\t\t\t\tEntry : " << i << " (Sort_Key : " << MemoryBuffer::buffer->entries[i]->getKey()
-                << ", Value : " << MemoryBuffer::buffer->entries[i]->getValue() 
+                << ", Value : " << MemoryBuffer::buffer->entries[i]->getValue()
                 << ", Type : " << type_name << ")" << std::endl;
     }
   }
@@ -705,7 +741,12 @@ namespace tree_builder
 
       entries_to_flush.erase(entries_to_flush.begin(), entries_to_flush.begin() + entries_per_file);
       SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
-      EmuStats::recordFileFlushRangeQuery(new_file->pages.size(), vector_to_populate_file.size());
+
+      qstats->num_files_written_during_range_query += 1;
+      std::for_each(new_file->pages.begin(), new_file->pages.end(), [](Page *page)
+                    {
+        qstats->num_pages_written_during_range_query += 1;
+        qstats->num_entries_written_during_range_query += page->entries_vector.size(); });
 
       if (moving_head == nullptr)
       {

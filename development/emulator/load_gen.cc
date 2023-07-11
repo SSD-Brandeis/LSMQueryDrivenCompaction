@@ -939,6 +939,7 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<int> PQ_cmd(group1, "PQ", "Count of non-empty point queries [def:1000000]", {'K', "PQ"});
     args::ValueFlag<int> SRQ_cmd(group1, "SRQ", "Count of short range queries [def:1]", {'L', "SRQ"});
     args::ValueFlag<int> enable_rq_compaction_cmd(group1, "rc-on", "Enable Range Query Compaction [def:1]", {"rc-on", "enable_rq_compaction"});
+    args::ValueFlag<int> enable_level_shifting_cmd(group1, "level-shift-on", "Enable level shifting upon saturation [def:0]", {"level-shift-on", "enable_level_shifting"});
 
     args::ValueFlag<int> delete_key_cmd(group1, "delete_key", "Delete all keys less than DK [def:700]", {'D', "delete_key"});
     args::ValueFlag<int> range_start_key_cmd(group1, "range_start_key", "Starting key of the range query [def:2000]", {'S', "range_start_key"});

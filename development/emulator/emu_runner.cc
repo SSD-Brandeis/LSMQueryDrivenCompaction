@@ -24,6 +24,7 @@
 #include "workload_executor.h"
 #include "workload_generator.h"
 #include "query_runner.h"
+#include "query_stats.h"
 
 using namespace std;
 using namespace tree_builder;
@@ -38,6 +39,8 @@ int Query::range_end_key;
 int Query::sec_range_start_key;
 int Query::sec_range_end_key;
 int Query::iterations_point_query;
+
+QueryStats *qstats = QueryStats::getQueryStats();
 
 // long inserts(EmuEnv* _env);
 int parse_arguments2(int argc, char *argvx[], EmuEnv *_env);
@@ -134,18 +137,22 @@ int runWorkload(EmuEnv *_env)
   std::ofstream outputFile;
   if (_env->enable_rq_compaction)
   {
-    outputFile.open( "newRQTime.csv");
+    outputFile.open("newRQTime.csv");
   }
   else
   {
     outputFile.open("oldRQTime.csv");
   }
 
-  std::chrono::time_point<std::chrono::system_clock> rquery_start, rquery_end;
-  std::chrono::duration<double> total_rquery_time_elapsed{0};
+  std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+  // std::chrono::duration<double> total_rquery_time_elapsed{0};
+  long long number = 0;
 
   while (!workload_file.eof())
   {
+    qstats->query_number = number++;
+    qstats->entries_count_before_query = DiskMetaFile::getTotalEntriesCount();
+
     char instruction;
     std::string sortkey;
     std::string value;
@@ -157,27 +164,44 @@ int runWorkload(EmuEnv *_env)
     {
     case 'I':
     case 'U':
+      if (instruction == 'I')
+        qstats->query_type = QueryType::INSERT;
+      else
+        qstats->query_type = QueryType::UPDATE;
       workload_file >> sortkey >> value;
+      qstats->key = sortkey;
+
+      start_time = std::chrono::system_clock::now();
       workload_executer.insert(sortkey, value);
+      end_time = std::chrono::system_clock::now();
+
       break;
     case 'D':
+      qstats->query_type = QueryType::DELETE;
       workload_file >> sortkey;
+      qstats->key = sortkey;
+
+      start_time = std::chrono::system_clock::now();
       workload_executer.remove(sortkey);
+      end_time = std::chrono::system_clock::now();
+
       break;
     case 'Q':
+      qstats->query_type = QueryType::POINT;
       workload_file >> sortkey;
+      qstats->key = sortkey;
+
+      start_time = std::chrono::system_clock::now();
       result = workload_executer.get(sortkey);
-      // std::cout << "Point Query for Key : " << sortkey
-      //           << "\n Value : " << result << std::endl;
+      end_time = std::chrono::system_clock::now();
+
       break;
     case 'S':
-      // DiskMetaFile::printAllEntries(0);
-      // DiskMetaFile::getMetaStatistics();
-
+      qstats->query_type = QueryType::RANGE;
       workload_file >> start_sortkey >> end_sortkey;
+      qstats->key = sortkey;
 
-      rquery_start = std::chrono::system_clock::now();
-      int entries_count_before = DiskMetaFile::getTotalEntriesCount();
+      start_time = std::chrono::system_clock::now();
       RangeIterator *range_iterator = WorkloadExecutor::getRange(start_sortkey, end_sortkey);
 
       for (auto it = range_iterator->begin(); range_iterator->isValid(); range_iterator->next())
@@ -186,13 +210,18 @@ int runWorkload(EmuEnv *_env)
         // std::cout << "Key: " << entry.getKey() << " Value: " << entry.getValue() << std::endl;
       }
 
-      rquery_end = std::chrono::system_clock::now();
-      total_rquery_time_elapsed += rquery_end - rquery_start;
-      int entries_count_after = DiskMetaFile::getTotalEntriesCount();
-      outputFile << entries_count_before << "," << entries_count_before << "," << total_rquery_time_elapsed.count() << std::endl;
+      end_time = std::chrono::system_clock::now();
 
       break;
     }
+
+    // set total time taken and write into output file
+    qstats->total_time_taken = (std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time)).count();
+    qstats->entries_count_after_query = DiskMetaFile::getTotalEntriesCount();
+    outputFile << *qstats;
+    // qstats->print();
+    qstats->reset(); // reset the stats
+
     instruction = '\0';
     counter++;
     if (MemoryBuffer::verbosity == 2)
@@ -205,7 +234,6 @@ int runWorkload(EmuEnv *_env)
   }
 
   outputFile.close();
-  EmuStats::print();
   return 1;
 }
 
@@ -237,6 +265,7 @@ int parse_arguments2(int argc, char *argvx[], EmuEnv *_env)
   args::ValueFlag<int> PQ_cmd(group1, "PQ", "Count of non-empty point queries [def:1000000]", {'K', "PQ"});
   args::ValueFlag<int> SRQ_cmd(group1, "SRQ", "Count of short range queries [def:1]", {'L', "SRQ"});
   args::ValueFlag<int> enable_rq_compaction_cmd(group1, "rc-on", "Enable Range Query Compaction [def:1]", {"rc-on", "enable_rq_compaction"});
+  args::ValueFlag<int> enable_level_shifting_cmd(group1, "level-shift-on", "Enable level shifting upon saturation [def:0]", {"level-shift-on", "enable_level_shifting"});
 
   args::ValueFlag<int> delete_key_cmd(group1, "delete_key", "Delete all keys less than DK [def:700]", {'D', "delete_key"});
   args::ValueFlag<int> range_start_key_cmd(group1, "range_start_key", "Starting key of the range query [def:2000]", {'S', "range_start_key"});
@@ -285,6 +314,7 @@ int parse_arguments2(int argc, char *argvx[], EmuEnv *_env)
   _env->correlation = cor_cmd ? args::get(cor_cmd) : 0;
   _env->lethe_new = lethe_new_cmd ? args::get(lethe_new_cmd) : 0;
   _env->enable_rq_compaction = enable_rq_compaction_cmd ? (bool)args::get(enable_rq_compaction_cmd) : true;
+  _env->enable_level_shifting = enable_level_shifting_cmd ? (bool)args::get(enable_level_shifting_cmd) : false;
 
   _env->srd_count = SRD_cmd ? args::get(SRD_cmd) : 1;
   _env->epq_count = EPQ_cmd ? args::get(EPQ_cmd) : 1000000;

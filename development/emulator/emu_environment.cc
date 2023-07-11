@@ -34,6 +34,7 @@ EmuEnv::EmuEnv()
   srq_count = 1;
   level_count = 1;
   enable_rq_compaction = true;
+  enable_level_shifting = false;
 }
 int EmuEnv::getDeleteTileSize(int level)
 {

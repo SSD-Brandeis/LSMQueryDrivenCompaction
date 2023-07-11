@@ -14,6 +14,7 @@
 #include "emu_environment.h"
 #include "tree_builder.h"
 #include "workload_executor.h"
+#include "query_stats.h"
 
 using namespace std;
 using namespace tree_builder;
@@ -82,9 +83,13 @@ SSTFile *Utility::trivialFileMove(SSTFile *head, vector<Entry *> entries_to_flus
 
     entries_to_flush.erase(entries_to_flush.begin(), entries_to_flush.begin() + entries_per_file);
     SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
-    if (level_to_flush_in != 1)
+    if (level_to_flush_in == 1)
     {
-      EmuStats::recordTrivialFileMove();
+      qstats->num_trivial_file_move_from_buffer += 1;
+    }
+    else
+    {
+      qstats->num_trivial_file_moves += 1;
     }
 
     if (moving_head == nullptr)
@@ -108,6 +113,12 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
 {
   SSTFile *prev_file_ptr = head; // this will be used for linking previous file to new files
   SSTFile *moving_head = head;   // moving_head would move while merging
+
+  if (level_to_flush_in != 1)
+  {
+    qstats->total_num_compaction += 1;
+    qstats->total_entries_written_while_compaction += entries_to_flush.size();
+  }
 
   bool make_first_file_head = false;
 
@@ -189,7 +200,11 @@ void Utility::mergeFilesAndFlush(SSTFile *head, vector<Entry *> entries_to_flush
     }
 
     SSTFile *new_file = SSTFile::createNewSSTFile(vector_to_populate_file.size(), level_to_flush_in);
-    EmuStats::recordCompaction(new_file->pages.size(), vector_to_populate_file.size());
+    if (level_to_flush_in != 1)
+    {
+      qstats->total_num_files_written_while_compaction += 1;
+      qstats->total_num_pages_written_while_compaction += new_file->pages.size();
+    }
 
     if (make_first_file_head)
     {
@@ -292,6 +307,14 @@ void Utility::compactAndFlush(vector<Entry *> vector_to_compact, int level_to_fl
 
 void Utility::sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush_in)
 {
+  EmuEnv *_env = EmuEnv::getInstance();
+  if (level_to_flush_in == 1)
+  {
+    qstats->num_buffer_flush += 1;
+    qstats->num_page_flushed_from_buffer += _env->buffer_size_in_pages;
+    qstats->total_entries_written_buffer_flush += vector_to_compact.size();
+  }
+
   std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
   compactAndFlush(vector_to_compact, level_to_flush_in);
   int saturation = DiskMetaFile::checkAndAdjustLevelSaturation(level_to_flush_in);
@@ -442,7 +465,7 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
       std::cout << "Doing Normal Range Query This Time ..." << std::endl;
     }
     RangeIterator *merge_itr = new RangeQueryIterator(level_its, start_key, end_key);
-    EmuStats::recordVanillaCompaction();
+    qstats->total_vanilla_compaction += 1;
 
     return merge_itr;
   }
@@ -462,7 +485,7 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
       std::cout << "Doing Range Query Driven Compaction This Time ..." << std::endl;
     }
     RangeIterator *merge_itr = new RangeQueryDrivenCompactionIterator(level_its, start_key, end_key);
-    EmuStats::recordRQDCompaction();
+    qstats->total_rqd_compaction += 1;
 
     return merge_itr;
   }

@@ -7,7 +7,7 @@
 #include "emu_environment.h"
 #include "memtable.h"
 #include "sstfile.h"
-#include "emulator_stats.h"
+#include "query_stats.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,8 +19,12 @@
 using namespace std;
 using namespace emulator;
 
+extern QueryStats *qstats;
+
 namespace tree_builder
 {
+  // QueryStats *qstats = QueryStats::getQueryStats();
+
   extern SSTFile *trivialFileMoveForIterator(SSTFile *head, vector<Entry *> &entries_to_flush, int level_to_flush_in, int file_count, int entries_per_file);
   extern std::string getMinKeyFromSSTFile(SSTFile *sst_file);
   extern std::string getMaxKeyFromSSTFile(SSTFile *sst_file);
@@ -52,6 +56,7 @@ namespace tree_builder
   {
   private:
     static pair<long, long> getMatchingKeyFile(long min_key, long max_key, int key_level); //??? Definition change hobe
+    static void shiftLevelAndIncreaseSize(int level);  // This will shift level down and add an empty level at `level`
 
   public:
     // static SSTFile* head_level_1;
@@ -413,7 +418,6 @@ namespace tree_builder
             else
             {
               level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr = processLastFileOfEachLevelInRange(level_itr->getCurrentSSTFile());
-              EmuStats::recordCompaction(level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr->pages.size(), DiskMetaFile::getLevelEntryCount(level_prev_sst_file_ptrs[level_itr->getLevel()]->next_file_ptr->file_level));
             }
           }
         }
@@ -564,6 +568,13 @@ namespace tree_builder
       {
         last_sst_file->min_sort_key = getMinKeyFromSSTFile(last_sst_file);
         last_sst_file->max_sort_key = getMaxKeyFromSSTFile(last_sst_file);
+
+        qstats->num_files_written_during_range_query += 1;
+        std::for_each(last_sst_file->pages.begin(), last_sst_file->pages.end(), [](Page *page){
+          qstats->num_pages_written_during_range_query += 1;
+          qstats->num_entries_written_during_range_query += page->entries_vector.size();
+        });
+
         return last_sst_file;
       }
       else
@@ -672,7 +683,12 @@ namespace tree_builder
           start_sst_file->min_sort_key = getMinKeyFromSSTFile(start_sst_file);
           start_sst_file->max_sort_key = getMaxKeyFromSSTFile(start_sst_file);
 
-          EmuStats::recordCompaction(start_sst_file->pages.size(), DiskMetaFile::getLevelEntryCount(start_sst_file->file_level));
+          qstats->num_files_written_during_range_query += 1;
+
+          std::for_each(start_sst_file->pages.begin(), start_sst_file->pages.end(), [](Page *page){
+            qstats->num_pages_written_during_range_query += 1;
+            qstats->num_entries_written_during_range_query += page->entries_vector.size();
+          });
 
           SSTFile *prev_sst_file_pointer = level_prev_sst_file_ptrs[level_sst_file_copy.first];
           if (prev_sst_file_pointer == nullptr)

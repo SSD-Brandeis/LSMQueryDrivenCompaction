@@ -43,6 +43,7 @@ long DiskMetaFile::level_entry_count[32] = {};
 long DiskMetaFile::level_max_size[32] = {};
 long DiskMetaFile::level_max_file_count[32] = {};
 long DiskMetaFile::level_current_size[32] = {};
+int DiskMetaFile::last_level = 1;
 
 long DiskMetaFile::global_level_file_counter[32] = {};
 float DiskMetaFile::disk_run_flush_threshold[32] = {};
@@ -223,16 +224,26 @@ int DiskMetaFile::checkOverlapping(SSTFile *file, int next_level)
 
 void DiskMetaFile::shiftLevelAndIncreaseSize(int level)
 {
+  DiskMetaFile::getMetaStatistics();
+  // int start_level = level + 1;
+  // SSTFile *last_level = DiskMetaFile::level_head[start_level];
+
+  // if (MemoryBuffer::verbosity >= 1)
+  // {
+  //   std::cout << "Shifting level: " << start_level - 1 << " to level: " << start_level << std::endl;
+  // }
+  // DiskMetaFile::level_head[start_level] = DiskMetaFile::level_head[start_level - 1];
+
+  // if (MemoryBuffer::verbosity >= 1)
+  // {
+  //   std::cout << "Setting level: " << level << " to NULL" << std::endl;
+  // }
+  // DiskMetaFile::level_head[level] = nullptr;
+  // DiskMetaFile::printAllEntries(1);
+
   int start_level = level + 1;
-  SSTFile *last_level = DiskMetaFile::level_head[start_level];
-
-  while (last_level)
-  {
-    last_level = DiskMetaFile::level_head[start_level + 1];
-    start_level += 1;
-  }
-
-  while (start_level > level)
+  
+  while (start_level > 1)
   {
     if (MemoryBuffer::verbosity >= 1)
     {
@@ -244,9 +255,12 @@ void DiskMetaFile::shiftLevelAndIncreaseSize(int level)
 
   if (MemoryBuffer::verbosity >= 1)
   {
-    std::cout << "Setting level: " << level << " to NULL" << std::endl;
+    std::cout << "Setting level: " << start_level << " to NULL" << std::endl;
   }
-  DiskMetaFile::level_head[level] = nullptr;
+  DiskMetaFile::level_head[start_level] = nullptr;
+  DiskMetaFile::last_level += 1;
+  DiskMetaFile::printAllEntries(1);
+  DiskMetaFile::getMetaStatistics();
 }
 
 int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
@@ -261,10 +275,14 @@ int DiskMetaFile::checkAndAdjustLevelSaturation(int level)
     if (MemoryBuffer::verbosity == 2)
       std::cout << "Saturation Reached......" << endl;
 
-    if (_env->enable_level_shifting && DiskMetaFile::level_head[level+1] == nullptr)
+    if (_env->enable_level_shifting && level == DiskMetaFile::last_level)
     {
       DiskMetaFile::shiftLevelAndIncreaseSize(level);
     }
+    // if (_env->enable_level_shifting && DiskMetaFile::level_head[level+1] == nullptr)
+    // {
+    //   DiskMetaFile::shiftLevelAndIncreaseSize(level);
+    // }
 
     else
     {

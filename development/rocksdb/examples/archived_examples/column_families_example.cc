@@ -7,26 +7,12 @@
 #include <vector>
 
 #include "rocksdb/db.h"
-#include "rocksdb/options.h"
 #include "rocksdb/slice.h"
+#include "rocksdb/options.h"
 
-#if defined(OS_WIN)
-std::string kDBPath = "C:\\Windows\\TEMP\\rocksdb_column_families_example";
-#else
+using namespace rocksdb;
+
 std::string kDBPath = "/tmp/rocksdb_column_families_example";
-#endif
-
-using ROCKSDB_NAMESPACE::ColumnFamilyDescriptor;
-using ROCKSDB_NAMESPACE::ColumnFamilyHandle;
-using ROCKSDB_NAMESPACE::ColumnFamilyOptions;
-using ROCKSDB_NAMESPACE::DB;
-using ROCKSDB_NAMESPACE::DBOptions;
-using ROCKSDB_NAMESPACE::Options;
-using ROCKSDB_NAMESPACE::ReadOptions;
-using ROCKSDB_NAMESPACE::Slice;
-using ROCKSDB_NAMESPACE::Status;
-using ROCKSDB_NAMESPACE::WriteBatch;
-using ROCKSDB_NAMESPACE::WriteOptions;
 
 int main() {
   // open DB
@@ -42,18 +28,17 @@ int main() {
   assert(s.ok());
 
   // close DB
-  s = db->DestroyColumnFamilyHandle(cf);
-  assert(s.ok());
+  delete cf;
   delete db;
 
   // open DB with two column families
   std::vector<ColumnFamilyDescriptor> column_families;
   // have to open default column family
   column_families.push_back(ColumnFamilyDescriptor(
-      ROCKSDB_NAMESPACE::kDefaultColumnFamilyName, ColumnFamilyOptions()));
+      kDefaultColumnFamilyName, ColumnFamilyOptions()));
   // open the new one, too
-  column_families.push_back(
-      ColumnFamilyDescriptor("new_cf", ColumnFamilyOptions()));
+  column_families.push_back(ColumnFamilyDescriptor(
+      "new_cf", ColumnFamilyOptions()));
   std::vector<ColumnFamilyHandle*> handles;
   s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
   assert(s.ok());
@@ -79,8 +64,7 @@ int main() {
 
   // close db
   for (auto handle : handles) {
-    s = db->DestroyColumnFamilyHandle(handle);
-    assert(s.ok());
+    delete handle;
   }
   delete db;
 

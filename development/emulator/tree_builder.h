@@ -83,6 +83,7 @@ namespace tree_builder
     static long level_file_count[32];
     static long level_entry_count[32];
     static long level_current_size[32];
+    static int last_level;
 
     static long level_max_size[32];
     static long level_max_file_count[32];

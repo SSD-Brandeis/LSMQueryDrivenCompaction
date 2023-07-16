@@ -316,6 +316,10 @@ void Utility::sortAndWrite(vector<Entry *> vector_to_compact, int level_to_flush
   }
 
   std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
+  if (MemoryBuffer::verbosity == 2)
+  {
+    std::cout << "Flushing into level: " << level_to_flush_in << std::endl;
+  }
   compactAndFlush(vector_to_compact, level_to_flush_in);
   int saturation = DiskMetaFile::checkAndAdjustLevelSaturation(level_to_flush_in);
 }
@@ -403,6 +407,7 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
   if (MemoryBuffer::buffer->entries.size() > 0)
   {
     vector<Entry *> vector_to_compact = MemoryBuffer::buffer->entries;
+    std::sort(vector_to_compact.begin(), vector_to_compact.end(), Utility::sortbysortkey);
     int entries_per_file = Utility::minInt(_env->entries_per_page * _env->buffer_size_in_pages, vector_to_compact.size());
     int file_count = ceil(vector_to_compact.size() / (entries_per_file * 1.0));
     SSTFile *moving_head = nullptr;
@@ -419,6 +424,9 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
       }
 
       vector_to_compact.erase(vector_to_compact.begin(), vector_to_compact.begin() + entries_per_file);
+
+      new_file->min_sort_key = vector_to_populate_file.at(0)->getKey();
+      new_file->max_sort_key = vector_to_populate_file.at(vector_to_populate_file.size()-1)->getKey();
 
       if (moving_head == nullptr)
       {
@@ -464,6 +472,13 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
     {
       std::cout << "Doing Normal Range Query This Time ..." << std::endl;
     }
+
+    if (level_its.size() == 0)
+    {
+      RangeIterator *merge_itr = new RangeQueryIterator();
+      return merge_itr;
+    }
+
     RangeIterator *merge_itr = new RangeQueryIterator(level_its, start_key, end_key);
     qstats->total_vanilla_compaction += 1;
 
@@ -484,6 +499,13 @@ RangeIterator *WorkloadExecutor::getRange(std::string start_key, std::string end
     {
       std::cout << "Doing Range Query Driven Compaction This Time ..." << std::endl;
     }
+
+    if (level_its.size() == 0)
+    {
+      RangeIterator *merge_itr = new RangeQueryDrivenCompactionIterator();
+      return merge_itr;
+    }
+
     RangeIterator *merge_itr = new RangeQueryDrivenCompactionIterator(level_its, start_key, end_key);
     qstats->total_rqd_compaction += 1;
 

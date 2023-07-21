@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "block_cache.h"
 #include "cache/cache_entry_roles.h"
@@ -573,6 +574,7 @@ Status BlockBasedTable::Open(
     uint64_t cur_file_num, UniqueId64x2 expected_unique_id,
     const bool user_defined_timestamps_persisted) {
   table_reader->reset();
+  std::cout << "[Shubham]: Opening BlockBasedTable " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   Status s;
   Footer footer;
@@ -615,6 +617,10 @@ Status BlockBasedTable::Open(
   //    5. [meta block: compression dictionary]
   //    6. [meta block: index]
   //    7. [meta block: filter]
+  std::cout << "[Shubham]: Reading in below order\n\t1. Footer\n\t2. [metaindex block]\n\t3. [meta block: properties]"
+            << "\n\t4. [meta block: range deletion tombstone]\n\t5. [meta block: compression dictionary]"
+            << "\n\t6. [meta block: index]\n\t7. [meta block: filter] " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   IOOptions opts;
   s = file->PrepareIOOptions(ro, opts);
   if (s.ok()) {
@@ -1885,6 +1891,8 @@ InternalIterator* BlockBasedTable::NewIterator(
     const ReadOptions& read_options, const SliceTransform* prefix_extractor,
     Arena* arena, bool skip_filters, TableReaderCaller caller,
     size_t compaction_readahead_size, bool allow_unprepared_value) {
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   BlockCacheLookupContext lookup_context{caller};
   bool need_upper_bound_check =
       read_options.auto_prefix_mode || PrefixExtractorChanged(prefix_extractor);
@@ -1894,6 +1902,7 @@ InternalIterator* BlockBasedTable::NewIterator(
           rep_->index_type == BlockBasedTableOptions::kHashSearch,
       /*input_iter=*/nullptr, /*get_context=*/nullptr, &lookup_context));
   if (arena == nullptr) {
+    std::cout << "[Shubham]: Arena is null, most probably for compaction " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     return new BlockBasedTableIterator(
         this, read_options, rep_->internal_comparator, std::move(index_iter),
         !skip_filters && !read_options.total_order_seek &&

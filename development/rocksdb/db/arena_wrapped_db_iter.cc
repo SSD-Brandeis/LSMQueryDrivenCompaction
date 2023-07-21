@@ -7,6 +7,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
+
 #include "db/arena_wrapped_db_iter.h"
 
 #include <iostream>
@@ -40,7 +42,11 @@ void ArenaWrappedDBIter::Init(
     const SequenceNumber& sequence, uint64_t max_sequential_skip_in_iteration,
     uint64_t version_number, ReadCallback* read_callback, DBImpl* db_impl,
     ColumnFamilyData* cfd, bool expose_blob_index, bool allow_refresh) {
+  std::cout << "[Shubham]: Initializing Arena Wrapped Db Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   auto mem = arena_.AllocateAligned(sizeof(DBIter));
+  std::cout << "[Shubham]: Creating new object of DBIter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   db_iter_ =
       new (mem) DBIter(env, read_options, ioptions, mutable_cf_options,
                        ioptions.user_comparator, /* iter */ nullptr, version,

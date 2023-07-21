@@ -7,6 +7,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
+
 #include "db/table_cache.h"
 
 #include <iostream>
@@ -143,6 +145,8 @@ Status TableCache::GetTableReader(
     } else {
       expected_unique_id = kNullUniqueId64x2;  // null ID == no verification
     }
+    std::cout << "[Shubham]: Default Table Factory IOptions " << ioptions_.table_factory << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    
     s = ioptions_.table_factory->NewTableReader(
         ro,
         TableReaderOptions(
@@ -178,6 +182,9 @@ Status TableCache::FindTable(
                            const_cast<bool*>(&no_io));
 
   if (*handle == nullptr) {
+    std::cout << "[Shubham]: Table not found in cache for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "[Shubham]: No_Io set to: " << no_io << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     if (no_io) {
       return Status::Incomplete("Table not found in table_cache, no_io is set");
     }
@@ -188,6 +195,8 @@ Status TableCache::FindTable(
       return Status::OK();
     }
 
+    std::cout << "[Shubham]: Creating a Table Reader for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     std::unique_ptr<TableReader> table_reader;
     Status s = GetTableReader(ro, file_options, internal_comparator, file_meta,
                               false /* sequential mode */,
@@ -196,11 +205,15 @@ Status TableCache::FindTable(
                               level, prefetch_index_and_filter_in_cache,
                               max_file_size_for_l0_meta_pin, file_temperature);
     if (!s.ok()) {
+      std::cout << "[Shubham]: Error while reading Table for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       assert(table_reader == nullptr);
       RecordTick(ioptions_.stats, NO_FILE_ERRORS);
       // We do not cache error results so that if the error is transient,
       // or somebody repairs the file, we recover automatically.
     } else {
+      std::cout << "[Shubham]: Cache Insert for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       s = cache_.Insert(key, table_reader.get(), 1, handle);
       if (s.ok()) {
         // Release ownership of table reader.
@@ -225,6 +238,7 @@ InternalIterator* TableCache::NewIterator(
     uint8_t block_protection_bytes_per_key,
     TruncatedRangeDelIterator** range_del_iter) {
   PERF_TIMER_GUARD(new_table_iterator_nanos);
+  std::cout << "[Shubham]: Creating New TableCache Iterator for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   Status s;
   TableReader* table_reader = nullptr;
@@ -236,6 +250,8 @@ InternalIterator* TableCache::NewIterator(
   auto& fd = file_meta.fd;
   table_reader = fd.table_reader;
   if (table_reader == nullptr) {
+    std::cout << "[Shubham]: Finding Table file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     s = FindTable(options, file_options, icomparator, file_meta, &handle,
                   block_protection_bytes_per_key, prefix_extractor,
                   options.read_tier == kBlockCacheTier /* no_io */,
@@ -245,6 +261,7 @@ InternalIterator* TableCache::NewIterator(
 
 
     if (s.ok()) {
+      std::cout << "[Shubham]: Table Found for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       table_reader = cache_.Value(handle);
     }
   }
@@ -254,6 +271,7 @@ InternalIterator* TableCache::NewIterator(
         !options.table_filter(*table_reader->GetTableProperties())) {
       result = NewEmptyInternalIterator<Slice>(arena);
     } else {
+      std::cout << "[Shubham]: Creating New TableReader Iterator for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       result = table_reader->NewIterator(
           options, prefix_extractor.get(), arena, skip_filters, caller,
           file_options.compaction_readahead_size, allow_unprepared_value);

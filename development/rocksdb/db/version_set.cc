@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 #include "db/blob/blob_fetcher.h"
 #include "db/blob/blob_file_cache.h"
@@ -2210,8 +2211,10 @@ void Version::AddIterators(const ReadOptions& read_options,
                            MergeIteratorBuilder* merge_iter_builder,
                            bool allow_unprepared_value, DBImpl* db_impl) {
   assert(storage_info_.finalized_);
+  std::cout << "[Shubham]: Number of Non Empty Levels: " << storage_info_.num_non_empty_levels() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   for (int level = 0; level < storage_info_.num_non_empty_levels(); level++) {
+    std::cout << "[Shubham]: Trying to add for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     AddIteratorsForLevel(read_options, soptions, merge_iter_builder, level,
                          allow_unprepared_value, db_impl);
   }
@@ -2230,14 +2233,19 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
   }
 
   bool should_sample = should_sample_file_read();
+  std::cout << "[Shubham]: Should sample file read should_sample: " << should_sample << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto* arena = merge_iter_builder->GetArena();
   if (level == 0) {
     // Merge all level zero files together since they may overlap
 
+    std::cout << "[Shubham]: Adding level 0 files to merge_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     TruncatedRangeDelIterator* tombstone_iter = nullptr;
     for (size_t i = 0; i < storage_info_.LevelFilesBrief(0).num_files; i++) {
       const auto& file = storage_info_.LevelFilesBrief(0).files[i];
+      std::cout << "[Shubham]: Level 0 file number: " << file.file_metadata->fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "[Shubham]: Creating table iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       auto table_iter = cfd_->table_cache()->NewIterator(
           read_options, soptions, cfd_->internal_comparator(),
           *file.file_metadata, /*range_del_agg=*/nullptr,
@@ -2250,8 +2258,10 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
           mutable_cf_options_.block_protection_bytes_per_key, &tombstone_iter);
       table_iter->SetLevel(level);
       if (read_options.ignore_range_deletions) {
+        std::cout << "[Shubham]: Add Iterator for level 0 for table_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         merge_iter_builder->AddIterator(table_iter);
       } else {
+        std::cout << "[Shubham]: Add Iterator for level 0 for table_iter & Tombstone iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         merge_iter_builder->AddPointAndTombstoneIterator(table_iter,
                                                          tombstone_iter);
       }
@@ -2269,6 +2279,7 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
     // For levels > 0, we can use a concatenating iterator that sequentially
     // walks through the non-overlapping files in the level, opening them
     // lazily.
+    std::cout << "[Shubham]: Adding level > 0 files to merge_iter level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     auto* mem = arena->AllocateAligned(sizeof(LevelIterator));
     TruncatedRangeDelIterator*** tombstone_iter_ptr = nullptr;
     auto level_iter = new (mem) LevelIterator(
@@ -2283,8 +2294,10 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
         &tombstone_iter_ptr, db_impl);
     level_iter->SetLevel(level);
     if (read_options.ignore_range_deletions) {
+      std::cout << "[Shubham]: Add level iter for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddIterator(level_iter);
     } else {
+      std::cout << "[Shubham]: Add level iter & tombstone iter for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddPointAndTombstoneIterator(
           level_iter, nullptr /* tombstone_iter */, tombstone_iter_ptr);
     }

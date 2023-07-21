@@ -68,6 +68,9 @@ class MergingIterator : public InternalIterator {
         pinned_iters_mgr_(nullptr),
         db_impl_(db_impl),
         iterate_upper_bound_(iterate_upper_bound) {
+    std::cout << "[Shubham]: Creating Merge Iterator with n: " << n << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "[Shubham]: children: " << children << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     children_.resize(n);
     for (int i = 0; i < n; i++) {
       children_[i].level = i;
@@ -82,6 +85,8 @@ class MergingIterator : public InternalIterator {
   }
 
   virtual void AddIterator(InternalIterator* iter) {
+    std::cout << "[Shubham]: children_.size(): " << children_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    
     children_.emplace_back(children_.size(), iter);
 
     if (pinned_iters_mgr_) {
@@ -103,6 +108,7 @@ class MergingIterator : public InternalIterator {
   // for freeing the new range tombstone iterator that it has pointers to in
   // range_tombstone_iters_.
   void AddRangeTombstoneIterator(TruncatedRangeDelIterator* iter) {
+    std::cout << "[Shubham]: children_.size(): " << children_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     range_tombstone_iters_.emplace_back(iter);
   }
 
@@ -110,6 +116,8 @@ class MergingIterator : public InternalIterator {
   // tombstone iterators are added. Initializes HeapItems for range tombstone
   // iterators.
   void Finish() {
+    std::cout << "[Shubham]: Finish Merge Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     if (!range_tombstone_iters_.empty()) {
       assert(range_tombstone_iters_.size() == children_.size());
       pinned_heap_item_.resize(range_tombstone_iters_.size());
@@ -768,6 +776,8 @@ class MergingIterator : public InternalIterator {
 // minHeap_.
 void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
                                bool range_tombstone_reseek) {
+  std::cout << "[Shubham]: SeekImpl " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   // active range tombstones before `starting_level` remain active
   ClearHeaps(false /* clear_active */);
   ParsedInternalKey pik;
@@ -829,6 +839,8 @@ void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
   autovector<std::pair<size_t, std::string>> prefetched_target;
   for (auto level = starting_level; level < children_.size(); ++level) {
     {
+      std::cout << "[Shubham]: Performing Seek for each level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       PERF_TIMER_GUARD(seek_child_seek_time);
       children_[level].iter.Seek(current_search_key.GetInternalKey());
     }
@@ -1281,6 +1293,8 @@ bool MergingIterator::SkipPrevDeleted() {
 
 void MergingIterator::AddToMinHeapOrCheckStatus(HeapItem* child) {
   // Invariant(children_)
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (child->iter.Valid()) {
     assert(child->iter.status().ok());
     minHeap_.push(child);
@@ -1290,6 +1304,8 @@ void MergingIterator::AddToMinHeapOrCheckStatus(HeapItem* child) {
 }
 
 void MergingIterator::AddToMaxHeapOrCheckStatus(HeapItem* child) {
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (child->iter.Valid()) {
     assert(child->iter.status().ok());
     maxHeap_->push(child);
@@ -1674,6 +1690,8 @@ MergeIteratorBuilder::~MergeIteratorBuilder() {
 }
 
 void MergeIteratorBuilder::AddIterator(InternalIterator* iter) {
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (!use_merging_iter && first_iter != nullptr) {
     merge_iter->AddIterator(first_iter);
     use_merging_iter = true;
@@ -1693,7 +1711,11 @@ void MergeIteratorBuilder::AddPointAndTombstoneIterator(
   bool add_range_tombstone = tombstone_iter ||
                              !merge_iter->range_tombstone_iters_.empty() ||
                              tombstone_iter_ptr;
+  std::cout << "[Shubham]: Add range tombstone: " << add_range_tombstone << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (!use_merging_iter && (add_range_tombstone || first_iter)) {
+    std::cout << "[Shubham]: Setting use_merging_iter to true " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     use_merging_iter = true;
     if (first_iter) {
       merge_iter->AddIterator(first_iter);
@@ -1701,6 +1723,8 @@ void MergeIteratorBuilder::AddPointAndTombstoneIterator(
     }
   }
   if (use_merging_iter) {
+    std::cout << "[Shubham]: Adding point_iter to merge_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     merge_iter->AddIterator(point_iter);
     if (add_range_tombstone) {
       // If there was a gap, fill in nullptr as empty range tombstone iterators.
@@ -1719,6 +1743,8 @@ void MergeIteratorBuilder::AddPointAndTombstoneIterator(
           merge_iter->range_tombstone_iters_.size() - 1, tombstone_iter_ptr);
     }
   } else {
+    std::cout << "[Shubham]: Setting first_iter to point_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     first_iter = point_iter;
   }
 }

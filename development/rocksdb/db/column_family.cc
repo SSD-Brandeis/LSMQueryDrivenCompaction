@@ -1233,6 +1233,8 @@ Compaction* ColumnFamilyData::CompactRange(
 }
 
 SuperVersion* ColumnFamilyData::GetReferencedSuperVersion(DBImpl* db) {
+  std::cout << "[Shubham]: get referenced super version " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   SuperVersion* sv = GetThreadLocalSuperVersion(db);
 
   sv->Ref();

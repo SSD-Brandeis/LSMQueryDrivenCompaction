@@ -211,17 +211,17 @@ class DBImpl : public DB {
   Status Merge(const WriteOptions& options, ColumnFamilyHandle* column_family,
                const Slice& key, const Slice& ts, const Slice& value) override;
 
-  using DB::RangeQueryDrivenCompaction;
-  void RangeQueryDrivenCompaction(Slice& start_key, Slice& end_key) override;
-
-  int GetHighestLevelFromCompact(const std::vector<CompactionInputFiles>& files);
-  std::vector<CompactionInputFiles> FilterFileThatCanBeCompacted(std::vector<CompactionInputFiles> all_files, 
-                                                              Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_);
-  std::vector<CompactionInputFiles> HighestFilesSizeAcrossLevels(std::vector<std::vector<CompactionInputFiles>> files_to_be_compacted);
-  std::vector<CompactionInputFiles> FilterOnlyInRangeFiles(std::vector<CompactionInputFiles>& all_files, 
-                                                        Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_);
-  std::vector<CompactionInputFiles> FilesToBeCompactedAcrossLevels(std::vector<CompactionInputFiles> all_files, 
-                                                                std::queue<TrackLevels>& track_levels);
+  // using DB::RangeQueryDrivenCompaction;
+  // void RangeQueryDrivenCompaction(Slice& start_key, Slice& end_key) override;
+  //
+  // int GetHighestLevelFromCompact(const std::vector<CompactionInputFiles>& files);
+  // std::vector<CompactionInputFiles> FilterFileThatCanBeCompacted(std::vector<CompactionInputFiles> all_files, 
+  //                                                             Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_);
+  // std::vector<CompactionInputFiles> HighestFilesSizeAcrossLevels(std::vector<std::vector<CompactionInputFiles>> files_to_be_compacted);
+  // std::vector<CompactionInputFiles> FilterOnlyInRangeFiles(std::vector<CompactionInputFiles>& all_files, 
+  //                                                       Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_);
+  // std::vector<CompactionInputFiles> FilesToBeCompactedAcrossLevels(std::vector<CompactionInputFiles> all_files, 
+  //                                                               std::queue<TrackLevels>& track_levels);
 
   using DB::Delete;
   Status Delete(const WriteOptions& options, ColumnFamilyHandle* column_family,

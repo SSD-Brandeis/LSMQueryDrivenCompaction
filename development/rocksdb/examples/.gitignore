@@ -13,4 +13,8 @@ transaction_example
 **.txt
 **.log
 
+working_version
 working_version_debug
+
+# db files
+db_working_home

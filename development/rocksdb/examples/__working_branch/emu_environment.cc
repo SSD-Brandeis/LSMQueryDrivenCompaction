@@ -30,7 +30,7 @@ EmuEnv::EmuEnv()
   enable_rocksdb_perf_iostat = 0; // !YBS-feb15-XXI!
 
 // Options set through command line 
-  size_ratio = 10;
+  size_ratio = 2;  // 10;
   buffer_size_in_pages = 4096;
   entries_per_page = 4;
   entry_size = 1024; // in Bytes 

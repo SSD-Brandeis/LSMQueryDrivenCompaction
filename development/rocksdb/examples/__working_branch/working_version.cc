@@ -102,14 +102,14 @@ void configOptions(EmuEnv* _env, Options *op, BlockBasedTableOptions *t_op, Writ
         op->compaction_pri = kOldestLargestSeqFirst; break;
       case 4:
         op->compaction_pri = kOldestSmallestSeqFirst; break;
-      case 5: 
-        op->compaction_pri = kFADE; break;
+      // case 5: 
+      //   op->compaction_pri = kFADE; break;
       case 6: // !YBS-sep06-XX!
         op->compaction_pri = kRoundRobin; break; // !YBS-sep06-XX!
-      case 7: // !YBS-sep07-XX!
-        op->compaction_pri = kMinOverlappingGrandparent; break; // !YBS-sep07-XX!
-      case 8: // !YBS-sep08-XX!
-        op->compaction_pri = kFullLevel; break; // !YBS-sep08-XX!
+      // case 7: // !YBS-sep07-XX!
+      //   op->compaction_pri = kMinOverlappingGrandparent; break; // !YBS-sep07-XX!
+      // case 8: // !YBS-sep08-XX!
+      //   op->compaction_pri = kFullLevel; break; // !YBS-sep08-XX!
       default:
         std::cerr << "ERROR: INVALID Data movement policy!" << std::endl;
     }
@@ -325,7 +325,7 @@ void configOptions(EmuEnv* _env, Options *op, BlockBasedTableOptions *t_op, Writ
   //ReadOptions
   r_op->verify_checksums = _env->verify_checksums;
   r_op->fill_cache = _env->fill_cache;
-  r_op->iter_start_seqnum = _env->iter_start_seqnum;
+  // r_op->iter_start_seqnum = _env->iter_start_seqnum;
   r_op->ignore_range_deletions = _env->ignore_range_deletions;
   switch (_env->read_tier) {
     case 1:
@@ -582,7 +582,7 @@ int runWorkload(EmuEnv* _env) {
       workload_file >> key >> value;
       // if (_env->verbosity == 2) std::cout << instruction << " " << key << " " << value << "" << std::endl;
       // Put key-value
-      s = db->Put(w_options, ToString(key), value);
+      s = db->Put(w_options, to_string(key), value);
       if (!s.ok()) std::cerr << s.ToString() << std::endl;
       assert(s.ok());
       op_track._inserts_completed++;
@@ -594,7 +594,7 @@ int runWorkload(EmuEnv* _env) {
       workload_file >> key >> value;
       // if (_env->verbosity == 2) std::cout << instruction << " " << key << " " << value << "" << std::endl;
       // Put key-value
-      s = db->Put(w_options, ToString(key), value);
+      s = db->Put(w_options, to_string(key), value);
       if (!s.ok()) std::cerr << s.ToString() << std::endl;
       assert(s.ok());
       op_track._updates_completed++;
@@ -605,27 +605,27 @@ int runWorkload(EmuEnv* _env) {
     case 'D': // point delete 
       workload_file >> key;
       // if (_env->verbosity == 2) std::cout << instruction << " " << key << "" << std::endl;
-      s = db->Delete(w_options, ToString(key));
+      s = db->Delete(w_options, to_string(key));
       assert(s.ok());
       op_track._point_deletes_completed++;
       counter++;
       fade_stats->point_deletes_completed++;
       break;
 
-    case 'R': // range delete 
-      workload_file >> start_key >> end_key;
-      // if (_env->verbosity == 2) std::cout << instruction << " " << start_key << " " << end_key << "" << std::endl;
-      s = db->DeleteRange(w_options, ToString(start_key), ToString(end_key));
-      assert(s.ok());
-      op_track._range_deletes_completed++;
-      counter++;
-      fade_stats->range_deletes_completed++;
-      break;
+    // case 'R': // range delete 
+    //   workload_file >> start_key >> end_key;
+    //   // if (_env->verbosity == 2) std::cout << instruction << " " << start_key << " " << end_key << "" << std::endl;
+    //   s = db->DeleteRange(w_options, ToString(start_key), ToString(end_key));
+    //   assert(s.ok());
+    //   op_track._range_deletes_completed++;
+    //   counter++;
+    //   fade_stats->range_deletes_completed++;
+    //   break;
 
     case 'Q': // probe: point query
       workload_file >> key;
       // if (_env->verbosity == 2) std::cout << instruction << " " << key << "" << std::endl;
-      s = db->Get(r_options, ToString(key), &value);
+      s = db->Get(r_options, to_string(key), &value);
       //if (!s.ok()) std::cerr << s.ToString() << "key = " << key << std::endl;
       // assert(s.ok());
       op_track._point_queries_completed++;
@@ -638,9 +638,9 @@ int runWorkload(EmuEnv* _env) {
       //std::cout << instruction << " " << start_key << " " << end_key << "" << std::endl;
       it->Refresh();
       assert(it->status().ok());
-      for (it->Seek(ToString(start_key)); it->Valid(); it->Next()) {
+      for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
         //std::cout << "found key = " << it->key().ToString() << std::endl;
-        if(it->key().ToString() == ToString(end_key)) {
+        if(it->key().ToString() == to_string(end_key)) {
           break;
         }
       }
@@ -788,7 +788,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv* _env) {
   _env->destroy_database = destroy_database_cmd ? args::get(destroy_database_cmd) : 1;
   _env->clear_system_cache = clear_system_cache_cmd ? args::get(clear_system_cache_cmd) : 1; // !YBS-sep09-XX!
 
-  _env->size_ratio = size_ratio_cmd ? args::get(size_ratio_cmd) : 10;
+  _env->size_ratio = size_ratio_cmd ? args::get(size_ratio_cmd) : 2;  // 10
   _env->buffer_size_in_pages = buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 4096;
   _env->entries_per_page = entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
   _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 1024;

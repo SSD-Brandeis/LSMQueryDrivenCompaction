@@ -65,10 +65,10 @@ class DBImplReadOnly : public DBImpl {
     return Status::NotSupported("Not supported operation in read only mode.");
   }
 
-  using DBImpl::RangeQueryDrivenCompaction;
-  virtual void RangeQueryDrivenCompaction(Slice& /*key*/, Slice& /*key*/) override {
-    // Nothing to do so far
-  }
+  // using DBImpl::RangeQueryDrivenCompaction;
+  // virtual void RangeQueryDrivenCompaction(Slice& /*key*/, Slice& /*key*/) override {
+  //   // Nothing to do so far
+  // }
 
   using DBImpl::Delete;
   virtual Status Delete(const WriteOptions& /*options*/,

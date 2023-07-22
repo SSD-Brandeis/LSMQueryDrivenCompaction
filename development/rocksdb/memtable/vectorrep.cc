@@ -211,6 +211,9 @@ void VectorRep::Iterator::Prev() {
 // Advance to the first entry with a key >= target
 void VectorRep::Iterator::Seek(const Slice& user_key,
                                const char* memtable_key) {
+  std::cout << "[Shubham]: Performing Seek in VectorRep for user_key: " << user_key.data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: bucket_ size: " << bucket_->size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   DoSort();
   // Do binary search to find first value not less than the target
   const char* encoded_key =

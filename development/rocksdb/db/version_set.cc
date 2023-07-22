@@ -100,6 +100,9 @@ namespace {
 int FindFileInRange(const InternalKeyComparator& icmp,
                     const LevelFilesBrief& file_level, const Slice& key,
                     uint32_t left, uint32_t right) {
+  std::cout << "[Shubham]: file_level.num_files " << file_level.num_files << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: Doing binary search for right file: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   auto cmp = [&](const FdWithKeyRange& f, const Slice& k) -> bool {
     return icmp.InternalKeyComparator::Compare(f.largest_key, k) < 0;
   };
@@ -846,6 +849,8 @@ Version::~Version() {
 
 int FindFile(const InternalKeyComparator& icmp,
              const LevelFilesBrief& file_level, const Slice& key) {
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   return FindFileInRange(icmp, file_level, key, 0,
                          static_cast<uint32_t>(file_level.num_files));
 }
@@ -1097,6 +1102,9 @@ class LevelIterator final : public InternalIterator {
   // range_tombstone_iter_ is updated with a range tombstone iterator
   // into the new file. Old range tombstone iterator is cleared.
   InternalIterator* NewFileIterator() {
+    std::cout << "[Shubham]: New file iterator FileIndex: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "[Shubham]: flevel_->num_files: " << flevel_->num_files << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     assert(file_index_ < flevel_->num_files);
     auto file_meta = flevel_->files[file_index_];
     if (should_sample_) {
@@ -1108,6 +1116,8 @@ class LevelIterator final : public InternalIterator {
     if (compaction_boundaries_ != nullptr) {
       smallest_compaction_key = (*compaction_boundaries_)[file_index_].smallest;
       largest_compaction_key = (*compaction_boundaries_)[file_index_].largest;
+      std::cout << "[Shubham]: File Smallest compaction key: " << smallest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "[Shubham]: File Largest compaction key: " << largest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     }
     CheckMayBeOutOfLowerBound();
     ClearRangeTombstoneIter();
@@ -1218,6 +1228,8 @@ void LevelIterator::Seek(const Slice& target) {
   // Check whether the seek key fall under the same file
   bool need_to_reseek = true;
   if (file_iter_.iter() != nullptr && file_index_ < flevel_->num_files) {
+    std::cout << "[Shubham]: file_iter != nullptr and file_index < flevel_->num_files " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     const FdWithKeyRange& cur_file = flevel_->files[file_index_];
     if (icomparator_.InternalKeyComparator::Compare(
             target, cur_file.largest_key) <= 0 &&
@@ -1231,6 +1243,7 @@ void LevelIterator::Seek(const Slice& target) {
   if (need_to_reseek) {
     TEST_SYNC_POINT("LevelIterator::Seek:BeforeFindFile");
     size_t new_file_index = FindFile(icomparator_, *flevel_, target);
+    std::cout << "[Shubham]: New File Index: " << new_file_index << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     InitFileIterator(new_file_index);
   }
 
@@ -1740,6 +1753,8 @@ void LevelIterator::SkipEmptyFileBackward() {
 }
 
 void LevelIterator::SetFileIterator(InternalIterator* iter) {
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (pinned_iters_mgr_ && iter) {
     iter->SetPinnedItersMgr(pinned_iters_mgr_);
   }
@@ -1759,6 +1774,7 @@ void LevelIterator::SetFileIterator(InternalIterator* iter) {
 }
 
 void LevelIterator::InitFileIterator(size_t new_file_index) {
+  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   if (new_file_index >= flevel_->num_files) {
     file_index_ = new_file_index;
     SetFileIterator(nullptr);

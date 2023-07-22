@@ -348,6 +348,7 @@ class MergingIterator : public InternalIterator {
   }
 
   void Next() override {
+    std::cout << "[Shubham]: Next in MergingIterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(Valid());
     // Ensure that all children are positioned after key().
     // If we are moving in the forward direction, it is already
@@ -368,9 +369,12 @@ class MergingIterator : public InternalIterator {
       // current is still valid after the Next() call above.  Call
       // replace_top() to restore the heap property.  When the same child
       // iterator yields a sequence of keys, this is cheap.
+      std::cout << "[Shubham]: Current is still valid TOP LEVEL: " << minHeap_.top()->level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "[Shubham]: Current is still valid TOP ITER: " << minHeap_.top()->iter.key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       assert(current_->status().ok());
       minHeap_.replace_top(minHeap_.top());
     } else {
+      std::cout << "[Shubham]: Current_ is not more valid in minHeap_ " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       // current stopped being valid, remove it from the heap.
       considerStatus(current_->status());
       minHeap_.pop();
@@ -502,6 +506,7 @@ class MergingIterator : public InternalIterator {
 
     explicit HeapItem(size_t _level, InternalIteratorBase<Slice>* _iter)
         : level(_level), type(Type::ITERATOR) {
+      std::cout << "[Shubham]: New Heap Item _level: " << _level << " _iter: " << _iter << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       iter.Set(_iter);
     }
 
@@ -518,6 +523,7 @@ class MergingIterator : public InternalIterator {
         : comparator_(comparator) {}
 
     bool operator()(HeapItem* a, HeapItem* b) const {
+      std::cout << "[Shubham]: Min Heap Item Comparator used between a_level: " << a->level << " & b_level: " << b->level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       if (LIKELY(a->type == HeapItem::Type::ITERATOR)) {
         if (LIKELY(b->type == HeapItem::Type::ITERATOR)) {
           return comparator_->Compare(a->iter.key(), b->iter.key()) > 0;
@@ -543,6 +549,7 @@ class MergingIterator : public InternalIterator {
         : comparator_(comparator) {}
 
     bool operator()(HeapItem* a, HeapItem* b) const {
+      std::cout << "[Shubham]: Max Heap Item Comparator used between a_level: " << a->level << " & b_level: " << b->level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       if (LIKELY(a->type == HeapItem::Type::ITERATOR)) {
         if (LIKELY(b->type == HeapItem::Type::ITERATOR)) {
           return comparator_->Compare(a->iter.key(), b->iter.key()) < 0;
@@ -1626,6 +1633,7 @@ void MergingIterator::InitMaxHeap() {
 // these cases, iterators are being advanced, so the minimum key should increase
 // in a finite number of steps.
 inline void MergingIterator::FindNextVisibleKey() {
+  std::cout << "[Shubham]: Finding Next Visible Key: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   PopDeleteRangeStart();
   // PopDeleteRangeStart() implies heap top is not DELETE_RANGE_START
   // active_ being empty implies no DELETE_RANGE_END in heap.
@@ -1634,6 +1642,7 @@ inline void MergingIterator::FindNextVisibleKey() {
       !minHeap_.empty() &&
       (!active_.empty() || minHeap_.top()->iter.IsDeleteRangeSentinelKey()) &&
       SkipNextDeleted()) {
+    std::cout << "[Shubham]: Skipping Next Deleted Key: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     PopDeleteRangeStart();
   }
   // Checks Invariant (1)

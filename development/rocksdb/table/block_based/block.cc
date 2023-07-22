@@ -15,6 +15,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 #include "monitoring/perf_context_imp.h"
 #include "port/port.h"
@@ -284,6 +285,8 @@ void DataBlockIter::PrevImpl() {
 }
 
 void DataBlockIter::SeekImpl(const Slice& target) {
+  std::cout << "[Shubham]: In Data block Iter: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   Slice seek_key = target;
   PERF_TIMER_GUARD(block_seek_nanos);
   if (data_ == nullptr) {  // Not init yet

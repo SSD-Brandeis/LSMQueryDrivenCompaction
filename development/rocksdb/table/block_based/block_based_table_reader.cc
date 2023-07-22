@@ -2723,6 +2723,8 @@ bool BlockBasedTable::TEST_IndexBlockInCache() const {
 
 Status BlockBasedTable::GetKVPairsFromDataBlocks(
     const ReadOptions& read_options, std::vector<KVPairBlock>* kv_pair_blocks) {
+  std::cout << "[Shubham]: Collection Key Value from data block: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   std::unique_ptr<InternalIteratorBase<IndexValue>> blockhandles_iter(
       NewIndexIterator(read_options, /*need_upper_bound_check=*/false,
                        /*input_iter=*/nullptr, /*get_context=*/nullptr,

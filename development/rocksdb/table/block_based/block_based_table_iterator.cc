@@ -24,6 +24,7 @@ void BlockBasedTableIterator::Seek(const Slice& target) {
 void BlockBasedTableIterator::SeekImpl(const Slice* target,
                                        bool async_prefetch) {
   std::cout << "[Shubham]: SeekImpl BlockBasedTableIterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: async_read_in_progress_: " << async_read_in_progress_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   bool is_first_pass = true;
   if (async_read_in_progress_) {
@@ -269,6 +270,8 @@ void BlockBasedTableIterator::Prev() {
 }
 
 void BlockBasedTableIterator::InitDataBlock() {
+  // std::cout << "[Shubham]: Initiate Data Block " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   BlockHandle data_block_handle = index_iter_->value().handle;
   if (!block_iter_points_to_real_block_ ||
       data_block_handle.offset() != prev_block_offset_ ||
@@ -290,6 +293,7 @@ void BlockBasedTableIterator::InitDataBlock() {
         rep, data_block_handle, read_options_.readahead_size, is_for_compaction,
         /*no_sequential_checking=*/false, read_options_.rate_limiter_priority);
     Status s;
+    // std::cout << "[Shubham]: Initiating new data block iterator: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     table_->NewDataBlockIterator<DataBlockIter>(
         read_options_, data_block_handle, &block_iter_, BlockType::kData,
         /*get_context=*/nullptr, &lookup_context_,
@@ -309,6 +313,9 @@ void BlockBasedTableIterator::InitDataBlock() {
 }
 
 void BlockBasedTableIterator::AsyncInitDataBlock(bool is_first_pass) {
+  std::cout << "[Shubham]: Initiate Async data block: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: lookup_context_.caller == TableReaderCaller::kCompaction " << (lookup_context_.caller == TableReaderCaller::kCompaction) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   BlockHandle data_block_handle = index_iter_->value().handle;
   bool is_for_compaction =
       lookup_context_.caller == TableReaderCaller::kCompaction;
@@ -351,6 +358,7 @@ void BlockBasedTableIterator::AsyncInitDataBlock(bool is_first_pass) {
     // Second pass will call the Poll to get the data block which has been
     // requested asynchronously.
     Status s;
+    std::cout << "[Shubham]: Not first pass... initiating NewDataBlockIterator: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     table_->NewDataBlockIterator<DataBlockIter>(
         read_options_, data_block_handle, &block_iter_, BlockType::kData,
         /*get_context=*/nullptr, &lookup_context_,

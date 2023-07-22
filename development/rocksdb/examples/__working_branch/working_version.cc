@@ -639,7 +639,7 @@ int runWorkload(EmuEnv* _env) {
       it->Refresh();
       assert(it->status().ok());
       for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
-        //std::cout << "found key = " << it->key().ToString() << std::endl;
+        std::cout << "found key = " << it->key().ToString() << std::endl;
         if(it->key().ToString() == to_string(end_key)) {
           break;
         }
@@ -788,8 +788,8 @@ int parse_arguments2(int argc, char *argv[], EmuEnv* _env) {
   _env->destroy_database = destroy_database_cmd ? args::get(destroy_database_cmd) : 1;
   _env->clear_system_cache = clear_system_cache_cmd ? args::get(clear_system_cache_cmd) : 1; // !YBS-sep09-XX!
 
-  _env->size_ratio = size_ratio_cmd ? args::get(size_ratio_cmd) : 2;  // 10
-  _env->buffer_size_in_pages = buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 4096;
+  _env->size_ratio = size_ratio_cmd ? args::get(size_ratio_cmd) : 2;  // 10; [Shubham]
+  _env->buffer_size_in_pages = buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 2; // 4096; [Shubham]
   _env->entries_per_page = entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
   _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 1024;
   _env->buffer_size = buffer_size_cmd ? args::get(buffer_size_cmd) : _env->buffer_size_in_pages * _env->entries_per_page * _env->entry_size;

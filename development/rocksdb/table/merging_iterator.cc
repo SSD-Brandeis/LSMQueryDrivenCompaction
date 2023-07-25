@@ -848,6 +848,11 @@ void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
     {
       std::cout << "[Shubham]: Performing Seek for each level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
+      if (level != 0)
+      {
+        FlushPartialSSTFile(children_[level].iter, level, current_search_key.GetInternalKey());
+      }
+
       PERF_TIMER_GUARD(seek_child_seek_time);
       children_[level].iter.Seek(current_search_key.GetInternalKey());
     }

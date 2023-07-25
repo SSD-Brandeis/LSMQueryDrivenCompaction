@@ -12,6 +12,7 @@
 #include "table/merging_iterator.h"
 
 #include "db/arena_wrapped_db_iter.h"
+#include "file/read_write_util.h"
 
 namespace ROCKSDB_NAMESPACE {
 // MergingIterator uses a min/max heap to combine data from point iterators.
@@ -55,7 +56,7 @@ class MergingIterator : public InternalIterator {
  public:
   MergingIterator(const InternalKeyComparator* comparator,
                   InternalIterator** children, int n, bool is_arena_mode,
-                  bool prefix_seek_mode,
+                  bool prefix_seek_mode, DBImpl* db_impl = nullptr,
                   const Slice* iterate_upper_bound = nullptr)
       : is_arena_mode_(is_arena_mode),
         prefix_seek_mode_(prefix_seek_mode),
@@ -64,6 +65,7 @@ class MergingIterator : public InternalIterator {
         current_(nullptr),
         minHeap_(MinHeapItemComparator(comparator_)),
         pinned_iters_mgr_(nullptr),
+        db_impl_(db_impl),
         iterate_upper_bound_(iterate_upper_bound) {
     std::cout << "[Shubham]: Creating Merge Iterator with n: " << n << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     std::cout << "[Shubham]: children: " << children << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
@@ -580,6 +582,8 @@ class MergingIterator : public InternalIterator {
   void FindNextVisibleKey();
   void FindPrevVisibleKey();
 
+  Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target);
+
   // Advance this merging iterators to the first key >= `target` for all
   // components from levels >= starting_level. All iterators before
   // starting_level are untouched.
@@ -657,6 +661,8 @@ class MergingIterator : public InternalIterator {
   std::unique_ptr<MergerMaxIterHeap> maxHeap_;
   PinnedIteratorsManager* pinned_iters_mgr_;
 
+  DBImpl* db_impl_;
+
   // Used to bound range tombstones. For point keys, DBIter and SSTable iterator
   // take care of boundary checking.
   const Slice* iterate_upper_bound_;
@@ -690,6 +696,10 @@ class MergingIterator : public InternalIterator {
     return !maxHeap_->empty() ? &maxHeap_->top()->iter : nullptr;
   }
 };
+
+Status MergingIterator::FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target) {
+    return db_impl_->FlushPartialSSTFile(iter, level, target, comparator_);
+}
 
 // Pre-condition:
 // - Invariants (3) and (4) hold for i < starting_level
@@ -830,6 +840,11 @@ void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
   for (auto level = starting_level; level < children_.size(); ++level) {
     {
       std::cout << "[Shubham]: Performing Seek for each level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+      if (level != 0)
+      {
+        FlushPartialSSTFile(children_[level].iter, level, current_search_key.GetInternalKey());
+      }
 
       PERF_TIMER_GUARD(seek_child_seek_time);
       children_[level].iter.Seek(current_search_key.GetInternalKey());
@@ -1665,14 +1680,14 @@ InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
 
 MergeIteratorBuilder::MergeIteratorBuilder(
     const InternalKeyComparator* comparator, Arena* a, bool prefix_seek_mode,
-    const Slice* iterate_upper_bound)
-    : first_iter(nullptr), use_merging_iter(false), arena(a) {
+    const Slice* iterate_upper_bound, DBImpl* db_impl)
+    : first_iter(nullptr), use_merging_iter(false), arena(a), db_impl_(db_impl) {
   std::cout << "[Shubham]: Creating Merge Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   std::cout << "[Shubham]: iterate_upper_bound" << (iterate_upper_bound != nullptr ? iterate_upper_bound->data() : "nullptr") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto mem = arena->AllocateAligned(sizeof(MergingIterator));
   merge_iter = new (mem) MergingIterator(comparator, nullptr, 0, true,
-                                         prefix_seek_mode, iterate_upper_bound);
+                                         prefix_seek_mode, db_impl, iterate_upper_bound);
 }
 
 MergeIteratorBuilder::~MergeIteratorBuilder() {

@@ -457,6 +457,8 @@ class DBImpl : public DB {
   virtual Status LockWAL() override;
   virtual Status UnlockWAL() override;
 
+  Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target, const InternalKeyComparator* comparator);
+
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
   // IncreaseFullHistoryTsLow(ColumnFamilyHandle*, std::string) will acquire

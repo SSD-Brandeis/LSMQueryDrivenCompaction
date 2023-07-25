@@ -1865,7 +1865,7 @@ InternalIterator* DBImpl::NewInternalIterator(
       &cfd->internal_comparator(), arena,
       !read_options.total_order_seek &&
           super_version->mutable_cf_options.prefix_extractor != nullptr,
-      read_options.iterate_upper_bound);
+      read_options.iterate_upper_bound, this);
 
   std::cout << "[Shubham]: Collecting Iterator for mutable memtable " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 

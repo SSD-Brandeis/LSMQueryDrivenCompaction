@@ -59,6 +59,7 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
             (block_iter_points_to_real_block_ && block_iter_.Valid()));
   }
   Slice key() const override {
+    // std::cout << "[Shubham]: Spitting Key back: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(Valid());
     if (is_at_first_key_from_index_) {
       return index_iter_->value().first_internal_key;

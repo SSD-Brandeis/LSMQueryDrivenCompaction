@@ -1009,6 +1009,8 @@ class LevelIterator final : public InternalIterator {
     return file_iter_.Valid() || to_return_sentinel_;
   }
   Slice key() const override {
+    std::cout << "[Shubham]: Spitting Key to Application: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    
     assert(Valid());
     if (to_return_sentinel_) {
       // Sentinel should be returned after file_iter_ reaches the end of the
@@ -1244,6 +1246,7 @@ void LevelIterator::Seek(const Slice& target) {
   }
 
   if (file_iter_.iter() != nullptr) {
+    // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
     file_iter_.Seek(target);
     // Status::TryAgain indicates asynchronous request for retrieval of data
     // blocks has been submitted. So it should return at this point and Seek
@@ -1453,11 +1456,13 @@ bool LevelIterator::SkipEmptyFileForward() {
     if (file_index_ >= flevel_->num_files - 1 ||
         KeyReachedUpperBound(file_smallest_key(file_index_ + 1)) ||
         prefix_exhausted_) {
+      std::cout << "[Shubham]: (file_index_ >= flevel_->num_files-1) file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       SetFileIterator(nullptr);
       ClearRangeTombstoneIter();
       break;
     }
     // may init a new *range_tombstone_iter
+    std::cout << "[Shubham]: Moving to a new SST File file_index_: " << file_index_ << " file_index_ + 1: " << file_index_+1 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     InitFileIterator(file_index_ + 1);
     // We moved to a new SST file
     // Seek range_tombstone_iter_ to reset its !Valid() default state.
@@ -1466,6 +1471,7 @@ bool LevelIterator::SkipEmptyFileForward() {
     // LevelIterator::Seek*, it should also call Seek* into the corresponding
     // range tombstone iterator.
     if (file_iter_.iter() != nullptr) {
+      std::cout << "[Shubham]: Performing SeeToFirst file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       file_iter_.SeekToFirst();
       if (range_tombstone_iter_) {
         if (*range_tombstone_iter_) {

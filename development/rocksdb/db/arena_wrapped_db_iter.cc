@@ -39,10 +39,10 @@ void ArenaWrappedDBIter::Init(
     const SequenceNumber& sequence, uint64_t max_sequential_skip_in_iteration,
     uint64_t version_number, ReadCallback* read_callback, DBImpl* db_impl,
     ColumnFamilyData* cfd, bool expose_blob_index, bool allow_refresh) {
-  std::cout << "[Shubham]: Initializing Arena Wrapped Db Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Initializing Arena Wrapped Db Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto mem = arena_.AllocateAligned(sizeof(DBIter));
-  std::cout << "[Shubham]: Creating new object of DBIter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Creating new object of DBIter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   db_iter_ =
       new (mem) DBIter(env, read_options, ioptions, mutable_cf_options,
@@ -64,7 +64,7 @@ Status ArenaWrappedDBIter::Refresh() {
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
   }
-  std::cout << "[Shubham]: Refreshing ArenaWrappedDBIter: " << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Refreshing ArenaWrappedDBIter: " << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   assert(db_iter_ != nullptr);
   // TODO(yiwu): For last_seq_same_as_publish_seq_==false, this is not the
@@ -160,14 +160,14 @@ ArenaWrappedDBIter* NewArenaWrappedDbIterator(
     uint64_t version_number, ReadCallback* read_callback, DBImpl* db_impl,
     ColumnFamilyData* cfd, bool expose_blob_index, bool allow_refresh) {
 
-  std::cout << "[Shubham]: Creating New Arena Wrapped Db Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Creating New Arena Wrapped Db Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   ArenaWrappedDBIter* iter = new ArenaWrappedDBIter();
   iter->Init(env, read_options, ioptions, mutable_cf_options, version, sequence,
              max_sequential_skip_in_iterations, version_number, read_callback,
              db_impl, cfd, expose_blob_index, allow_refresh);
 
-  std::cout << "[Shubham]: Arena Wrapped DBIter Initialized " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Arena Wrapped DBIter Initialized " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   if (db_impl != nullptr && cfd != nullptr && allow_refresh) {
     iter->StoreRefreshInfo(db_impl, cfd, read_callback, expose_blob_index);

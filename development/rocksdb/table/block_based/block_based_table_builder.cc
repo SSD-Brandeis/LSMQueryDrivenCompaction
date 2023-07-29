@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <iostream>
 
 #include <atomic>
 #include <list>
@@ -1945,6 +1946,16 @@ Status BlockBasedTableBuilder::Finish() {
   }
 
   r->props.tail_start_offset = r->offset;
+
+  std::cout << "Writing meta blocks, metaindex block and footer in the following order."
+            << "\n\t1. [meta block: filter]"
+            << "\n\t2. [meta block: index]"
+            << "\n\t3. [meta block: compression dictionary]"
+            << "\n\t4. [meta block: range deletion tombstone]"
+            << "\n\t5. [meta block: properties]"
+            << "\n\t6. [metaindex block]"
+            << "\n\t7. Footer \n\tFor File: " << r->file->file_name() << " "
+            << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   // Write meta blocks, metaindex block and footer in the following order.
   //    1. [meta block: filter]

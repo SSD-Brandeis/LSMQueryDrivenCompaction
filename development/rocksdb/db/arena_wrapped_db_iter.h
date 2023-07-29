@@ -94,8 +94,8 @@ class ArenaWrappedDBIter : public Iterator {
   // with these same params
   void StoreRefreshInfo(DBImpl* db_impl, ColumnFamilyData* cfd,
                         ReadCallback* read_callback, bool expose_blob_index) {
-    std::cout << "[Shubham]: Storing Refresh Info " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Shubham]: db_impl, cfd_, read_callback_, expose_blob_index_ " << db_impl << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: Storing Refresh Info " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: db_impl, cfd_, read_callback_, expose_blob_index_ " << db_impl << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     db_impl_ = db_impl;
     cfd_ = cfd;

@@ -101,7 +101,7 @@ int FindFileInRange(const InternalKeyComparator& icmp,
                     const LevelFilesBrief& file_level, const Slice& key,
                     uint32_t left, uint32_t right) {
   std::cout << "[Shubham]: file_level.num_files " << file_level.num_files << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  std::cout << "[Shubham]: Doing binary search for right file: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Doing binary search for right file: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto cmp = [&](const FdWithKeyRange& f, const Slice& k) -> bool {
     return icmp.InternalKeyComparator::Compare(f.largest_key, k) < 0;
@@ -849,7 +849,7 @@ Version::~Version() {
 
 int FindFile(const InternalKeyComparator& icmp,
              const LevelFilesBrief& file_level, const Slice& key) {
-  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   return FindFileInRange(icmp, file_level, key, 0,
                          static_cast<uint32_t>(file_level.num_files));
@@ -1013,7 +1013,7 @@ class LevelIterator final : public InternalIterator {
     return file_iter_.Valid() || to_return_sentinel_;
   }
   Slice key() const override {
-    std::cout << "[Shubham]: Spitting Key to Application: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: Spitting Key to Application: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     
     assert(Valid());
     if (to_return_sentinel_) {
@@ -1118,8 +1118,8 @@ class LevelIterator final : public InternalIterator {
     if (compaction_boundaries_ != nullptr) {
       smallest_compaction_key = (*compaction_boundaries_)[file_index_].smallest;
       largest_compaction_key = (*compaction_boundaries_)[file_index_].largest;
-      std::cout << "[Shubham]: File Smallest compaction key: " << smallest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::cout << "[Shubham]: File Largest compaction key: " << largest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // std::cout << "[Shubham]: File Smallest compaction key: " << smallest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // std::cout << "[Shubham]: File Largest compaction key: " << largest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     }
     CheckMayBeOutOfLowerBound();
     ClearRangeTombstoneIter();
@@ -1230,7 +1230,7 @@ void LevelIterator::Seek(const Slice& target) {
   // Check whether the seek key fall under the same file
   bool need_to_reseek = true;
   if (file_iter_.iter() != nullptr && file_index_ < flevel_->num_files) {
-    std::cout << "[Shubham]: file_iter != nullptr and file_index < flevel_->num_files " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: file_iter != nullptr and file_index < flevel_->num_files " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     const FdWithKeyRange& cur_file = flevel_->files[file_index_];
     if (icomparator_.InternalKeyComparator::Compare(
@@ -1245,7 +1245,7 @@ void LevelIterator::Seek(const Slice& target) {
   if (need_to_reseek) {
     TEST_SYNC_POINT("LevelIterator::Seek:BeforeFindFile");
     size_t new_file_index = FindFile(icomparator_, *flevel_, target);
-    std::cout << "[Shubham]: New File Index: " << new_file_index << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: New File Index: " << new_file_index << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     InitFileIterator(new_file_index);
   }
 
@@ -1600,7 +1600,7 @@ bool LevelIterator::SkipEmptyFileForward() {
     if (file_index_ >= flevel_->num_files - 1 ||
         KeyReachedUpperBound(file_smallest_key(file_index_ + 1)) ||
         prefix_exhausted_) {
-      std::cout << "[Shubham]: (file_index_ >= flevel_->num_files-1) file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // std::cout << "[Shubham]: (file_index_ >= flevel_->num_files-1) file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       SetFileIterator(nullptr);
       ClearRangeTombstoneIter();
       break;
@@ -1615,7 +1615,7 @@ bool LevelIterator::SkipEmptyFileForward() {
     // LevelIterator::Seek*, it should also call Seek* into the corresponding
     // range tombstone iterator.
     if (file_iter_.iter() != nullptr) {
-      std::cout << "[Shubham]: Performing SeeToFirst file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // std::cout << "[Shubham]: Performing SeeToFirst file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       file_iter_.SeekToFirst();
       if (range_tombstone_iter_) {
         if (*range_tombstone_iter_) {
@@ -1758,7 +1758,7 @@ void LevelIterator::SkipEmptyFileBackward() {
 }
 
 void LevelIterator::SetFileIterator(InternalIterator* iter) {
-  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   if (pinned_iters_mgr_ && iter) {
     iter->SetPinnedItersMgr(pinned_iters_mgr_);
@@ -1779,7 +1779,7 @@ void LevelIterator::SetFileIterator(InternalIterator* iter) {
 }
 
 void LevelIterator::InitFileIterator(size_t new_file_index) {
-  std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   if (new_file_index >= flevel_->num_files) {
     file_index_ = new_file_index;
     SetFileIterator(nullptr);
@@ -2232,10 +2232,10 @@ void Version::AddIterators(const ReadOptions& read_options,
                            MergeIteratorBuilder* merge_iter_builder,
                            bool allow_unprepared_value, DBImpl* db_impl) {
   assert(storage_info_.finalized_);
-  std::cout << "[Shubham]: Number of Non Empty Levels: " << storage_info_.num_non_empty_levels() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Number of Non Empty Levels: " << storage_info_.num_non_empty_levels() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   for (int level = 0; level < storage_info_.num_non_empty_levels(); level++) {
-    std::cout << "[Shubham]: Trying to add for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: Trying to add for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     AddIteratorsForLevel(read_options, soptions, merge_iter_builder, level,
                          allow_unprepared_value, db_impl);
   }
@@ -2254,7 +2254,7 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
   }
 
   bool should_sample = should_sample_file_read();
-  std::cout << "[Shubham]: Should sample file read should_sample: " << should_sample << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Should sample file read should_sample: " << should_sample << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto* arena = merge_iter_builder->GetArena();
   if (level == 0) {

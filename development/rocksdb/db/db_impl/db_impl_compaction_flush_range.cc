@@ -12,6 +12,7 @@ namespace ROCKSDB_NAMESPACE {
 //                 Update the Newly created File boundries
 //                 Update meta data for the newly created file
 //                 Check if any listners have to be notified for new file creation
+//                 class SstFileManagerImpl -- Report to SSTFileManager for the new file creation
 Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
                                    const Slice& target,
                                    const InternalKeyComparator* comparator) {
@@ -85,8 +86,7 @@ Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
       break;
     }
     builder_->Add(iter.key(), iter.value());
-    // TODO: Update boundaries of the partial file
-    // meta.UpdateBoundaries();
+    meta.UpdateBoundaries(iter.key(), iter.value(), versions_->LastSequence(), ExtractValueType(iter.key()));
     iter.Next();
   }
 

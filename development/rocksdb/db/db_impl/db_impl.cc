@@ -1836,6 +1836,10 @@ static void CleanupSuperVersionHandle(void* arg1, void* /*arg2*/) {
   delete sv_handle;
 }
 
+// static void ApplyRangeQueryEdits(VersionEdit &edits, VersionSet *version){
+//   version->LogAndApply();
+// }
+
 struct GetMergeOperandsState {
   MergeContext merge_context;
   PinnedIteratorsManager pinned_iters_mgr;
@@ -1856,6 +1860,8 @@ InternalIterator* DBImpl::NewInternalIterator(
     bool allow_unprepared_value, ArenaWrappedDBIter* db_iter) {
   InternalIterator* internal_iter;
   assert(arena != nullptr);
+  edits_ = new VersionEdit();
+  edits_->SetColumnFamily(cfd->GetID());
 
   // Need to create internal iterator from the arena.
   MergeIteratorBuilder merge_iter_builder(

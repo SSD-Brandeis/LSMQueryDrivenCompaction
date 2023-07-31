@@ -457,7 +457,11 @@ class DBImpl : public DB {
   virtual Status LockWAL() override;
   virtual Status UnlockWAL() override;
 
+  // Flush partial sst file to the level
   Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target, const InternalKeyComparator* comparator);
+
+  // keep track of version edits for range queries
+  VersionEdit *edits_;
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 

@@ -582,7 +582,11 @@ class MergingIterator : public InternalIterator {
   void FindNextVisibleKey();
   void FindPrevVisibleKey();
 
+  // Flush partial sst files during range queries
   Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target);
+
+  // FileMetaData vector to hold newly added files during range query
+  std::vector<FileMetaData*> range_query_compaction_files;
 
   // Advance this merging iterators to the first key >= `target` for all
   // components from levels >= starting_level. All iterators before
@@ -1682,8 +1686,8 @@ MergeIteratorBuilder::MergeIteratorBuilder(
     const InternalKeyComparator* comparator, Arena* a, bool prefix_seek_mode,
     const Slice* iterate_upper_bound, DBImpl* db_impl)
     : first_iter(nullptr), use_merging_iter(false), arena(a), db_impl_(db_impl) {
-  // std::cout << "[Shubham]: Creating Merge Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  // std::cout << "[Shubham]: iterate_upper_bound" << (iterate_upper_bound != nullptr ? iterate_upper_bound->data() : "nullptr") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: Creating Merge Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: iterate_upper_bound" << (iterate_upper_bound != nullptr ? iterate_upper_bound->data() : "nullptr") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto mem = arena->AllocateAligned(sizeof(MergingIterator));
   merge_iter = new (mem) MergingIterator(comparator, nullptr, 0, true,

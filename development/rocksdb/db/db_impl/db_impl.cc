@@ -1837,6 +1837,10 @@ static void CleanupSuperVersionHandle(void* arg1, void* /*arg2*/) {
   delete sv_handle;
 }
 
+// static void ApplyRangeQueryEdits(VersionEdit &edits, VersionSet *version){
+//   version->LogAndApply();
+// }
+
 struct GetMergeOperandsState {
   MergeContext merge_context;
   PinnedIteratorsManager pinned_iters_mgr;
@@ -1857,6 +1861,8 @@ InternalIterator* DBImpl::NewInternalIterator(
     bool allow_unprepared_value, ArenaWrappedDBIter* db_iter) {
   InternalIterator* internal_iter;
   assert(arena != nullptr);
+  edits_ = new VersionEdit();
+  edits_->SetColumnFamily(cfd->GetID());
 
   std::cout << "[Shubham]: Creating Merge Iterator Builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
@@ -1914,7 +1920,7 @@ InternalIterator* DBImpl::NewInternalIterator(
     if (read_options.read_tier != kMemtableTier) {
       super_version->current->AddIterators(read_options, file_options_,
                                            &merge_iter_builder,
-                                           allow_unprepared_value);
+                                           allow_unprepared_value, edits_);
     }
     internal_iter = merge_iter_builder.Finish(
         read_options.ignore_range_deletions ? nullptr : db_iter);

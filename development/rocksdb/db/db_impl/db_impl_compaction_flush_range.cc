@@ -90,8 +90,57 @@ Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
     iter.Next();
   }
 
+  // TODO: (shubham) Remove the newly created file if current_entries count is 0
+  // if (s.ok() && current_entries == 0 && tp.num_range_deletions == 0) {
+  //   // If there is nothing to output, no necessary to generate a sst file.
+  //   // This happens when the output level is bottom level, at the same time
+  //   // the sub_compact output nothing.
+  //   std::string fname =
+  //       TableFileName(sub_compact->compaction->immutable_options()->cf_paths,
+  //                     meta->fd.GetNumber(), meta->fd.GetPathId());
+
+  //   // DeleteFile fails here
+  //   Status ds = env_->DeleteFile(fname);
+  //   if (!ds.ok()) {
+  //     ROCKS_LOG_WARN(
+  //         db_options_.info_log,
+  //         "[%s] [JOB %d] Unable to remove SST file for table #%" PRIu64
+  //         " at bottom level%s",
+  //         cfd->GetName().c_str(), job_id_, output_number,
+  //         meta->marked_for_compaction ? " (need compaction)" : "");
+  //   }
+
+  //   // Also need to remove the file from outputs, or it will be added to the
+  //   // VersionEdit.
+  //   outputs.RemoveLastOutput();
+  //   meta = nullptr;
+  // }
+
   builder_->Finish();
   file_writer_->Close();
+  std::cout << "File Saved Successfully " << " " << __FILE__ << ":" << __LINE__
+            << " File name: " << fname << " "
+            << " " << __FUNCTION__ << std::endl;
+
+  // Report new file to SstFileManagerImpl
+  auto sfm =
+      static_cast<SstFileManagerImpl*>(immutable_db_options_.sst_file_manager.get());
+    
+  if (sfm && meta.fd.GetPathId() == 0) {
+    Status add_s = sfm->OnAddFile(fname);
+    if (!add_s.ok() && s.ok()) {
+      s = add_s;
+    }
+  }
+
+  if (s.ok()){
+  std::cout << "Adding new file to edits fname: " << fname << " Level: " << level << " " << __FILE__ << ":" << __LINE__
+            << " File name: " << fname << " "
+            << " " << __FUNCTION__ << std::endl;
+    edits_->AddFile(level, meta);
+  }
+
+  builder_.reset();
 
   // NOTE: For Testing
   // Options op;

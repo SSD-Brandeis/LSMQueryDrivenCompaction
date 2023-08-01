@@ -153,4 +153,14 @@ Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
   return s;
 }
 
+Directories DBImpl::GetDirectories()
+{
+  return directories_;
+}
+
+VersionEdit DBImpl::GetEdits()
+{
+  return edits_;
+}
+
 }  // namespace ROCKSDB_NAMESPACE

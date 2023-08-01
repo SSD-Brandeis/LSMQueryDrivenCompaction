@@ -578,6 +578,7 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
   }
 
   if (cfd == nullptr) {
+    
     auto cfh =
         static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
     cfd = cfh->cfd();

@@ -459,8 +459,9 @@ class DBImpl : public DB {
 
   // Flush partial sst file to the level
   Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target, const InternalKeyComparator* comparator);
-  Directories GetDirectories();
-  VersionEdit GetEdits();
+  void SetRangeQueryRunningToTrue();
+  void SetRangeQueryRunningToFalse();
+  void ApplyRangeQueryEdits();
 
 
   // keep track of version edits for range queries

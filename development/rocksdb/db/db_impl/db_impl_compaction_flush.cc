@@ -3402,6 +3402,8 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():BeforePickCompaction");
       c.reset(cfd->PickCompaction(*mutable_cf_options, mutable_db_options_,
                                   log_buffer));
+      std::cout << "[####] Picked Up a new Compaction here " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
+
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():AfterPickCompaction");
 
       if (c != nullptr) {
@@ -3928,6 +3930,9 @@ void DBImpl::InstallSuperVersionAndScheduleWork(
     ColumnFamilyData* cfd, SuperVersionContext* sv_context,
     const MutableCFOptions& mutable_cf_options) {
   mutex_.AssertHeld();
+
+  std::cout << "[####] Something happend Installing new super version from dBImpl " 
+            << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
 
   // Update max_total_in_memory_state_
   size_t old_memtable_size = 0;

@@ -80,11 +80,13 @@ Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
 
   // TODO: (shubham) Could there be a better way instead 
   // of doing this in while loop (worst would be O(n))
+  int count_ = 0;
   while (iter.Valid()) {
     auto val = comparator->Compare(iter.key(), target.data()) > 0;
     if (val) {
       break;
     }
+    ++count_;
     builder_->Add(iter.key(), iter.value());
     meta.UpdateBoundaries(iter.key(), iter.value(), versions_->LastSequence(), ExtractValueType(iter.key()));
     iter.Next();
@@ -116,29 +118,30 @@ Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
   //   meta = nullptr;
   // }
 
-  builder_->Finish();
-  file_writer_->Close();
-  std::cout << "File Saved Successfully " << " " << __FILE__ << ":" << __LINE__
-            << " File name: " << fname << " "
-            << " " << __FUNCTION__ << std::endl;
-
-  // Report new file to SstFileManagerImpl
-  auto sfm =
-      static_cast<SstFileManagerImpl*>(immutable_db_options_.sst_file_manager.get());
-    
-  if (sfm && meta.fd.GetPathId() == 0) {
-    Status add_s = sfm->OnAddFile(fname);
-    if (!add_s.ok() && s.ok()) {
-      s = add_s;
+  if (count_ > 0) {
+    builder_->Finish();
+    file_writer_->Close();
+    std::cout << "File Saved Successfully " << " " << __FILE__ << ":" << __LINE__
+              << " File name: " << fname << " "
+              << " " << __FUNCTION__ << std::endl;
+    if (s.ok()){
+    std::cout << "Adding new file to edits fname: " << fname << " Level: " << level << " " << __FILE__ << ":" << __LINE__
+              << " File name: " << fname << " "
+              << " " << __FUNCTION__ << std::endl;
+      edits_->AddFile(level, meta);
     }
   }
 
-  if (s.ok()){
-  std::cout << "Adding new file to edits fname: " << fname << " Level: " << level << " " << __FILE__ << ":" << __LINE__
-            << " File name: " << fname << " "
-            << " " << __FUNCTION__ << std::endl;
-    edits_->AddFile(level, meta);
-  }
+  // Report new file to SstFileManagerImpl
+  // auto sfm =
+  //     static_cast<SstFileManagerImpl*>(immutable_db_options_.sst_file_manager.get());
+    
+  // if (sfm && meta.fd.GetPathId() == 0) {
+  //   Status add_s = sfm->OnAddFile(fname);
+  //   if (!add_s.ok() && s.ok()) {
+  //     s = add_s;
+  //   }
+  // }
 
   builder_.reset();
 
@@ -153,14 +156,38 @@ Status DBImpl::FlushPartialSSTFile(IteratorWrapper iter, size_t level,
   return s;
 }
 
-Directories DBImpl::GetDirectories()
-{
-  return directories_;
+void DBImpl::ApplyRangeQueryEdits(){
+  std::cout << "[####] Calling Add Range Query Edits " << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
+  mutex()->AssertHeld();
+  
+  for (auto deleted_file : edits_->GetDeletedFiles()) {
+    std::cout << "[####] Deleted File " << deleted_file.second << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
+    MarkAsGrabbedForPurge(deleted_file.second);
+  }
+
+  auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+  ColumnFamilyData* cfd = cfh->cfd();
+  auto version = GetVersionSet();
+  const ReadOptions read_options;
+  const MutableCFOptions& cf_opts = *cfd->GetLatestMutableCFOptions();
+  version->LogAndApply(cfd, cf_opts, read_options, &(*edits_), mutex(), directories_.GetDbDir());
+  SuperVersionContext *sv_context = new SuperVersionContext(true);
+  InstallSuperVersionAndScheduleWork(cfd, sv_context, cf_opts);
+  mutex()->Unlock();
 }
 
-VersionEdit DBImpl::GetEdits()
-{
-  return edits_;
+void DBImpl::SetRangeQueryRunningToTrue() {
+  std::cout << "[####] Setting Range query running to True " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
+  auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+  ColumnFamilyData* cfd = cfh->cfd();
+  cfd->SetRangeQueryRunningToTrue();
+}
+
+void DBImpl::SetRangeQueryRunningToFalse() {
+  std::cout << "[####] Setting Range query running to False " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
+  auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+  ColumnFamilyData* cfd = cfh->cfd();
+  cfd->SetRangeQueryRunningToFalse();
 }
 
 }  // namespace ROCKSDB_NAMESPACE

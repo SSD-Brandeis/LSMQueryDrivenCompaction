@@ -1241,6 +1241,7 @@ void LevelIterator::Seek(const Slice& target) {
       assert(static_cast<size_t>(FindFile(icomparator_, *flevel_, target)) ==
              file_index_);
     }
+    std::cout << "[####]: File Name after Seek in LevelIterator FN: " << cur_file.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   }
   if (need_to_reseek) {
     TEST_SYNC_POINT("LevelIterator::Seek:BeforeFindFile");
@@ -1468,9 +1469,12 @@ bool LevelIterator::SkipEmptyFileForward() {
     // may init a new *range_tombstone_iter
     std::cout << "[Shubham]: Moving to a new SST File file_index_: " << file_index_ << " file_index_ + 1: " << file_index_+1 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
+    // Adding previous file to edits delete
     if (edits_ != nullptr){
-      std::cout << "[####]: Setting file_index_: " << file_index_ << " to be deleted Level: " << level_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      edits_->DeleteFile(level_, flevel_->files->file_metadata->fd.GetNumber());
+      std::cout << "[####]: Setting file_index_: " << file_index_ << " to be deleted Level: " << level_ 
+                << "File Number: "<< flevel_->files[file_index_].file_metadata->fd.GetNumber() 
+                << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
     }
 
     InitFileIterator(file_index_ + 1);

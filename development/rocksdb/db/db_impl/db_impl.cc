@@ -1837,21 +1837,6 @@ static void CleanupSuperVersionHandle(void* arg1, void* /*arg2*/) {
   delete sv_handle;
 }
 
-static void ApplyRangeQueryEdits(void *arg1, void * /*arg2*/){ // VersionEdit &edits, VersionSet *version, 
-                                //  ColumnFamilyData *cfd, Directories directories_){
-  DBImpl *db_impl_ = reinterpret_cast<DBImpl*>(arg1);
-  auto mutex_ = db_impl_->mutex();
-  mutex_->AssertHeld();
-  auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(db_impl_->DefaultColumnFamily());
-  ColumnFamilyData* cfd = cfh->cfd();
-  auto version = db_impl_->GetVersionSet();
-  auto edits = db_impl_->GetEdits();
-  auto directories_ = db_impl_->GetDirectories();
-  const ReadOptions read_options;
-  const MutableCFOptions& cf_opts = *cfd->GetLatestMutableCFOptions();
-  version->LogAndApply(cfd, cf_opts, read_options, &edits, mutex_, directories_.GetDbDir());
-}
-
 struct GetMergeOperandsState {
   MergeContext merge_context;
   PinnedIteratorsManager pinned_iters_mgr;
@@ -1939,7 +1924,13 @@ InternalIterator* DBImpl::NewInternalIterator(
         this, &mutex_, super_version,
         read_options.background_purge_on_iterator_cleanup ||
             immutable_db_options_.avoid_unnecessary_blocking_io);
-    internal_iter->RegisterCleanup(ApplyRangeQueryEdits, this, nullptr);
+
+    while (cfd->IsQueuedOrCompactionInProgress()){
+      std::cout << "[****]: Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      std::cout << "[****]: Compaction queue is not empty or already in progress!" << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    }
+
     internal_iter->RegisterCleanup(CleanupSuperVersionHandle, cleanup, nullptr);
 
     return internal_iter;

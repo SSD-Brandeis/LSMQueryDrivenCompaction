@@ -21,6 +21,9 @@ namespace ROCKSDB_NAMESPACE {
 
 bool LevelCompactionPicker::NeedsCompaction(
     const VersionStorageInfo* vstorage) const {
+  if (IsRangeQueryRunning()) {
+    return false;
+  }
   if (!vstorage->ExpiredTtlFiles().empty()) {
     return true;
   }

@@ -676,6 +676,7 @@ int runWorkload(EmuEnv *_env) {
     char instruction;
     long key, start_key, end_key;
     string value;
+    DBImpl *db_impl_;
     workload_file >> instruction;
     _env->current_op = instruction;  // !YBS-sep18-XX!
     switch (instruction) {

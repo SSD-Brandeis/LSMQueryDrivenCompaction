@@ -1241,6 +1241,7 @@ void LevelIterator::Seek(const Slice& target) {
       assert(static_cast<size_t>(FindFile(icomparator_, *flevel_, target)) ==
              file_index_);
     }
+    std::cout << "[####]: File Name after Seek in LevelIterator FN: " << cur_file.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   }
   if (need_to_reseek) {
     TEST_SYNC_POINT("LevelIterator::Seek:BeforeFindFile");

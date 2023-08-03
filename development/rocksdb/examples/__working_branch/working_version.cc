@@ -655,7 +655,7 @@ int runWorkload(EmuEnv* _env) {
           break;
         }
       }
-      // db_impl_->ApplyRangeQueryEdits();
+      db_impl_->ApplyRangeQueryEdits();
       db_impl_->SetRangeQueryRunningToFalse();
       if (!it->status().ok()) {
         std::cerr << it->status().ToString() << std::endl;

@@ -1916,7 +1916,7 @@ InternalIterator* DBImpl::NewInternalIterator(
     if (read_options.read_tier != kMemtableTier) {
       super_version->current->AddIterators(read_options, file_options_,
                                            &merge_iter_builder,
-                                           allow_unprepared_value, edits_);
+                                           allow_unprepared_value, this);
     }
     internal_iter = merge_iter_builder.Finish(
         read_options.ignore_range_deletions ? nullptr : db_iter);
@@ -3484,7 +3484,7 @@ ArenaWrappedDBIter* DBImpl::NewIteratorImpl(const ReadOptions& read_options,
                                             bool expose_blob_index,
                                             bool allow_refresh) {
   std::cout << "[Shubham]: NewIteratorImpl " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-                                            
+  read_options_ = read_options;
   SuperVersion* sv = cfd->GetReferencedSuperVersion(this);
 
   TEST_SYNC_POINT("DBImpl::NewIterator:1");

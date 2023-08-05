@@ -148,7 +148,9 @@ class MergingIterator : public InternalIterator {
     status_.PermitUncheckedError();
   }
 
-  bool Valid() const override { return current_ != nullptr && status_.ok(); }
+  bool Valid() const override { 
+    return current_ != nullptr && status_.ok(); 
+  }
 
   Status status() const override { return status_; }
 
@@ -583,7 +585,7 @@ class MergingIterator : public InternalIterator {
   void FindPrevVisibleKey();
 
   // Flush partial sst files during range queries
-  Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target);
+  // Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target);
 
   // FileMetaData vector to hold newly added files during range query
   std::vector<FileMetaData*> range_query_compaction_files;
@@ -701,9 +703,9 @@ class MergingIterator : public InternalIterator {
   }
 };
 
-Status MergingIterator::FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target) {
-    return db_impl_->FlushPartialSSTFile(iter, level, target, comparator_);
-}
+// Status MergingIterator::FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target) {
+//     return db_impl_->FlushPartialSSTFile(iter, level, target, comparator_);
+// }
 
 // Pre-condition:
 // - Invariants (3) and (4) hold for i < starting_level
@@ -845,10 +847,10 @@ void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
     {
       std::cout << "[Shubham]: Performing Seek for each level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
-      if (level != 0)
-      {
-        FlushPartialSSTFile(children_[level].iter, level, current_search_key.GetInternalKey());
-      }
+      // if (level != 0)
+      // {
+      //   FlushPartialSSTFile(children_[level].iter, level, current_search_key.GetInternalKey());
+      // }
 
       PERF_TIMER_GUARD(seek_child_seek_time);
       children_[level].iter.Seek(current_search_key.GetInternalKey());

@@ -235,6 +235,22 @@ void BlockBasedTableIterator::Next() {
   }
   assert(block_iter_points_to_real_block_);
   block_iter_.Next();
+
+  bool is_valid = Valid();
+  
+  // std::cout << "[####]: start_key == nullptr " << (start_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[####]: end_key == nullptr " << (end_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+  // check for start_key_ and end_key_
+  if (!is_valid && start_key_ != "" && end_key_ != "") {
+    std::cout << "[####]: Inside the start and end key comparison of NextAndGetResult " 
+              << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    if (block_iter_.Valid() && icomp_.Compare(key(), Slice(start_key_)) >= 0 && icomp_.Compare(key(), Slice(end_key_)) <= 0) {
+      Seek(Slice(end_key_));
+      if (icomp_.Compare(key(), Slice(end_key_)) == 0) { Next(); }
+    }
+  }
+
   FindKeyForward();
   CheckOutOfBound();
 }

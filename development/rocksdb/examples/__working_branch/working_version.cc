@@ -645,9 +645,12 @@ int runWorkload(EmuEnv* _env) {
                 << std::endl
                 << std::endl
                 << std::endl;
-      it->Refresh();
       db_impl_ = reinterpret_cast<DBImpl*>(db);
-      db_impl_->SetRangeQueryRunningToTrue();
+
+      db_impl_->SetRangeQueryRunningToTrue(new Slice(to_string(start_key)), new Slice(to_string(end_key)));
+
+      it->Refresh();
+
       assert(it->status().ok());
       for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
         std::cout << "found key = " << it->key().ToString() << std::endl;
@@ -818,7 +821,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv* _env) {
   _env->enable_rocksdb_perf_iostat = enable_rocksdb_perf_iostat_cmd ? args::get(enable_rocksdb_perf_iostat_cmd) : 1; // !YBS-feb15-XXI!
 
   _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
-  _env->max_background_jobs = 0;  // [Shubham]
+  _env->max_background_jobs = 2;  // [Shubham]
 
   _env->target_file_size_base = _env->buffer_size; // !YBS-sep07-XX!
   _env->max_bytes_for_level_base = _env->buffer_size * _env->size_ratio; // !YBS-sep07-XX!

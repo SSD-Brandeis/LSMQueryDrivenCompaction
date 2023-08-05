@@ -11,6 +11,7 @@
 #include "table/block_based/block_based_table_reader_impl.h"
 #include "table/block_based/block_prefetcher.h"
 #include "table/block_based/reader_common.h"
+#include <iostream>
 
 namespace ROCKSDB_NAMESPACE {
 // Iterates over the contents of BlockBasedTable.
@@ -25,7 +26,8 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
       std::unique_ptr<InternalIteratorBase<IndexValue>>&& index_iter,
       bool check_filter, bool need_upper_bound_check,
       const SliceTransform* prefix_extractor, TableReaderCaller caller,
-      size_t compaction_readahead_size = 0, bool allow_unprepared_value = false)
+      size_t compaction_readahead_size = 0, bool allow_unprepared_value = false,
+      std::string start_key = "", std::string end_key = "")
       : index_iter_(std::move(index_iter)),
         table_(table),
         read_options_(read_options),
@@ -38,6 +40,8 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
             compaction_readahead_size,
             table_->get_rep()->table_options.initial_auto_readahead_size),
         allow_unprepared_value_(allow_unprepared_value),
+        start_key_(start_key),
+        end_key_(end_key),
         block_iter_points_to_real_block_(false),
         check_filter_(check_filter),
         need_upper_bound_check_(need_upper_bound_check),
@@ -54,6 +58,19 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   bool NextAndGetResult(IterateResult* result) override;
   void Prev() override;
   bool Valid() const override {
+    // std::cout << "[####]: BLOCK_BASED_ITER start_key == nullptr " << (start_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[####]: BLOCK_BASED_ITER end_key == nullptr " << (end_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+    if (start_key_ != "" && end_key_ != "" && key() != nullptr) {
+      std::cout << "[####]: Checking start and end key in block based table iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      const Slice current_key = key();
+      std::cout << "[####]: current_key < start_key_ " << (icomp_.Compare(current_key, Slice(start_key_)) < 0) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "[####]: current_key < end_key_ " << (icomp_.Compare(current_key, Slice(end_key_)) < 0) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "[####]: current_key > end_key_ " << (icomp_.Compare(current_key, Slice(end_key_)) > 0) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      if (icomp_.Compare(current_key, Slice(start_key_)) < 0 && icomp_.Compare(current_key, Slice(end_key_)) < 0) { return true; }
+      else if (icomp_.Compare(current_key, Slice(start_key_)) >= 0 && icomp_.Compare(current_key, Slice(end_key_)) <= 0) { return false; }
+      else if (block_iter_.Valid() && icomp_.Compare(current_key, Slice(end_key_)) > 0) { return true; }
+    }
     return !is_out_of_bound_ &&
            (is_at_first_key_from_index_ ||
             (block_iter_points_to_real_block_ && block_iter_.Valid()));
@@ -249,6 +266,11 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   BlockPrefetcher block_prefetcher_;
 
   const bool allow_unprepared_value_;
+
+  // range start and end key
+  std::string start_key_;
+  std::string end_key_;
+
   // True if block_iter_ is initialized and points to the same block
   // as index iterator.
   bool block_iter_points_to_real_block_;

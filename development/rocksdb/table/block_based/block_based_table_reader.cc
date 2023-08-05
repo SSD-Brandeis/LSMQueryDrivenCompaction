@@ -1908,7 +1908,7 @@ InternalIterator* BlockBasedTable::NewIterator(
         !skip_filters && !read_options.total_order_seek &&
             prefix_extractor != nullptr,
         need_upper_bound_check, prefix_extractor, caller,
-        compaction_readahead_size, allow_unprepared_value);
+        compaction_readahead_size, allow_unprepared_value, start_key, end_key);
   } else {
     auto* mem = arena->AllocateAligned(sizeof(BlockBasedTableIterator));
     return new (mem) BlockBasedTableIterator(
@@ -1916,7 +1916,7 @@ InternalIterator* BlockBasedTable::NewIterator(
         !skip_filters && !read_options.total_order_seek &&
             prefix_extractor != nullptr,
         need_upper_bound_check, prefix_extractor, caller,
-        compaction_readahead_size, allow_unprepared_value);
+        compaction_readahead_size, allow_unprepared_value, start_key, end_key);
   }
 }
 

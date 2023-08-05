@@ -236,7 +236,8 @@ InternalIterator* TableCache::NewIterator(
     const InternalKey* smallest_compaction_key,
     const InternalKey* largest_compaction_key, bool allow_unprepared_value,
     uint8_t block_protection_bytes_per_key,
-    TruncatedRangeDelIterator** range_del_iter) {
+    TruncatedRangeDelIterator** range_del_iter,
+    std::string start_key, std::string end_key) {
   PERF_TIMER_GUARD(new_table_iterator_nanos);
   // std::cout << "[Shubham]: Creating New TableCache Iterator for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
@@ -272,9 +273,18 @@ InternalIterator* TableCache::NewIterator(
       result = NewEmptyInternalIterator<Slice>(arena);
     } else {
       // std::cout << "[Shubham]: Creating New TableReader Iterator for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+      // std::cout << "[####]: TABLECACHE start_key == nullptr " << (start_key == nullptr) << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // std::cout << "[####]: TABLECACHE end_key == nullptr " << (end_key == nullptr) << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+      // if (start_key != "" && end_key != "") {
+      //   std::cout << "START_KEY: " << start_key << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      //   std::cout << "END_KEY: " << end_key << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // }
+
       result = table_reader->NewIterator(
           options, prefix_extractor.get(), arena, skip_filters, caller,
-          file_options.compaction_readahead_size, allow_unprepared_value);
+          file_options.compaction_readahead_size, allow_unprepared_value, start_key, end_key);
     }
     if (handle != nullptr) {
       cache_.RegisterReleaseAsCleanup(handle, *result);

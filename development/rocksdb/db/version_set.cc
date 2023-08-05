@@ -1252,6 +1252,9 @@ void LevelIterator::Seek(const Slice& target) {
 
   if (file_iter_.iter() != nullptr) {
     // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
+
+    db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+
     file_iter_.Seek(target);
     // Status::TryAgain indicates asynchronous request for retrieval of data
     // blocks has been submitted. So it should return at this point and Seek

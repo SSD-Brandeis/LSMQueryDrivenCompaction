@@ -1035,7 +1035,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
                                      : 1;  // !YBS-feb15-XXI!
 
   _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
-  _env->max_background_jobs = 0;  // [Shubham]
+  _env->max_background_jobs = 2;  // [Shubham]
 
   _env->target_file_size_base = _env->buffer_size;  // !YBS-sep07-XX!
   _env->max_bytes_for_level_base =

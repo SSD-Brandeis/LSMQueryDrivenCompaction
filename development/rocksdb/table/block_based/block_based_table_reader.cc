@@ -1890,7 +1890,8 @@ bool BlockBasedTable::IsLastLevel() const {
 InternalIterator* BlockBasedTable::NewIterator(
     const ReadOptions& read_options, const SliceTransform* prefix_extractor,
     Arena* arena, bool skip_filters, TableReaderCaller caller,
-    size_t compaction_readahead_size, bool allow_unprepared_value) {
+    size_t compaction_readahead_size, bool allow_unprepared_value,
+    std::string start_key, std::string end_key) {
   std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   BlockCacheLookupContext lookup_context{caller};
@@ -1908,7 +1909,7 @@ InternalIterator* BlockBasedTable::NewIterator(
         !skip_filters && !read_options.total_order_seek &&
             prefix_extractor != nullptr,
         need_upper_bound_check, prefix_extractor, caller,
-        compaction_readahead_size, allow_unprepared_value);
+        compaction_readahead_size, allow_unprepared_value, start_key, end_key);
   } else {
     auto* mem = arena->AllocateAligned(sizeof(BlockBasedTableIterator));
     return new (mem) BlockBasedTableIterator(
@@ -1916,7 +1917,7 @@ InternalIterator* BlockBasedTable::NewIterator(
         !skip_filters && !read_options.total_order_seek &&
             prefix_extractor != nullptr,
         need_upper_bound_check, prefix_extractor, caller,
-        compaction_readahead_size, allow_unprepared_value);
+        compaction_readahead_size, allow_unprepared_value, start_key, end_key);
   }
 }
 

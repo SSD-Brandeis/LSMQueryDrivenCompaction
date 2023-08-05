@@ -835,14 +835,15 @@ class Version {
   void AddIterators(const ReadOptions& read_options,
                     const FileOptions& soptions,
                     MergeIteratorBuilder* merger_iter_builder,
-                    bool allow_unprepared_value, VersionEdit *edits);
+                    bool allow_unprepared_value, DBImpl *db_impl);
 
   // @param read_options Must outlive any iterator built by
   // `merger_iter_builder`.
   void AddIteratorsForLevel(const ReadOptions& read_options,
                             const FileOptions& soptions,
                             MergeIteratorBuilder* merger_iter_builder,
-                            int level, bool allow_unprepared_value, VersionEdit *edits);
+                            int level, bool allow_unprepared_value, 
+                            DBImpl *db_impl);
 
   Status OverlapWithLevelIterator(const ReadOptions&, const FileOptions&,
                                   const Slice& smallest_user_key,

@@ -458,11 +458,16 @@ class DBImpl : public DB {
   virtual Status UnlockWAL() override;
 
   // Flush partial sst file to the level
-  Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target, const InternalKeyComparator* comparator);
-  void SetRangeQueryRunningToTrue();
+  // Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target, const InternalKeyComparator* comparator);
+  void SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key);
   void SetRangeQueryRunningToFalse();
   void ApplyRangeQueryEdits();
-
+  Status WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_index, int level);
+  ReadOptions read_options_;
+  // Slice* range_start_key_here = nullptr;
+  // Slice* range_end_key_here = nullptr;
+  std::string range_start_key_;
+  std::string range_end_key_;
 
   // keep track of version edits for range queries
   VersionEdit *edits_;

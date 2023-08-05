@@ -953,7 +953,7 @@ class LevelIterator final : public InternalIterator {
       const std::vector<AtomicCompactionUnitBoundary>* compaction_boundaries =
           nullptr,
       bool allow_unprepared_value = false,
-      TruncatedRangeDelIterator**** range_tombstone_iter_ptr_ = nullptr, VersionEdit *edits = nullptr)
+      TruncatedRangeDelIterator**** range_tombstone_iter_ptr_ = nullptr, DBImpl *db_impl = nullptr)
       : table_cache_(table_cache),
         read_options_(read_options),
         file_options_(file_options),
@@ -970,7 +970,9 @@ class LevelIterator final : public InternalIterator {
         level_(level),
         range_del_agg_(range_del_agg),
         pinned_iters_mgr_(nullptr),
-        edits_(edits),
+        db_impl_(db_impl),
+        // start_key_(start_key),
+        // end_key_(end_key),
         compaction_boundaries_(compaction_boundaries),
         is_next_read_sequential_(false),
         block_protection_bytes_per_key_(block_protection_bytes_per_key),
@@ -979,6 +981,12 @@ class LevelIterator final : public InternalIterator {
     // Empty level is not supported.
     assert(flevel_ != nullptr && flevel_->num_files > 0);
     // std::cout << "[Shubham]: LevelIterator constructor " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+    // if (start_key_ != nullptr && end_key_ != nullptr) {
+    //   std::cout << "LEVEL ITR START_KEY_: " << start_key_->data() << " SIZE: " << start_key_->size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    //   std::cout << "LEVEL ITR END_KEY_: " << end_key_->data() << " SIZE: " << end_key_->size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // }
+
 
     if (range_tombstone_iter_ptr_) {
       *range_tombstone_iter_ptr_ = &range_tombstone_iter_;
@@ -1169,7 +1177,9 @@ class LevelIterator final : public InternalIterator {
   PinnedIteratorsManager* pinned_iters_mgr_;
 
   // keeping track of edits while range query
-  VersionEdit *edits_;
+  DBImpl *db_impl_;
+  // Slice *start_key_;
+  // Slice *end_key_;
 
   // To be propagated to RangeDelAggregator in order to safely truncate range
   // tombstones.
@@ -1252,6 +1262,9 @@ void LevelIterator::Seek(const Slice& target) {
 
   if (file_iter_.iter() != nullptr) {
     // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
+
+    db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+
     file_iter_.Seek(target);
     // Status::TryAgain indicates asynchronous request for retrieval of data
     // blocks has been submitted. So it should return at this point and Seek
@@ -1470,11 +1483,11 @@ bool LevelIterator::SkipEmptyFileForward() {
     std::cout << "[Shubham]: Moving to a new SST File file_index_: " << file_index_ << " file_index_ + 1: " << file_index_+1 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     // Adding previous file to edits delete
-    if (edits_ != nullptr){
+    if (db_impl_ != nullptr){
       std::cout << "[####]: Setting file_index_: " << file_index_ << " to be deleted Level: " << level_ 
                 << "File Number: "<< flevel_->files[file_index_].file_metadata->fd.GetNumber() 
                 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+      db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
     }
 
     InitFileIterator(file_index_ + 1);
@@ -2001,7 +2014,7 @@ double VersionStorageInfo::GetEstimatedCompressionRatioAtLevel(
 void Version::AddIterators(const ReadOptions& read_options,
                            const FileOptions& soptions,
                            MergeIteratorBuilder* merge_iter_builder,
-                           bool allow_unprepared_value, VersionEdit *edits) {
+                           bool allow_unprepared_value, DBImpl *db_impl) {
   std::cout << "[Shubham]: Adding Iterator for levels " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   assert(storage_info_.finalized_);
@@ -2010,14 +2023,14 @@ void Version::AddIterators(const ReadOptions& read_options,
   for (int level = 0; level < storage_info_.num_non_empty_levels(); level++) {
     // std::cout << "[Shubham]: Trying to add for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     AddIteratorsForLevel(read_options, soptions, merge_iter_builder, level,
-                         allow_unprepared_value, edits);
+                         allow_unprepared_value, db_impl);
   }
 }
 
 void Version::AddIteratorsForLevel(const ReadOptions& read_options,
                                    const FileOptions& soptions,
                                    MergeIteratorBuilder* merge_iter_builder,
-                                   int level, bool allow_unprepared_value, VersionEdit *edits) {
+                                   int level, bool allow_unprepared_value, DBImpl *db_impl) {
   assert(storage_info_.finalized_);
   if (level >= storage_info_.num_non_empty_levels()) {
     // std::cout << "[Shubham]: Found level > storage_info_.num_non_empty_levels() level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
@@ -2087,7 +2100,7 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
         mutable_cf_options_.block_protection_bytes_per_key,
         /*range_del_agg=*/nullptr,
         /*compaction_boundaries=*/nullptr, allow_unprepared_value,
-        &tombstone_iter_ptr, edits);
+        &tombstone_iter_ptr, db_impl);
     if (read_options.ignore_range_deletions) {
       std::cout << "[Shubham]: Add level iter for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddIterator(level_iter);

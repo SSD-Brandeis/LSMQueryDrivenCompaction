@@ -1859,6 +1859,8 @@ InternalIterator* DBImpl::NewInternalIterator(
   assert(arena != nullptr);
   edits_ = new VersionEdit();
   edits_->SetColumnFamily(cfd->GetID());
+  SequenceNumber seq = versions_->LastSequence();
+  range_query_memtable_ = cfd->ConstructNewMemtable(super_version->mutable_cf_options, seq);
 
   std::cout << "[Shubham]: Creating Merge Iterator Builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 

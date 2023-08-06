@@ -176,6 +176,17 @@ void DBIter::Next() {
     local_stats_.next_found_count_++;
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
+
+  if (db_impl_->read_options_.is_range_query_compaction_enabled) {
+    std::cout << "[Shubham]: Adding New Key Value to the memtable during range query Key: " << key().data() << " Value: " << value().data() << " "
+              << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    db_impl_->range_query_memtable_->Add(db_impl_->GetVersionSet()->LastSequence(), ValueType::kTypeValue, Slice(key().data()), Slice(value().data()), nullptr);
+
+    if (db_impl_->range_query_memtable_->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
+      std::cout << "[Shubham]: Memtable full NUM_ENTRIES: " << db_impl_->range_query_memtable_->num_entries() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "[Shubham]: Memtable full need to flush " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    }
+  }
 }
 
 bool DBIter::SetBlobValueIfNeeded(const Slice& user_key,

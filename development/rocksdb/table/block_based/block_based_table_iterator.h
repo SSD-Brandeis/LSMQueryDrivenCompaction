@@ -58,19 +58,6 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   bool NextAndGetResult(IterateResult* result) override;
   void Prev() override;
   bool Valid() const override {
-    // std::cout << "[####]: BLOCK_BASED_ITER start_key == nullptr " << (start_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    // std::cout << "[####]: BLOCK_BASED_ITER end_key == nullptr " << (end_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
-    if (start_key_ != "" && end_key_ != "" && key() != nullptr) {
-      std::cout << "[####]: Checking start and end key in block based table iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      const Slice current_key = key();
-      std::cout << "[####]: current_key < start_key_ " << (icomp_.Compare(current_key, Slice(start_key_)) < 0) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::cout << "[####]: current_key < end_key_ " << (icomp_.Compare(current_key, Slice(end_key_)) < 0) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::cout << "[####]: current_key > end_key_ " << (icomp_.Compare(current_key, Slice(end_key_)) > 0) << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      if (icomp_.Compare(current_key, Slice(start_key_)) < 0 && icomp_.Compare(current_key, Slice(end_key_)) < 0) { return true; }
-      else if (icomp_.Compare(current_key, Slice(start_key_)) >= 0 && icomp_.Compare(current_key, Slice(end_key_)) <= 0) { return false; }
-      else if (block_iter_.Valid() && icomp_.Compare(current_key, Slice(end_key_)) > 0) { return true; }
-    }
     return !is_out_of_bound_ &&
            (is_at_first_key_from_index_ ||
             (block_iter_points_to_real_block_ && block_iter_.Valid()));
@@ -276,6 +263,7 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   bool block_iter_points_to_real_block_;
   // See InternalIteratorBase::IsOutOfBound().
   bool is_out_of_bound_ = false;
+  bool is_seeked_for_range_query = false;
   // How current data block's boundary key with the next block is compared with
   // iterate upper bound.
   BlockUpperBound block_upper_bound_check_ = BlockUpperBound::kUnknown;
@@ -301,6 +289,7 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   void FindBlockForward();
   void FindKeyBackward();
   void CheckOutOfBound();
+  void RecheckOutOfBound();
 
   // Check if data block is fully within iterate_upper_bound.
   //

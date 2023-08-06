@@ -136,6 +136,9 @@ void BlockBasedTableIterator::SeekImpl(const Slice* target,
   }
 
   CheckOutOfBound();
+  if (read_options_.is_range_query_compaction_enabled) {
+    RecheckOutOfBound();
+  }
 
   if (target) {
     assert(!Valid() || icomp_.Compare(*target, key()) <= 0);
@@ -235,24 +238,16 @@ void BlockBasedTableIterator::Next() {
   }
   assert(block_iter_points_to_real_block_);
   block_iter_.Next();
-
-  bool is_valid = Valid();
-  
-  // std::cout << "[####]: start_key == nullptr " << (start_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  // std::cout << "[####]: end_key == nullptr " << (end_key_ == "") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
-  // check for start_key_ and end_key_
-  if (!is_valid && start_key_ != "" && end_key_ != "") {
-    std::cout << "[####]: Inside the start and end key comparison of NextAndGetResult " 
-              << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    if (block_iter_.Valid() && icomp_.Compare(key(), Slice(start_key_)) >= 0 && icomp_.Compare(key(), Slice(end_key_)) <= 0) {
-      Seek(Slice(end_key_));
-      if (icomp_.Compare(key(), Slice(end_key_)) == 0) { Next(); }
-    }
-  }
-
   FindKeyForward();
   CheckOutOfBound();
+
+  if (read_options_.is_range_query_compaction_enabled) {
+    RecheckOutOfBound();
+  }
+
+  // TODO: (shubham) Make use of iterate_lower_bound to skip 
+  // enties between start and end key for range queries
+  // take reference of iterate_upper_bound
 }
 
 bool BlockBasedTableIterator::NextAndGetResult(IterateResult* result) {
@@ -510,10 +505,14 @@ void BlockBasedTableIterator::CheckOutOfBound() {
   if (read_options_.iterate_upper_bound != nullptr &&
       block_upper_bound_check_ != BlockUpperBound::kUpperBoundBeyondCurBlock &&
       Valid()) {
-    is_out_of_bound_ =
-        user_comparator_.CompareWithoutTimestamp(
-            *read_options_.iterate_upper_bound, /*a_has_ts=*/false, user_key(),
-            /*b_has_ts=*/true) <= 0;
+        if (read_options_.is_range_query_compaction_enabled && is_seeked_for_range_query) {
+          is_out_of_bound_ = false;
+        } else {
+          is_out_of_bound_ =
+              user_comparator_.CompareWithoutTimestamp(
+                  *read_options_.iterate_upper_bound, /*a_has_ts=*/false, user_key(),
+                  /*b_has_ts=*/true) <= 0;
+        }
   }
 
   if (read_options_.range_query_partial_block_read && Valid()) {
@@ -536,9 +535,24 @@ void BlockBasedTableIterator::CheckOutOfBound() {
   }
 }
 
+void BlockBasedTableIterator::RecheckOutOfBound() {
+  if (is_out_of_bound_ && read_options_.iterate_lower_bound != nullptr &&
+      read_options_.is_range_query_compaction_enabled &&
+      block_upper_bound_check_ != BlockUpperBound::kUpperBoundBeyondCurBlock) {
+        if (!is_seeked_for_range_query) {
+          is_out_of_bound_ = false;
+          is_seeked_for_range_query = true;
+          const Slice* target = read_options_.iterate_lower_bound;
+          Seek(*target);
+        } else {
+          is_out_of_bound_ = false;
+        }
+      }
+}
+
 void BlockBasedTableIterator::CheckDataBlockWithinUpperBound() {
   if (read_options_.iterate_upper_bound != nullptr &&
-      block_iter_points_to_real_block_) {
+      block_iter_points_to_real_block_ && !read_options_.is_range_query_compaction_enabled) {
     block_upper_bound_check_ = (user_comparator_.CompareWithoutTimestamp(
                                     *read_options_.iterate_upper_bound,
                                     /*a_has_ts=*/false, index_iter_->user_key(),

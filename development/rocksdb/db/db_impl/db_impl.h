@@ -463,11 +463,14 @@ class DBImpl : public DB {
   void SetRangeQueryRunningToFalse();
   void ApplyRangeQueryEdits();
   Status WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_index, int level);
+  Status FlushLevelNTable();
   ReadOptions read_options_;
   // Slice* range_start_key_here = nullptr;
   // Slice* range_end_key_here = nullptr;
   std::string range_start_key_;
   std::string range_end_key_;
+  MemTable* range_query_memtable_;
+  int range_query_last_level_ = 0;
 
   // keep track of version edits for range queries
   VersionEdit *edits_;

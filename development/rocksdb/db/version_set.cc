@@ -1178,8 +1178,7 @@ class LevelIterator final : public InternalIterator {
 
   // keeping track of edits while range query
   DBImpl *db_impl_;
-  // Slice *start_key_;
-  // Slice *end_key_;
+  Status partial_file_status_ = Status().Aborted();
 
   // To be propagated to RangeDelAggregator in order to safely truncate range
   // tombstones.
@@ -1261,10 +1260,6 @@ void LevelIterator::Seek(const Slice& target) {
   }
 
   if (file_iter_.iter() != nullptr) {
-    // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
-
-    db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
-
     file_iter_.Seek(target);
     // Status::TryAgain indicates asynchronous request for retrieval of data
     // blocks has been submitted. So it should return at this point and Seek
@@ -1335,6 +1330,13 @@ void LevelIterator::Seek(const Slice& target) {
   }
   SkipEmptyFileForward();
   CheckMayBeOutOfLowerBound();
+
+  // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
+  // If everything is okay after seek write partial file and update status
+  if (Valid() && icomparator_.user_comparator()->Compare(key(), Slice(db_impl_->range_end_key_)) < 0) {
+    db_impl_->range_query_last_level_ = std::max(db_impl_->range_query_last_level_, level_);
+    partial_file_status_ = db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+  }
 }
 
 void LevelIterator::SeekForPrev(const Slice& target) {
@@ -1483,11 +1485,13 @@ bool LevelIterator::SkipEmptyFileForward() {
     std::cout << "[Shubham]: Moving to a new SST File file_index_: " << file_index_ << " file_index_ + 1: " << file_index_+1 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     // Adding previous file to edits delete
-    if (db_impl_ != nullptr){
+    if (db_impl_ != nullptr && partial_file_status_.ok()){
       std::cout << "[####]: Setting file_index_: " << file_index_ << " to be deleted Level: " << level_ 
                 << "File Number: "<< flevel_->files[file_index_].file_metadata->fd.GetNumber() 
                 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+    } else {
+      partial_file_status_ = partial_file_status_.OK();
     }
 
     InitFileIterator(file_index_ + 1);

@@ -5,6 +5,7 @@
 #include "db/compaction/compaction_outputs.h"
 #include "db/db_impl/db_impl.h"
 #include "file/read_write_util.h"
+// #include "table/sst_file_dumper.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -201,6 +202,7 @@ void DBImpl::SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key) {
   range_start_key_ = start_key->data();
   // range_end_key_here = new Slice(end_key->data(), end_key->size());
   range_end_key_ = end_key->data();
+  read_options_.is_range_query_compaction_enabled = true;
   // std::cout << "START_KEY_: " << range_start_key_here->data() << " SIZE: " << range_start_key_here->size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   // std::cout << "END_KEY_: " << range_end_key_here->data() << " SIZE: " << range_end_key_here->size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
@@ -215,6 +217,7 @@ void DBImpl::SetRangeQueryRunningToFalse() {
   cfd->SetRangeQueryRunningToFalse();
   range_start_key_ = "";
   range_end_key_ = "";
+  read_options_.is_range_query_compaction_enabled = false;
   // range_start_key_here = nullptr;
   // range_end_key_here = nullptr;
 }
@@ -254,14 +257,27 @@ Status DBImpl::WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_inde
     const MutableCFOptions* mutable_cf_options_ =
         cfd_->GetLatestMutableCFOptions();
 
+    // // NOTE: For Testing
+    // Options op;
+    // Temperature tmpperature = old_file_meta->temperature;
+    // SstFileDumper sst_dump(op, TableFileName(immutable_db_options_.db_paths, old_file_meta->fd.GetNumber(), 0), tmpperature,
+    // cfd_->GetLatestCFOptions().target_file_size_base, false, false, false);
+    // sst_dump.DumpTable("old_file_before_range_query" + std::to_string(old_file_meta->fd.GetNumber()));
+    // std::cout << "[Shubham]: Old File Before Range Query range_start_key: " << range_start_key_ << " range_end_key: " << range_end_key_
+    //           << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     mutex()->Unlock();
 
     // log buffer->FlushBufferToLog() -- ** NOT SURE WHY **
     // std::cout << "[####] Grabbing new iterator Level: " << level << " file_index: " << file_index << " " << __FILE__ << ":"
     //           << __LINE__ << " " << __FUNCTION__ << std::endl;
+    ReadOptions range_read_options = read_options_;
+    range_read_options.iterate_upper_bound = new Slice(range_start_key_);
+    range_read_options.iterate_lower_bound = new Slice(range_end_key_);
+    range_read_options.is_range_query_compaction_enabled = true;
 
     InternalIterator* file_iter_ = cfd_->table_cache()->NewIterator(
-        read_options_, file_options_, cfd_->internal_comparator(), *old_file_meta,
+        range_read_options, file_options_, cfd_->internal_comparator(), *old_file_meta,
         /*range_del_agg_=*/nullptr, mutable_cf_options_->prefix_extractor, nullptr,
         cfd_->internal_stats()->GetFileReadHist(0),
         TableReaderCaller::kUserIterator, nullptr, /*skip_filters=*/false,
@@ -411,10 +427,27 @@ Status DBImpl::WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_inde
                    meta_.unique_id, meta_.compensated_range_deletion_size,
                    meta_.tail_size, meta_.user_defined_timestamps_persisted);
     edits_->SetBlobFileAdditions(std::move(blob_file_additions));
+
+    // // NOTE: For Testing
+    // Options op;
+    // Temperature tmpperature = meta_.temperature;
+    // SstFileDumper sst_dump(op, TableFileName(immutable_db_options_.db_paths, meta_.fd.GetNumber(), 0), tmpperature,
+    // cfd_->GetLatestCFOptions().target_file_size_base, false, false, false);
+    // sst_dump.DumpTable("new_file_after_range_query" + std::to_string(meta_.fd.GetNumber()));
+    // std::cout << "[Shubham]: New File After Range Query range_start_key: " << range_start_key_ << " range_end_key: " << range_end_key_
+    //           << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  } else {
+    return s.Aborted();
   }
 
   return s;
   // TODO: (shubham) might need to update the column family stats here
+}
+
+Status DBImpl::FlushLevelNTable() {
+  // TODO: (shubham)
+  // Flush the table to level N take reference from Flush_Job::WriteLevel0Table and WriteLevelNTable
+  // Modify the common part from the WriteLevelNTable and FlushLevelNTable
 }
 
 }  // namespace ROCKSDB_NAMESPACE

@@ -1336,8 +1336,9 @@ void LevelIterator::Seek(const Slice& target) {
         db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
       }
   else if (Valid() && db_impl_!=nullptr && icomparator_.user_comparator()->Compare(key(), Slice(db_impl_->range_end_key_)) < 0) {
-    db_impl_->range_query_last_level_ = std::max(db_impl_->range_query_last_level_, level_);
-    partial_file_status_ = db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+    db_impl_->range_query_last_level_ = std::max(level_, db_impl_->range_query_last_level_);
+    partial_file_status_ = db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
+
     if (partial_file_status_.ok()){
       flevel_->files[file_index_].file_metadata->being_compacted = true;
       db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
@@ -1515,7 +1516,7 @@ bool LevelIterator::SkipEmptyFileForward() {
       {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
         db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-        db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+        db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
       } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
                  icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
                  icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 

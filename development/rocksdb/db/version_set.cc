@@ -1104,8 +1104,6 @@ class LevelIterator final : public InternalIterator {
   // range_tombstone_iter_ is updated with a range tombstone iterator
   // into the new file. Old range tombstone iterator is cleared.
   InternalIterator* NewFileIterator() {
-    std::cout << "[Shubham]: New file iterator FileIndex: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Shubham]: flevel_->num_files: " << flevel_->num_files << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     assert(file_index_ < flevel_->num_files);
     auto file_meta = flevel_->files[file_index_];
@@ -1616,6 +1614,31 @@ bool LevelIterator::SkipEmptyFileForward() {
     // range tombstone iterator.
     if (file_iter_.iter() != nullptr) {
       // std::cout << "[Shubham]: Performing SeeToFirst file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+      // (shubham) We actually have 2 choices here
+      // 1. If the last file was the first file than partial part of that file was already added
+      //    and old file was added to deleted files so now this new file could be a file which falls 
+      //    completely in the range db_impl_->range_start_key_ and db_impl_->range_end_key_ 
+      //    if so just delete this file
+      // 2. If this is the last file of this level which falls in the range than write a new partial 
+      //    file to the same level
+      if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+          ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
+          icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
+          (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
+          icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0)))
+      {
+        flevel_->files[file_index_].file_metadata->being_compacted = true;
+        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+        db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+      } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
+                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
+      {
+        flevel_->files[file_index_].file_metadata->being_compacted = true;
+        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+      }
+
       file_iter_.SeekToFirst();
       if (range_tombstone_iter_) {
         if (*range_tombstone_iter_) {

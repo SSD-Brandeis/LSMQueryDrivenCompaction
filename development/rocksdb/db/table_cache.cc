@@ -251,7 +251,6 @@ InternalIterator* TableCache::NewIterator(
   auto& fd = file_meta.fd;
   table_reader = fd.table_reader;
   if (table_reader == nullptr) {
-    // std::cout << "[Shubham]: Finding Table file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     s = FindTable(options, file_options, icomparator, file_meta, &handle,
                   block_protection_bytes_per_key, prefix_extractor,

@@ -458,22 +458,20 @@ class DBImpl : public DB {
   virtual Status UnlockWAL() override;
 
   // Flush partial sst file to the level
-  // Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target, const InternalKeyComparator* comparator);
   void SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key);
   void SetRangeQueryRunningToFalse();
   void ApplyRangeQueryEdits();
   Status WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_index, int level);
   Status FlushLevelNTable();
+  void DumpHumanReadableFormatOfFullLSM(std::string name, ColumnFamilyHandle* column_family=nullptr);
   ReadOptions read_options_;
-  // Slice* range_start_key_here = nullptr;
-  // Slice* range_end_key_here = nullptr;
-  std::string range_start_key_;
-  std::string range_end_key_;
+  std::string range_start_key_ = "";
+  std::string range_end_key_ = "";
   MemTable* range_query_memtable_;
   int range_query_last_level_ = 0;
 
   // keep track of version edits for range queries
-  VersionEdit *edits_;
+  VersionEdit* const edits_ = new VersionEdit();
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 

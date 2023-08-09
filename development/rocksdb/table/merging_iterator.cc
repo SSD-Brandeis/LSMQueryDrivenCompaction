@@ -13,6 +13,7 @@
 
 #include "db/arena_wrapped_db_iter.h"
 #include "file/read_write_util.h"
+// #include "logging/logging.h"
 
 namespace ROCKSDB_NAMESPACE {
 // MergingIterator uses a min/max heap to combine data from point iterators.
@@ -324,6 +325,23 @@ class MergingIterator : public InternalIterator {
     // first key >= target among children_ that is not covered by any range
     // tombstone.
     // std::cout << "[Shubham]: Seek in Merging Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+    // auto cfh =
+    //     static_cast_with_check<ColumnFamilyHandleImpl>(db_impl_->DefaultColumnFamily());
+    // ColumnFamilyData* cfd = cfh->cfd();
+  
+    // std::string levels_state_before = "Before First Seek in Merging Iterator:";
+    // auto storage_info_before = cfd->current()->storage_info();
+    // for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    //   levels_state_before += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+    //   auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    //   for (size_t file_index = 0; file_index < num_files; file_index++) {
+    //     auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+    //     levels_state_before += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+    //   }
+    // }
+
+    // ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_before.c_str());
 
     SeekImpl(target);
     FindNextVisibleKey();
@@ -846,11 +864,6 @@ void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
   for (auto level = starting_level; level < children_.size(); ++level) {
     {
       std::cout << "[Shubham]: Performing Seek for each level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
-      // if (level != 0)
-      // {
-      //   FlushPartialSSTFile(children_[level].iter, level, current_search_key.GetInternalKey());
-      // }
 
       PERF_TIMER_GUARD(seek_child_seek_time);
       children_[level].iter.Seek(current_search_key.GetInternalKey());

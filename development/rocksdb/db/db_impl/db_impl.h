@@ -461,9 +461,11 @@ class DBImpl : public DB {
   void SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key);
   void SetRangeQueryRunningToFalse();
   void ApplyRangeQueryEdits();
-  Status WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_index, int level);
-  Status FlushLevelNTable();
+  Status FlushLevelNFile();
+  Status FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t file_index, int level);
   void DumpHumanReadableFormatOfFullLSM(std::string name, ColumnFamilyHandle* column_family=nullptr);
+
+
   ReadOptions read_options_;
   std::string range_start_key_ = "";
   std::string range_end_key_ = "";

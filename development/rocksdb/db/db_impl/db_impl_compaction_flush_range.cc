@@ -50,10 +50,6 @@ void DBImpl::SetRangeQueryRunningToFalse() {
       static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
   ColumnFamilyData* cfd = cfh->cfd();
 
-  if (range_query_memtable_->num_entries() > 0) {
-    FlushLevelNTable();
-  }
-
   std::string levels_state_before = "LSM State Before:";
   auto storage_info_before = cfd->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
@@ -92,7 +88,7 @@ void DBImpl::SetRangeQueryRunningToFalse() {
   // range_end_key_here = nullptr;
 }
 
-Status DBImpl::WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_index, int level) {
+Status DBImpl::FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t file_index, int level) {
   std::cout << "[####] Starting Write Level: " << level << " file_index: " << file_index << " " << __FILE__ << ":"
             << __LINE__ << " " << __FUNCTION__ << std::endl;
   std::cout << "[####] File Number : " << flevel_->files[file_index].fd.GetNumber() << " " << __FILE__ << ":"
@@ -324,7 +320,7 @@ Status DBImpl::WriteLevelNTable(const LevelFilesBrief* flevel_, size_t file_inde
   // TODO: (shubham) might need to update the column family stats here
 }
 
-Status DBImpl::FlushLevelNTable() {
+Status DBImpl::FlushLevelNFile() {
   std::cout << "[####] Starting Flush in Range Query at Level: " << range_query_last_level_ << " " << __FILE__ << ":"
             << __LINE__ << " " << __FUNCTION__ << std::endl;
 
@@ -532,8 +528,8 @@ Status DBImpl::FlushLevelNTable() {
   // TODO: (shubham) might need to update the column family stats here
 
   // TODO: (shubham)
-  // Flush the table to level N take reference from Flush_Job::WriteLevel0Table and WriteLevelNTable
-  // Modify the common part from the WriteLevelNTable and FlushLevelNTable
+  // Flush the table to level N take reference from Flush_Job::WriteLevel0Table and FlushLevelNPartialFile
+  // Modify the common part from the FlushLevelNPartialFile and FlushLevelNFile
 }
 
 void DBImpl::DumpHumanReadableFormatOfFullLSM(std::string name, ColumnFamilyHandle* column_family) {

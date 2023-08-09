@@ -132,7 +132,7 @@ void DBIter::Next() {
     db_impl_->range_query_memtable_->Add(kMaxSequenceNumber, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
 
     if (db_impl_->range_query_memtable_->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
-      db_impl_->FlushLevelNTable();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
+      db_impl_->FlushLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
     }
   }
 
@@ -183,6 +183,11 @@ void DBIter::Next() {
   if (statistics_ != nullptr && valid_) {
     local_stats_.next_found_count_++;
     local_stats_.bytes_read_ += (key().size() + value().size());
+  }
+  
+  if (user_comparator_.Compare(key(), Slice(db_impl_->range_end_key_)) == 0 && db_impl_->read_options_.is_range_query_compaction_enabled) {
+    db_impl_->range_query_memtable_->Add(kMaxSequenceNumber, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
+    db_impl_->FlushLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
   }
 }
 

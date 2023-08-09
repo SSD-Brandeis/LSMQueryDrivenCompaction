@@ -30,6 +30,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "cache/cache_helpers.h"
 #include "db/blob/blob_file_meta.h"
@@ -834,14 +835,15 @@ class Version {
   void AddIterators(const ReadOptions& read_options,
                     const FileOptions& soptions,
                     MergeIteratorBuilder* merger_iter_builder,
-                    bool allow_unprepared_value);
+                    bool allow_unprepared_value, DBImpl *db_impl);
 
   // @param read_options Must outlive any iterator built by
   // `merger_iter_builder`.
   void AddIteratorsForLevel(const ReadOptions& read_options,
                             const FileOptions& soptions,
                             MergeIteratorBuilder* merger_iter_builder,
-                            int level, bool allow_unprepared_value);
+                            int level, bool allow_unprepared_value, 
+                            DBImpl *db_impl);
 
   Status OverlapWithLevelIterator(const ReadOptions&, const FileOptions&,
                                   const Slice& smallest_user_key,
@@ -1198,6 +1200,7 @@ class VersionSet {
     mutable_cf_options_list.emplace_back(&mutable_cf_options);
     autovector<autovector<VersionEdit*>> edit_lists;
     edit_lists.emplace_back(edit_list);
+    std::cout << "[####]: Calling LogAndApply in Version Edit " << __FILE__ << ":" << __LINE__ << __FUNCTION__ << std::endl;
     return LogAndApply(cfds, mutable_cf_options_list, read_options, edit_lists,
                        mu, dir_contains_current_file, new_descriptor_log,
                        column_family_options, {manifest_wcb});

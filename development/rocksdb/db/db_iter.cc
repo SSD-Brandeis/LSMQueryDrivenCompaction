@@ -128,6 +128,14 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
+  if (db_impl_->read_options_.is_range_query_compaction_enabled) {
+    db_impl_->range_query_memtable_->Add(kMaxSequenceNumber, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
+
+    if (db_impl_->range_query_memtable_->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
+      db_impl_->FlushLevelNTable();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
+    }
+  }
+
   assert(valid_);
   assert(status_.ok());
 

@@ -35,7 +35,8 @@ class MockTableReader : public TableReader {
                                 Arena* arena, bool skip_filters,
                                 TableReaderCaller caller,
                                 size_t compaction_readahead_size = 0,
-                                bool allow_unprepared_value = false) override;
+                                bool allow_unprepared_value = false,
+                                std::string start_key = "", std::string end_key = "") override;
 
   Status Get(const ReadOptions& readOptions, const Slice& key,
              GetContext* get_context, const SliceTransform* prefix_extractor,
@@ -68,6 +69,7 @@ class MockTableReader : public TableReader {
 class MockTableIterator : public InternalIterator {
  public:
   explicit MockTableIterator(const KVVector& table) : table_(table) {
+    // std::cout << "[Shubham]: Creating MockTableIterator with [KVVector] table size: " << table.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     itr_ = table_.end();
   }
 

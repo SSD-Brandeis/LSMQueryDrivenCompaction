@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "db/blob/blob_file_cache.h"
 #include "db/blob/blob_source.h"
@@ -865,6 +866,18 @@ int GetL0ThresholdSpeedupCompaction(int level0_file_num_compaction_trigger,
 }
 }  // anonymous namespace
 
+bool ColumnFamilyData::IsQueuedOrCompactionInProgress() {
+  return queued_for_compaction() || compaction_picker()->IsCompactionInProgress(); 
+}
+
+void ColumnFamilyData::SetRangeQueryRunningToTrue() {
+  compaction_picker()->SetRangeQueryRunning(true);
+}
+
+void ColumnFamilyData::SetRangeQueryRunningToFalse() {
+  compaction_picker()->SetRangeQueryRunning(false);
+}
+
 std::pair<WriteStallCondition, WriteStallCause>
 ColumnFamilyData::GetWriteStallConditionAndCause(
     int num_unflushed_memtables, int num_l0_files,
@@ -1209,6 +1222,8 @@ Compaction* ColumnFamilyData::CompactRange(
 }
 
 SuperVersion* ColumnFamilyData::GetReferencedSuperVersion(DBImpl* db) {
+  // std::cout << "[Shubham]: get referenced super version " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   SuperVersion* sv = GetThreadLocalSuperVersion(db);
 
   sv->Ref();

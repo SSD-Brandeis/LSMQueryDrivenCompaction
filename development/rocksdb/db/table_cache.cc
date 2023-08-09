@@ -7,6 +7,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
+
 #include "db/table_cache.h"
 
 #include "db/dbformat.h"
@@ -101,6 +103,8 @@ Status TableCache::GetTableReader(
   std::unique_ptr<FSRandomAccessFile> file;
   FileOptions fopts = file_options;
   fopts.temperature = file_temperature;
+  // std::cout << "[Shubham]: Get table reader Name: " << fname << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   Status s = PrepareIOFromReadOptions(ro, ioptions_.clock, fopts.io_options);
   TEST_SYNC_POINT_CALLBACK("TableCache::GetTableReader:BeforeOpenFile",
                            const_cast<Status*>(&s));
@@ -142,6 +146,8 @@ Status TableCache::GetTableReader(
     } else {
       expected_unique_id = kNullUniqueId64x2;  // null ID == no verification
     }
+    // std::cout << "[Shubham]: Default Table Factory IOptions " << ioptions_.table_factory << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    
     s = ioptions_.table_factory->NewTableReader(
         ro,
         TableReaderOptions(
@@ -171,11 +177,19 @@ Status TableCache::FindTable(
   PERF_TIMER_GUARD_WITH_CLOCK(find_table_nanos, ioptions_.clock);
   uint64_t number = file_meta.fd.GetNumber();
   Slice key = GetSliceForFileNumber(&number);
+  // std::cout << "[Shubham]: Finding Table for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Shubham]: Slice to insert/lookup in cache for file: " << key.data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+  // std::cout << "[Shubham]: Performing cache lookup for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   *handle = cache_.Lookup(key);
   TEST_SYNC_POINT_CALLBACK("TableCache::FindTable:0",
                            const_cast<bool*>(&no_io));
 
   if (*handle == nullptr) {
+    // std::cout << "[Shubham]: Table not found in cache for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: No_Io set to: " << no_io << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     if (no_io) {
       return Status::Incomplete("Table not found in table_cache, no_io is set");
     }
@@ -186,6 +200,8 @@ Status TableCache::FindTable(
       return Status::OK();
     }
 
+    // std::cout << "[Shubham]: Creating a Table Reader for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     std::unique_ptr<TableReader> table_reader;
     Status s = GetTableReader(ro, file_options, internal_comparator, file_meta,
                               false /* sequential mode */,
@@ -194,11 +210,15 @@ Status TableCache::FindTable(
                               level, prefetch_index_and_filter_in_cache,
                               max_file_size_for_l0_meta_pin, file_temperature);
     if (!s.ok()) {
+      // std::cout << "[Shubham]: Error while reading Table for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       assert(table_reader == nullptr);
       RecordTick(ioptions_.stats, NO_FILE_ERRORS);
       // We do not cache error results so that if the error is transient,
       // or somebody repairs the file, we recover automatically.
     } else {
+      // std::cout << "[Shubham]: Cache Insert for file: " << number << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       s = cache_.Insert(key, table_reader.get(), 1, handle);
       if (s.ok()) {
         // Release ownership of table reader.
@@ -221,8 +241,10 @@ InternalIterator* TableCache::NewIterator(
     const InternalKey* smallest_compaction_key,
     const InternalKey* largest_compaction_key, bool allow_unprepared_value,
     uint8_t block_protection_bytes_per_key,
-    TruncatedRangeDelIterator** range_del_iter) {
+    TruncatedRangeDelIterator** range_del_iter,
+    std::string start_key, std::string end_key) {
   PERF_TIMER_GUARD(new_table_iterator_nanos);
+  // std::cout << "[Shubham]: Creating New TableCache Iterator for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   Status s;
   TableReader* table_reader = nullptr;
@@ -234,13 +256,18 @@ InternalIterator* TableCache::NewIterator(
   auto& fd = file_meta.fd;
   table_reader = fd.table_reader;
   if (table_reader == nullptr) {
+
     s = FindTable(options, file_options, icomparator, file_meta, &handle,
                   block_protection_bytes_per_key, prefix_extractor,
                   options.read_tier == kBlockCacheTier /* no_io */,
                   file_read_hist, skip_filters, level,
                   true /* prefetch_index_and_filter_in_cache */,
                   max_file_size_for_l0_meta_pin, file_meta.temperature);
+
+    // std::cout << "[Shubham]: Find Table Status: " << s.ToString() << " file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     if (s.ok()) {
+      // std::cout << "[Shubham]: Table Found for file: " << file_meta.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       table_reader = cache_.Value(handle);
     }
   }
@@ -252,7 +279,7 @@ InternalIterator* TableCache::NewIterator(
     } else {
       result = table_reader->NewIterator(
           options, prefix_extractor.get(), arena, skip_filters, caller,
-          file_options.compaction_readahead_size, allow_unprepared_value);
+          file_options.compaction_readahead_size, allow_unprepared_value, start_key, end_key);
     }
     if (handle != nullptr) {
       cache_.RegisterReleaseAsCleanup(handle, *result);

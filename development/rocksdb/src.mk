@@ -47,6 +47,7 @@ LIB_SOURCES =                                                   \
   db/db_impl/compacted_db_impl.cc                               \
   db/db_impl/db_impl.cc                                         \
   db/db_impl/db_impl_compaction_flush.cc                        \
+  db/db_impl/db_impl_compaction_flush_range.cc                  \
   db/db_impl/db_impl_debug.cc                                   \
   db/db_impl/db_impl_experimental.cc                            \
   db/db_impl/db_impl_files.cc                                   \

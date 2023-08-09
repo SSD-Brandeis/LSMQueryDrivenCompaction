@@ -133,7 +133,8 @@ class BlockBasedTable : public TableReader {
                                 Arena* arena, bool skip_filters,
                                 TableReaderCaller caller,
                                 size_t compaction_readahead_size = 0,
-                                bool allow_unprepared_value = false) override;
+                                bool allow_unprepared_value = false, 
+                                std::string start_key = "", std::string end_key = "") override;
 
   FragmentedRangeTombstoneIterator* NewRangeTombstoneIterator(
       const ReadOptions& read_options) override;

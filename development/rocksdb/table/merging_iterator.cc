@@ -7,10 +7,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
 
 #include "table/merging_iterator.h"
 
 #include "db/arena_wrapped_db_iter.h"
+#include "file/read_write_util.h"
+// #include "logging/logging.h"
 
 namespace ROCKSDB_NAMESPACE {
 // MergingIterator uses a min/max heap to combine data from point iterators.
@@ -54,7 +57,7 @@ class MergingIterator : public InternalIterator {
  public:
   MergingIterator(const InternalKeyComparator* comparator,
                   InternalIterator** children, int n, bool is_arena_mode,
-                  bool prefix_seek_mode,
+                  bool prefix_seek_mode, DBImpl* db_impl = nullptr,
                   const Slice* iterate_upper_bound = nullptr)
       : is_arena_mode_(is_arena_mode),
         prefix_seek_mode_(prefix_seek_mode),
@@ -63,7 +66,11 @@ class MergingIterator : public InternalIterator {
         current_(nullptr),
         minHeap_(MinHeapItemComparator(comparator_)),
         pinned_iters_mgr_(nullptr),
+        db_impl_(db_impl),
         iterate_upper_bound_(iterate_upper_bound) {
+    // std::cout << "[Shubham]: Creating Merge Iterator with n: " << n << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    // std::cout << "[Shubham]: children: " << children << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     children_.resize(n);
     for (int i = 0; i < n; i++) {
       children_[i].level = i;
@@ -78,6 +85,8 @@ class MergingIterator : public InternalIterator {
   }
 
   virtual void AddIterator(InternalIterator* iter) {
+    // std::cout << "[Shubham]: children_.size(): " << children_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    
     children_.emplace_back(children_.size(), iter);
 
     if (pinned_iters_mgr_) {
@@ -99,6 +108,7 @@ class MergingIterator : public InternalIterator {
   // for freeing the new range tombstone iterator that it has pointers to in
   // range_tombstone_iters_.
   void AddRangeTombstoneIterator(TruncatedRangeDelIterator* iter) {
+    // std::cout << "[Shubham]: children_.size(): " << children_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     range_tombstone_iters_.emplace_back(iter);
   }
 
@@ -106,6 +116,8 @@ class MergingIterator : public InternalIterator {
   // tombstone iterators are added. Initializes HeapItems for range tombstone
   // iterators.
   void Finish() {
+    std::cout << "[Shubham]: Finish Merge Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     if (!range_tombstone_iters_.empty()) {
       assert(range_tombstone_iters_.size() == children_.size());
       pinned_heap_item_.resize(range_tombstone_iters_.size());
@@ -137,7 +149,9 @@ class MergingIterator : public InternalIterator {
     status_.PermitUncheckedError();
   }
 
-  bool Valid() const override { return current_ != nullptr && status_.ok(); }
+  bool Valid() const override { 
+    return current_ != nullptr && status_.ok(); 
+  }
 
   Status status() const override { return status_; }
 
@@ -310,6 +324,24 @@ class MergingIterator : public InternalIterator {
     // holds after this call, and minHeap_.top().iter points to the
     // first key >= target among children_ that is not covered by any range
     // tombstone.
+    // std::cout << "[Shubham]: Seek in Merging Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+    // auto cfh =
+    //     static_cast_with_check<ColumnFamilyHandleImpl>(db_impl_->DefaultColumnFamily());
+    // ColumnFamilyData* cfd = cfh->cfd();
+  
+    // std::string levels_state_before = "Before First Seek in Merging Iterator:";
+    // auto storage_info_before = cfd->current()->storage_info();
+    // for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    //   levels_state_before += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+    //   auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    //   for (size_t file_index = 0; file_index < num_files; file_index++) {
+    //     auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+    //     levels_state_before += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+    //   }
+    // }
+
+    // ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_before.c_str());
 
     SeekImpl(target);
     FindNextVisibleKey();
@@ -335,6 +367,7 @@ class MergingIterator : public InternalIterator {
   }
 
   void Next() override {
+    // std::cout << "[Shubham]: Next in MergingIterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(Valid());
     // Ensure that all children are positioned after key().
     // If we are moving in the forward direction, it is already
@@ -355,9 +388,12 @@ class MergingIterator : public InternalIterator {
       // current is still valid after the Next() call above.  Call
       // replace_top() to restore the heap property.  When the same child
       // iterator yields a sequence of keys, this is cheap.
+      // std::cout << "[Shubham]: Current is still valid TOP LEVEL: " << minHeap_.top()->level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // std::cout << "[Shubham]: Current is still valid TOP ITER: " << minHeap_.top()->iter.key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       assert(current_->status().ok());
       minHeap_.replace_top(minHeap_.top());
     } else {
+      // std::cout << "[Shubham]: Current_ is not more valid in minHeap_ " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       // current stopped being valid, remove it from the heap.
       considerStatus(current_->status());
       minHeap_.pop();
@@ -487,6 +523,7 @@ class MergingIterator : public InternalIterator {
 
     explicit HeapItem(size_t _level, InternalIteratorBase<Slice>* _iter)
         : level(_level), type(Type::ITERATOR) {
+      // std::cout << "[Shubham]: New Heap Item _level: " << _level << " _iter: " << _iter << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       iter.Set(_iter);
     }
 
@@ -503,6 +540,7 @@ class MergingIterator : public InternalIterator {
         : comparator_(comparator) {}
 
     bool operator()(HeapItem* a, HeapItem* b) const {
+      // std::cout << "[Shubham]: Min Heap Item Comparator used between a_level: " << a->level << " & b_level: " << b->level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       if (LIKELY(a->type == HeapItem::Type::ITERATOR)) {
         if (LIKELY(b->type == HeapItem::Type::ITERATOR)) {
           return comparator_->Compare(a->iter.key(), b->iter.key()) > 0;
@@ -528,6 +566,7 @@ class MergingIterator : public InternalIterator {
         : comparator_(comparator) {}
 
     bool operator()(HeapItem* a, HeapItem* b) const {
+      // std::cout << "[Shubham]: Max Heap Item Comparator used between a_level: " << a->level << " & b_level: " << b->level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       if (LIKELY(a->type == HeapItem::Type::ITERATOR)) {
         if (LIKELY(b->type == HeapItem::Type::ITERATOR)) {
           return comparator_->Compare(a->iter.key(), b->iter.key()) < 0;
@@ -562,6 +601,12 @@ class MergingIterator : public InternalIterator {
   // to seek to the end of a range tombstone as an optimization.
   void FindNextVisibleKey();
   void FindPrevVisibleKey();
+
+  // Flush partial sst files during range queries
+  // Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target);
+
+  // FileMetaData vector to hold newly added files during range query
+  std::vector<FileMetaData*> range_query_compaction_files;
 
   // Advance this merging iterators to the first key >= `target` for all
   // components from levels >= starting_level. All iterators before
@@ -640,6 +685,8 @@ class MergingIterator : public InternalIterator {
   std::unique_ptr<MergerMaxIterHeap> maxHeap_;
   PinnedIteratorsManager* pinned_iters_mgr_;
 
+  DBImpl* db_impl_;
+
   // Used to bound range tombstones. For point keys, DBIter and SSTable iterator
   // take care of boundary checking.
   const Slice* iterate_upper_bound_;
@@ -673,6 +720,10 @@ class MergingIterator : public InternalIterator {
     return !maxHeap_->empty() ? &maxHeap_->top()->iter : nullptr;
   }
 };
+
+// Status MergingIterator::FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target) {
+//     return db_impl_->FlushPartialSSTFile(iter, level, target, comparator_);
+// }
 
 // Pre-condition:
 // - Invariants (3) and (4) hold for i < starting_level
@@ -749,6 +800,8 @@ class MergingIterator : public InternalIterator {
 // minHeap_.
 void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
                                bool range_tombstone_reseek) {
+  std::cout << "[Shubham]: SeekImpl " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   // active range tombstones before `starting_level` remain active
   ClearHeaps(false /* clear_active */);
   ParsedInternalKey pik;
@@ -810,6 +863,8 @@ void MergingIterator::SeekImpl(const Slice& target, size_t starting_level,
   autovector<std::pair<size_t, std::string>> prefetched_target;
   for (auto level = starting_level; level < children_.size(); ++level) {
     {
+      std::cout << "[Shubham]: Performing Seek for each level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
       PERF_TIMER_GUARD(seek_child_seek_time);
       children_[level].iter.Seek(current_search_key.GetInternalKey());
     }
@@ -1262,6 +1317,8 @@ bool MergingIterator::SkipPrevDeleted() {
 
 void MergingIterator::AddToMinHeapOrCheckStatus(HeapItem* child) {
   // Invariant(children_)
+  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (child->iter.Valid()) {
     assert(child->iter.status().ok());
     minHeap_.push(child);
@@ -1271,6 +1328,8 @@ void MergingIterator::AddToMinHeapOrCheckStatus(HeapItem* child) {
 }
 
 void MergingIterator::AddToMaxHeapOrCheckStatus(HeapItem* child) {
+  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (child->iter.Valid()) {
     assert(child->iter.status().ok());
     maxHeap_->push(child);
@@ -1591,6 +1650,7 @@ void MergingIterator::InitMaxHeap() {
 // these cases, iterators are being advanced, so the minimum key should increase
 // in a finite number of steps.
 inline void MergingIterator::FindNextVisibleKey() {
+  // std::cout << "[Shubham]: Finding Next Visible Key: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   PopDeleteRangeStart();
   // PopDeleteRangeStart() implies heap top is not DELETE_RANGE_START
   // active_ being empty implies no DELETE_RANGE_END in heap.
@@ -1599,6 +1659,7 @@ inline void MergingIterator::FindNextVisibleKey() {
       !minHeap_.empty() &&
       (!active_.empty() || minHeap_.top()->iter.IsDeleteRangeSentinelKey()) &&
       SkipNextDeleted()) {
+    // std::cout << "[Shubham]: Skipping Next Deleted Key: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     PopDeleteRangeStart();
   }
   // Checks Invariant (1)
@@ -1638,11 +1699,14 @@ InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
 
 MergeIteratorBuilder::MergeIteratorBuilder(
     const InternalKeyComparator* comparator, Arena* a, bool prefix_seek_mode,
-    const Slice* iterate_upper_bound)
-    : first_iter(nullptr), use_merging_iter(false), arena(a) {
+    const Slice* iterate_upper_bound, DBImpl* db_impl)
+    : first_iter(nullptr), use_merging_iter(false), arena(a), db_impl_(db_impl) {
+  std::cout << "[Shubham]: Creating Merge Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "[Shubham]: iterate_upper_bound" << (iterate_upper_bound != nullptr ? iterate_upper_bound->data() : "nullptr") << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   auto mem = arena->AllocateAligned(sizeof(MergingIterator));
   merge_iter = new (mem) MergingIterator(comparator, nullptr, 0, true,
-                                         prefix_seek_mode, iterate_upper_bound);
+                                         prefix_seek_mode, db_impl, iterate_upper_bound);
 }
 
 MergeIteratorBuilder::~MergeIteratorBuilder() {
@@ -1655,6 +1719,8 @@ MergeIteratorBuilder::~MergeIteratorBuilder() {
 }
 
 void MergeIteratorBuilder::AddIterator(InternalIterator* iter) {
+  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (!use_merging_iter && first_iter != nullptr) {
     merge_iter->AddIterator(first_iter);
     use_merging_iter = true;
@@ -1674,7 +1740,11 @@ void MergeIteratorBuilder::AddPointAndTombstoneIterator(
   bool add_range_tombstone = tombstone_iter ||
                              !merge_iter->range_tombstone_iters_.empty() ||
                              tombstone_iter_ptr;
+  // std::cout << "[Shubham]: Add range tombstone: " << add_range_tombstone << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
   if (!use_merging_iter && (add_range_tombstone || first_iter)) {
+    // std::cout << "[Shubham]: Setting use_merging_iter to true " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     use_merging_iter = true;
     if (first_iter) {
       merge_iter->AddIterator(first_iter);
@@ -1682,6 +1752,8 @@ void MergeIteratorBuilder::AddPointAndTombstoneIterator(
     }
   }
   if (use_merging_iter) {
+    // std::cout << "[Shubham]: Adding point_iter to merge_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     merge_iter->AddIterator(point_iter);
     if (add_range_tombstone) {
       // If there was a gap, fill in nullptr as empty range tombstone iterators.
@@ -1700,6 +1772,8 @@ void MergeIteratorBuilder::AddPointAndTombstoneIterator(
           merge_iter->range_tombstone_iters_.size() - 1, tombstone_iter_ptr);
     }
   } else {
+    // std::cout << "[Shubham]: Setting first_iter to point_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
     first_iter = point_iter;
   }
 }

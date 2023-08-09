@@ -10,6 +10,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <iostream>
 
 #include "db/db_impl/db_impl.h"
 #include "db/range_del_aggregator.h"
@@ -150,6 +151,7 @@ class DBIter final : public Iterator {
     return valid_;
   }
   Slice key() const override {
+    // std::cout << "[Shubham]: Spitting Key from DbIter saved_key_: " << saved_key_.GetUserKey().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(valid_);
     if (timestamp_lb_) {
       return saved_key_.GetInternalKey();

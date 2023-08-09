@@ -13,6 +13,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "db/kv_checksum.h"
 #include "db/pinned_iterators_manager.h"
@@ -382,6 +383,7 @@ class BlockIter : public InternalIteratorBase<TValue> {
   Status status() const override { return status_; }
 
   Slice key() const override {
+    // std::cout << "[Shubham]: Spitting Key from block key_: " << key_.data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(Valid());
     return key_;
   }

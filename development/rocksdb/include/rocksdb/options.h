@@ -1604,6 +1604,9 @@ struct ReadOptions {
   // point to key without timestamp part.
   const Slice* iterate_upper_bound = nullptr;
 
+  // Used to check if the range query compaction is enabled
+  bool is_range_query_compaction_enabled = false;
+
   // Specify to create a tailing iterator -- a special iterator that has a
   // view of the complete database (i.e. it can also be used to read newly
   // added data) and is optimized for sequential reads. It will return records

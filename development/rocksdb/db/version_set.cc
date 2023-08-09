@@ -1109,8 +1109,6 @@ class LevelIterator final : public InternalIterator {
   // range_tombstone_iter_ is updated with a range tombstone iterator
   // into the new file. Old range tombstone iterator is cleared.
   InternalIterator* NewFileIterator() {
-    std::cout << "[Shubham]: New file iterator FileIndex: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Shubham]: flevel_->num_files: " << flevel_->num_files << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     assert(file_index_ < flevel_->num_files);
     auto file_meta = flevel_->files[file_index_];
@@ -1230,9 +1228,6 @@ void LevelIterator::TrySetDeleteRangeSentinel(const Slice& boundary_key) {
 }
 
 void LevelIterator::Seek(const Slice& target) {
-  std::cout << "[Shubham]: Performing Seek in Level Iterator: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  // std::cout << "[Shubham]: File_Iter.iter(): " << file_iter_.iter() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  // std::cout << "[Shubham]: File_Index: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   prefix_exhausted_ = false;
   ClearSentinel();
@@ -1333,9 +1328,20 @@ void LevelIterator::Seek(const Slice& target) {
 
   // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
   // If everything is okay after seek write partial file and update status
-  if (Valid() && icomparator_.user_comparator()->Compare(key(), Slice(db_impl_->range_end_key_)) < 0) {
+  if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
+                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
+      {
+        flevel_->files[file_index_].file_metadata->being_compacted = true;
+        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+      }
+  else if (Valid() && db_impl_!=nullptr && icomparator_.user_comparator()->Compare(key(), Slice(db_impl_->range_end_key_)) < 0) {
     db_impl_->range_query_last_level_ = std::max(db_impl_->range_query_last_level_, level_);
     partial_file_status_ = db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+    if (partial_file_status_.ok()){
+      flevel_->files[file_index_].file_metadata->being_compacted = true;
+      db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+    }
   }
 }
 
@@ -1484,16 +1490,6 @@ bool LevelIterator::SkipEmptyFileForward() {
     // may init a new *range_tombstone_iter
     std::cout << "[Shubham]: Moving to a new SST File file_index_: " << file_index_ << " file_index_ + 1: " << file_index_+1 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
-    // Adding previous file to edits delete
-    if (db_impl_ != nullptr && partial_file_status_.ok()){
-      std::cout << "[####]: Setting file_index_: " << file_index_ << " to be deleted Level: " << level_ 
-                << "File Number: "<< flevel_->files[file_index_].file_metadata->fd.GetNumber() 
-                << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-    } else {
-      partial_file_status_ = partial_file_status_.OK();
-    }
-
     InitFileIterator(file_index_ + 1);
     // We moved to a new SST file
     // Seek range_tombstone_iter_ to reset its !Valid() default state.
@@ -1503,6 +1499,31 @@ bool LevelIterator::SkipEmptyFileForward() {
     // range tombstone iterator.
     if (file_iter_.iter() != nullptr) {
       // std::cout << "[Shubham]: Performing SeeToFirst file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+      // (shubham) We actually have 2 choices here
+      // 1. If the last file was the first file than partial part of that file was already added
+      //    and old file was added to deleted files so now this new file could be a file which falls 
+      //    completely in the range db_impl_->range_start_key_ and db_impl_->range_end_key_ 
+      //    if so just delete this file
+      // 2. If this is the last file of this level which falls in the range than write a new partial 
+      //    file to the same level
+      if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+          ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
+          icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
+          (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
+          icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0)))
+      {
+        flevel_->files[file_index_].file_metadata->being_compacted = true;
+        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+        db_impl_->WriteLevelNTable(flevel_, file_index_, level_);
+      } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
+                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
+      {
+        flevel_->files[file_index_].file_metadata->being_compacted = true;
+        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+      }
+
       file_iter_.SeekToFirst();
       if (range_tombstone_iter_) {
         if (*range_tombstone_iter_) {

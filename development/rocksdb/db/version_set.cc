@@ -1622,7 +1622,7 @@ bool LevelIterator::SkipEmptyFileForward() {
       //    if so just delete this file
       // 2. If this is the last file of this level which falls in the range than write a new partial 
       //    file to the same level
-      if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+      if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
           ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
           icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
           (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
@@ -1631,7 +1631,7 @@ bool LevelIterator::SkipEmptyFileForward() {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
         db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
         db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
-      } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && 
+      } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
                  icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
                  icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
       {

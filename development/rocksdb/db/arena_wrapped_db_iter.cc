@@ -21,6 +21,7 @@
 #include "table/internal_iterator.h"
 #include "table/iterator_wrapper.h"
 #include "util/user_comparator_wrapper.h"
+#include "logging/logging.h"
 
 namespace ROCKSDB_NAMESPACE {
 

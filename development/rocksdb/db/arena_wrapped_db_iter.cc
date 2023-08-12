@@ -18,6 +18,7 @@
 #include "table/internal_iterator.h"
 #include "table/iterator_wrapper.h"
 #include "util/user_comparator_wrapper.h"
+#include "logging/logging.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -94,6 +95,20 @@ Status ArenaWrappedDBIter::Refresh() {
         read_options_, cfd_, sv, &arena_, latest_seq,
         /* allow_unprepared_value */ true, /* db_iter */ this);
     SetIterUnderDBIter(internal_iter);
+
+    std::string levels_state_after = "LSM While Refresh:";
+    auto storage_info_after = cfd_->current()->storage_info();
+    for (int l = 0; l < storage_info_after->num_non_empty_levels(); l++) {
+      levels_state_after += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+      auto num_files = storage_info_after->LevelFilesBrief(l).num_files;
+      for (size_t file_index = 0; file_index < num_files; file_index++) {
+        auto fd = storage_info_after->LevelFilesBrief(l).files[file_index];
+        levels_state_after += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+      }
+    }
+
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_after.c_str());
+
   };
   while (true) {
     if (sv_number_ != cur_sv_number) {

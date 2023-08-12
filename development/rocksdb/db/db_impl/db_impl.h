@@ -473,7 +473,7 @@ class DBImpl : public DB {
   int range_query_last_level_ = 0;
 
   // keep track of version edits for range queries
-  VersionEdit* const edits_ = new VersionEdit();
+  VersionEdit* edits_ = new VersionEdit();
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 

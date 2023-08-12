@@ -18,6 +18,7 @@ void DBImpl::ApplyRangeQueryEdits() {
   mutex()->AssertHeld();
 
   for (auto deleted_file : edits_->GetDeletedFiles()) {
+    std::cout << "Level: " << deleted_file.first << " File No.: " << deleted_file.second << " " << __FILE__ << ":" << __LINE__ << __FUNCTION__ << std::endl;
     MarkAsGrabbedForPurge(deleted_file.second);
   }
 
@@ -65,7 +66,6 @@ void DBImpl::SetRangeQueryRunningToFalse() {
 
   ApplyRangeQueryEdits();
 
-  cfd->SetRangeQueryRunningToFalse();
   range_start_key_ = "";
   range_end_key_ = "";
   read_options_.is_range_query_compaction_enabled = false;
@@ -84,6 +84,10 @@ void DBImpl::SetRangeQueryRunningToFalse() {
   }
 
   ROCKS_LOG_INFO(immutable_db_options_.info_log, "%s \n", levels_state_after.c_str());
+  edits_ = new VersionEdit();
+  cfd->SetRangeQueryRunningToFalse();
+  cfd->RecalculateWriteStallConditions(*cfd->GetLatestMutableCFOptions());
+  // bg_cv_.SignalAll();
   // range_start_key_here = nullptr;
   // range_end_key_here = nullptr;
 }
@@ -129,6 +133,10 @@ Status DBImpl::FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t fil
     range_read_options.iterate_upper_bound = new Slice(range_start_key_);
     range_read_options.iterate_lower_bound = new Slice(range_end_key_);
     range_read_options.is_range_query_compaction_enabled = true;
+
+    if (cfd_->internal_comparator().user_comparator()->Compare(flevel_->files[file_index].smallest_key, Slice(range_end_key_)) > 0) {
+      range_read_options.iterate_lower_bound = nullptr;
+    }
 
     InternalIterator* file_iter_ = cfd_->table_cache()->NewIterator(
         range_read_options, file_options_, cfd_->internal_comparator(), *old_file_meta,
@@ -268,6 +276,7 @@ Status DBImpl::FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t fil
   }
 
   const bool has_output = meta_.fd.GetFileSize() > 0;
+  log_buffer.FlushBufferToLog();
 
   if (s.ok() && has_output) {
     std::cout << "[####] Adding it to edits  for Level: " << level << " FileNumber: " << meta_.fd.GetNumber() << " " << __FILE__ << ":"
@@ -472,6 +481,7 @@ Status DBImpl::FlushLevelNFile() {
   }
   // base_->Unref();
 
+  log_buffer.FlushBufferToLog();
   const bool has_output = meta_.fd.GetFileSize() > 0;
 
   if (s.ok() && has_output) {

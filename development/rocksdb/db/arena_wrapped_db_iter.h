@@ -81,6 +81,8 @@ class ArenaWrappedDBIter : public Iterator {
   Status GetProperty(std::string prop_name, std::string* prop) override;
 
   Status Refresh() override;
+  Status Refresh(const Slice& /*start_key*/, const Slice& /*end_key*/) override;
+  Status Reset() override;
 
   void Init(Env* env, const ReadOptions& read_options,
             const ImmutableOptions& ioptions,
@@ -116,6 +118,8 @@ class ArenaWrappedDBIter : public Iterator {
   // If this is nullptr, it means the mutable memtable does not contain range
   // tombstone when added under this DBIter.
   TruncatedRangeDelIterator** memtable_range_tombstone_iter_ = nullptr;
+  const Slice* prev_iterate_upper_bound = nullptr;
+  const Slice* prev_iterate_lower_bound = nullptr;
 };
 
 // Generate the arena wrapped iterator class.

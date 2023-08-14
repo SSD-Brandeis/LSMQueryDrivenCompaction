@@ -1328,26 +1328,46 @@ void LevelIterator::Seek(const Slice& target) {
 
   // TODO:[Shubham] Add New file to this level before Seek -- This would be partial file
   // If everything is okay after seek write partial file and update status
-  if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
-                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
-                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
-      {
-        flevel_->files[file_index_].file_metadata->being_compacted = true;
-        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-      }
-  else if (Valid() && db_impl_!=nullptr && file_index_ < flevel_->num_files &&
-          ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
-          icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
-          (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
-          icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0))) {
+  if (read_options_.range_query_compaction_enabled && file_index_ < flevel_->num_files && db_impl_ != nullptr &&
+      icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, *read_options_.iterate_lower_bound) <= 0 &&
+      icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, *read_options_.iterate_upper_bound) >= 0) {
+    flevel_->files[file_index_].file_metadata->being_compacted = true;
+    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, file_index_, level_, true);
+    // TODO: (shubham) why column family is nullptr?
+  } else if (Valid() && db_impl_!=nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
+          ((icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].largest_key) < 0 &&
+          icomparator_.user_comparator()->Compare( *read_options_.iterate_lower_bound, flevel_->files[file_index_].smallest_key) > 0) || 
+          (icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].smallest_key) > 0 &&
+          icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].largest_key) < 0))) {
+    flevel_->files[file_index_].file_metadata->being_compacted = true;
     db_impl_->range_query_last_level_ = std::max(level_, db_impl_->range_query_last_level_);
-    partial_file_status_ = db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
-
-    if (partial_file_status_.ok()){
-      flevel_->files[file_index_].file_metadata->being_compacted = true;
-      db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-    }
+    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, file_index_, level_, false);
   }
+
+  // if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
+  //                icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
+  //                icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
+  //     {
+  //       flevel_->files[file_index_].file_metadata->being_compacted = true;
+  //       std::cout << "[@@@@] Adding file to delete edits_ FileNo.: " << flevel_->files[file_index_].file_metadata->fd.GetNumber() << " Level: " << level_ 
+  //                 << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  //       db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+  //     }
+  // else if (Valid() && db_impl_!=nullptr && file_index_ < flevel_->num_files &&
+  //         ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
+  //         icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
+  //         (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
+  //         icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0))) {
+  //   db_impl_->range_query_last_level_ = std::max(level_, db_impl_->range_query_last_level_);
+  //   partial_file_status_ = db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
+
+  //   if (partial_file_status_.ok()){
+  //     flevel_->files[file_index_].file_metadata->being_compacted = true;
+  //     std::cout << "[@@@@] Adding file to delete edits_ FileNo.: " << flevel_->files[file_index_].file_metadata->fd.GetNumber() << " Level: " << level_ 
+  //               << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  //     db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+  //   }
+  // }
 }
 
 void LevelIterator::SeekForPrev(const Slice& target) {
@@ -1512,22 +1532,41 @@ bool LevelIterator::SkipEmptyFileForward() {
       //    if so just delete this file
       // 2. If this is the last file of this level which falls in the range than write a new partial 
       //    file to the same level
-      if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
-          ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
-          icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
-          (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
-          icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0)))
-      {
+
+      if (db_impl_ != nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
+          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, *read_options_.iterate_lower_bound) <= 0 &&
+          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, *read_options_.iterate_upper_bound) >= 0) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
-        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-        db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
-      } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
-                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
-                 icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
-      {
+        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, file_index_, level_, true);
+        // TODO: (shubham) why column family is nullptr?
+      } else if (Valid() && db_impl_!=nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
+          ((icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].largest_key) < 0 &&
+          icomparator_.user_comparator()->Compare( *read_options_.iterate_lower_bound, flevel_->files[file_index_].smallest_key) > 0) || 
+          (icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].smallest_key) > 0 &&
+          icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].largest_key) < 0))) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
-        db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+        db_impl_->range_query_last_level_ = std::max(level_, db_impl_->range_query_last_level_);
+        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, file_index_, level_, false);
       }
+
+      // if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
+      //     ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
+      //     icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
+      //     (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
+      //     icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0)))
+      // {
+      //   flevel_->files[file_index_].file_metadata->being_compacted = true;
+      //   db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+      //   db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
+      // } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
+      //            icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
+      //            icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
+      // {
+      //   flevel_->files[file_index_].file_metadata->being_compacted = true;
+      //   std::cout << "[@@@@] Adding file to delete edits_ FileNo.: " << flevel_->files[file_index_].file_metadata->fd.GetNumber() << " Level: " << level_ 
+      //             << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      //   db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
+      // }
 
       file_iter_.SeekToFirst();
       if (range_tombstone_iter_) {

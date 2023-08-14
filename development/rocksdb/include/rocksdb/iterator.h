@@ -114,6 +114,17 @@ class Iterator : public Cleanable {
     return Status::NotSupported("Refresh() is not supported");
   }
 
+  // If supported, behave similar to Refresh() except the read opetion would be updated
+  // read_options.iterate_lower_bound and read_options.iterate_upper_bound would be updated
+  virtual Status Refresh(const Slice& /*start_key*/, const Slice& /*end_key*/) {
+    return Status::NotSupported("Refresh(const Slice&, const Slice&) is not supported");
+  }
+
+  // If supported, reset the start_key & end_key back to previous value
+  virtual Status Reset() {
+    return Status::NotSupported("Reset() is not supported");
+  }
+
   // Property "rocksdb.iterator.is-key-pinned":
   //   If returning "1", this means that the Slice returned by key() is valid
   //   as long as the iterator is not deleted.

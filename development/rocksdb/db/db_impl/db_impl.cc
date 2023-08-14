@@ -1927,12 +1927,6 @@ InternalIterator* DBImpl::NewInternalIterator(
         read_options.background_purge_on_iterator_cleanup ||
             immutable_db_options_.avoid_unnecessary_blocking_io);
 
-    while (cfd->IsQueuedOrCompactionInProgress()){
-      std::cout << "[****]: Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
-      std::cout << "[****]: Compaction queue is not empty or already in progress!" << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
-
     internal_iter->RegisterCleanup(CleanupSuperVersionHandle, cleanup, nullptr);
 
     return internal_iter;

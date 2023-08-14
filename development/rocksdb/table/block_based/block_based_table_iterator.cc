@@ -136,7 +136,7 @@ void BlockBasedTableIterator::SeekImpl(const Slice* target,
   }
 
   CheckOutOfBound();
-  if (read_options_.is_range_query_compaction_enabled) {
+  if (read_options_.range_query_compaction_enabled) {
     RecheckOutOfBound();
   }
 
@@ -241,7 +241,7 @@ void BlockBasedTableIterator::Next() {
   FindKeyForward();
   CheckOutOfBound();
 
-  if (read_options_.is_range_query_compaction_enabled) {
+  if (read_options_.range_query_compaction_enabled) {
     RecheckOutOfBound();
   }
 
@@ -505,7 +505,7 @@ void BlockBasedTableIterator::CheckOutOfBound() {
   if (read_options_.iterate_upper_bound != nullptr &&
       block_upper_bound_check_ != BlockUpperBound::kUpperBoundBeyondCurBlock &&
       Valid()) {
-        if (read_options_.is_range_query_compaction_enabled && is_seeked_for_range_query) {
+        if (read_options_.range_query_compaction_enabled && is_seeked_for_range_query) {
           is_out_of_bound_ = false;
         } else {
           is_out_of_bound_ =
@@ -518,7 +518,7 @@ void BlockBasedTableIterator::CheckOutOfBound() {
 
 void BlockBasedTableIterator::RecheckOutOfBound() {
   if (is_out_of_bound_ && read_options_.iterate_lower_bound != nullptr &&
-      read_options_.is_range_query_compaction_enabled &&
+      read_options_.range_query_compaction_enabled &&
       block_upper_bound_check_ != BlockUpperBound::kUpperBoundBeyondCurBlock) {
         if (!is_seeked_for_range_query) {
           is_out_of_bound_ = false;
@@ -533,7 +533,7 @@ void BlockBasedTableIterator::RecheckOutOfBound() {
 
 void BlockBasedTableIterator::CheckDataBlockWithinUpperBound() {
   if (read_options_.iterate_upper_bound != nullptr &&
-      block_iter_points_to_real_block_ && !read_options_.is_range_query_compaction_enabled) {
+      block_iter_points_to_real_block_ && !read_options_.range_query_compaction_enabled) {
     block_upper_bound_check_ = (user_comparator_.CompareWithoutTimestamp(
                                     *read_options_.iterate_upper_bound,
                                     /*a_has_ts=*/false, index_iter_->user_key(),

@@ -61,6 +61,28 @@ void ArenaWrappedDBIter::Init(
   }
 }
 
+Status ArenaWrappedDBIter::Refresh(const Slice& start_key, const Slice& end_key) {
+  if (read_options_.iterate_lower_bound != nullptr) {
+    prev_iterate_lower_bound = read_options_.iterate_lower_bound;
+  }
+  if (read_options_.iterate_upper_bound != nullptr) {
+    prev_iterate_upper_bound = read_options_.iterate_upper_bound;
+  }
+
+  read_options_.iterate_upper_bound = new Slice(start_key);
+  read_options_.iterate_lower_bound = new Slice(end_key);
+  read_options_.range_query_compaction_enabled = true; // making it default for this refresh func
+  return Refresh();
+}
+
+Status ArenaWrappedDBIter::Reset() {
+  delete read_options_.iterate_lower_bound;
+  delete read_options_.iterate_upper_bound;
+  read_options_.iterate_lower_bound = prev_iterate_lower_bound;
+  read_options_.iterate_upper_bound = prev_iterate_upper_bound;
+  return Status::OK();
+}
+
 Status ArenaWrappedDBIter::Refresh() {
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
@@ -79,6 +101,25 @@ Status ArenaWrappedDBIter::Refresh() {
     db_iter_->~DBIter();
     arena_.~Arena();
     new (&arena_) Arena();
+
+    while (cfd_->IsQueuedOrCompactionInProgress()){
+      std::cout << "[****]: Compaction Queue size: " << db_impl_->CompactionQueueSize() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      std::cout << "[****]: Compaction queue is not empty or already in progress!" << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    }
+
+    std::string levels_state_before = "Before capture of super version:";
+    auto storage_info_before = cfd_->current()->storage_info();
+    for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+      levels_state_before += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+      auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+      for (size_t file_index = 0; file_index < num_files; file_index++) {
+        auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+        levels_state_before += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+      }
+    }
+
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_before.c_str());
 
     SuperVersion* sv = cfd_->GetReferencedSuperVersion(db_impl_);
     SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();

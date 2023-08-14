@@ -128,11 +128,12 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (db_impl_->read_options_.is_range_query_compaction_enabled) {
+  if (db_impl_->read_options_.range_query_compaction_enabled) {
     db_impl_->range_query_memtable_->Add(sequence_, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
 
     if (db_impl_->range_query_memtable_->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
-      db_impl_->FlushLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, nullptr);  // (shubham) Why cfd nullptr?
+      // db_impl_->WriteLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
     }
   }
 
@@ -185,9 +186,10 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
   
-  if (user_comparator_.Compare(key(), Slice(db_impl_->range_end_key_)) == 0 && db_impl_->read_options_.is_range_query_compaction_enabled) {
+  if (user_comparator_.Compare(key(), Slice(db_impl_->range_end_key_)) == 0 && db_impl_->read_options_.range_query_compaction_enabled) {
     db_impl_->range_query_memtable_->Add(kMaxSequenceNumber, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
-    db_impl_->FlushLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
+    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, nullptr);  // (shubham) Why cfd nullptr?
+    // db_impl_->WriteLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
   }
 }
 

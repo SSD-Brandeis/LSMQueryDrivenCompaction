@@ -324,6 +324,7 @@ class DBIter final : public Iterator {
   bool MergeEntity(const Slice& entity, const Slice& user_key);
 
   const SliceTransform* prefix_extractor_;
+  const ReadOptions read_options_;
   Env* const env_;
   SystemClock* clock_;
   Logger* logger_;

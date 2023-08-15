@@ -458,11 +458,11 @@ class DBImpl : public DB {
   virtual Status UnlockWAL() override;
 
   // Flush partial sst file to the level
-  void SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key);
-  void SetRangeQueryRunningToFalse();
-  void ApplyRangeQueryEdits();
-  Status WriteLevelNFile();
-  Status FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t file_index, int level);
+  // void SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key);
+  // void SetRangeQueryRunningToFalse();
+  void TryAndInstallRangeQueryEdits(ColumnFamilyData* cfd_);
+  // Status WriteLevelNFile();
+  // Status FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t file_index, int level);
   void DumpHumanReadableFormatOfFullLSM(std::string name, ColumnFamilyHandle* column_family=nullptr);
   int CompactionQueueSize() { return compaction_queue_.size(); }
 
@@ -477,21 +477,23 @@ class DBImpl : public DB {
                                 std::vector<SequenceNumber>& snapshot_seqs,
                                 SequenceNumber earliest_write_conflict_snapshot,
                                 SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
-                                Env::Priority thread_pri);
-  void AddPartialOrRangeFileFlushRequest(FlushReason flush_reason, ColumnFamilyData* cfd, size_t file_index = -1, 
-                                         int level = -1, bool just_delete = false);
+                                Env::Priority thread_pri, MemTable* memtable, 
+                                size_t file_index, int level, uint64_t file_number);
+  void AddPartialOrRangeFileFlushRequest(FlushReason flush_reason, ColumnFamilyData* cfd, MemTable* mem_range=nullptr, size_t file_index = -1, 
+                                         int level = -1, bool just_delete = false, uint64_t file_number = -1);
 
-  int unscheduled_partial_or_range_flushes_;
-  int bg_partial_or_range_flush_scheduled_;
+  int unscheduled_partial_or_range_flushes_ = 0;
+  int bg_partial_or_range_flush_scheduled_ = 0;
+  int bg_partial_or_range_flush_running_ = 0;
 
   ReadOptions read_options_;
   std::string range_start_key_ = "";
   std::string range_end_key_ = "";
-  MemTable* range_query_memtable_;
   int range_query_last_level_ = 0;
 
   // keep track of version edits for range queries
-  VersionEdit* edits_ = new VersionEdit();
+  // VersionEdit* edits_ = new VersionEdit();
+  VersionEdit* range_edit_;
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
@@ -1752,14 +1754,18 @@ class DBImpl : public DB {
 
     BGFlushArg(ColumnFamilyData* cfd, uint64_t max_memtable_id,
                SuperVersionContext* superversion_context,
-               FlushReason flush_reason, size_t file_index, int level, bool just_delete)
+               FlushReason flush_reason, MemTable* memtable, 
+               size_t file_index, int level, bool just_delete,
+               uint64_t file_number)
         : cfd_(cfd),
           max_memtable_id_(max_memtable_id),
           superversion_context_(superversion_context),
           flush_reason_(flush_reason),
+          memtable_(memtable),
           file_index_(file_index),
           level_(level),
-          just_delete_(just_delete) {}
+          just_delete_(just_delete),
+          file_number_(file_number) {}
 
     // Column family to flush.
     ColumnFamilyData* cfd_;
@@ -1771,9 +1777,11 @@ class DBImpl : public DB {
     // requires a SuperVersionContext object (currently embedded in JobContext).
     SuperVersionContext* superversion_context_;
     FlushReason flush_reason_;
+    MemTable* memtable_ = nullptr;
     size_t file_index_ = -1;
     int level_ = -1;
     bool just_delete_ = false;
+    uint64_t file_number_ = -1;
   };
 
   // Argument passed to flush thread.
@@ -2136,9 +2144,11 @@ class DBImpl : public DB {
     // flush is considered complete.
     std::unordered_map<ColumnFamilyData*, uint64_t>
         cfd_to_max_mem_id_to_persist;
-    size_t file_index = -1;    // For partial/range file flush
+    MemTable* mem_to_flush = nullptr;
+    size_t file_index = -1;     // For partial/range file flush
     int level = -1;             // For partial/range file flush
     bool just_delete = false;   // For partial/range file flush
+    uint64_t file_number = -1;   // For partial/range file flush
   };
 
   void GenerateFlushRequest(const autovector<ColumnFamilyData*>& cfds,

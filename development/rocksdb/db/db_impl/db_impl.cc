@@ -1857,10 +1857,6 @@ InternalIterator* DBImpl::NewInternalIterator(
     bool allow_unprepared_value, ArenaWrappedDBIter* db_iter) {
   InternalIterator* internal_iter;
   assert(arena != nullptr);
-  edits_->SetColumnFamily(cfd->GetID());
-  edits_->SetPrevLogNumber(cfd->GetLogNumber());
-  SequenceNumber seq = versions_->LastSequence();
-  range_query_memtable_ = cfd->ConstructNewMemtable(super_version->mutable_cf_options, seq);
 
   std::cout << "[Shubham]: Creating Merge Iterator Builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 

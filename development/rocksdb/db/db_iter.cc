@@ -45,6 +45,7 @@ DBIter::DBIter(Env* _env, const ReadOptions& read_options,
                ReadCallback* read_callback, DBImpl* db_impl,
                ColumnFamilyData* cfd, bool expose_blob_index)
     : prefix_extractor_(mutable_cf_options.prefix_extractor.get()),
+      read_options_(read_options),
       env_(_env),
       clock_(ioptions.clock),
       logger_(ioptions.logger),
@@ -128,12 +129,12 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (db_impl_->read_options_.range_query_compaction_enabled) {
-    db_impl_->range_query_memtable_->Add(sequence_, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
+  if (read_options_.range_query_compaction_enabled) {
+    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
 
-    if (db_impl_->range_query_memtable_->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, nullptr);  // (shubham) Why cfd nullptr?
-      // db_impl_->WriteLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
+    if (cfd_->mem_range()->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
+      MemTable* imm_range = cfd_->mem_range();
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_, imm_range);
     }
   }
 
@@ -186,10 +187,10 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
   
-  if (user_comparator_.Compare(key(), Slice(db_impl_->range_end_key_)) == 0 && db_impl_->read_options_.range_query_compaction_enabled) {
-    db_impl_->range_query_memtable_->Add(kMaxSequenceNumber, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, nullptr);  // (shubham) Why cfd nullptr?
-    // db_impl_->WriteLevelNFile();  // TODO: (shubham) Check why the target_file_size_base is smaller than other files flushed noramally
+  if (user_comparator_.Compare(key(), *read_options_.iterate_lower_bound) == 0 && read_options_.range_query_compaction_enabled) {
+    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
+    MemTable* imm_range = cfd_->mem_range();
+    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_, imm_range);
   }
 }
 

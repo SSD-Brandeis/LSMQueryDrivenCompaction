@@ -740,8 +740,8 @@ int runWorkload(EmuEnv *_env) {
         std::cout << std::endl << std::endl << std::endl << std::endl;
         db_impl_ = reinterpret_cast<DBImpl *>(db);
 
-        db_impl_->SetRangeQueryRunningToTrue(new Slice(to_string(start_key)),
-                                             new Slice(to_string(end_key)));
+        // db_impl_->SetRangeQueryRunningToTrue(new Slice(to_string(start_key)),
+        //                                      new Slice(to_string(end_key)));
 
         // it->Refresh();
         it->Refresh(to_string(start_key), to_string(end_key));
@@ -753,7 +753,7 @@ int runWorkload(EmuEnv *_env) {
             break;
           }
         }
-        db_impl_->SetRangeQueryRunningToFalse();
+        // db_impl_->SetRangeQueryRunningToFalse();
         if (!it->status().ok()) {
           std::cerr << it->status().ToString() << std::endl;
         }
@@ -774,35 +774,6 @@ int runWorkload(EmuEnv *_env) {
     if (counter % (workload_size / 100) == 0 && _env->show_progress) {
       showProgress(workload_size, counter);
     }
-    std::vector<ThreadStatus> mid_thread_status;
-    db->GetEnv()->GetThreadList(&mid_thread_status);
-
-    for (int i = 0; i < mid_thread_status.size(); i++) {
-      std::cout << "##########\nThread Id: " << mid_thread_status[i].thread_id
-                << std::endl;
-      std::cout << "Thread Type: "
-                << mid_thread_status[i].GetThreadTypeName(
-                       mid_thread_status[i].thread_type)
-                << std::endl;
-      std::cout << "Thread db_name: " << mid_thread_status[i].db_name
-                << std::endl;
-      std::cout << "Thread cd_name: " << mid_thread_status[i].cf_name
-                << std::endl;
-      std::cout << "Thread operation_type: "
-                << mid_thread_status[i].GetOperationName(
-                       mid_thread_status[i].operation_type)
-                << std::endl;
-      std::cout << "Thread elapsed_micro: "
-                << mid_thread_status[i].op_elapsed_micros << std::endl;
-      std::cout << "Thread operation_stage: "
-                << mid_thread_status[i].GetOperationStageName(
-                       mid_thread_status[i].operation_stage)
-                << std::endl;
-      std::cout << "Thread stage_type: "
-                << mid_thread_status[i].GetStateName(
-                       mid_thread_status[i].state_type)
-                << std::endl;
-    }
   }
 
   fade_stats->completion_status = true;
@@ -820,31 +791,28 @@ int runWorkload(EmuEnv *_env) {
   std::vector<ThreadStatus> thread_status;
   db->GetEnv()->GetThreadList(&thread_status);
 
-  while (true) {
-    sleep_for_ms(10000);
-    for (int i = 0; i < thread_status.size(); i++) {
-      std::cout << "##########\nThread Id: " << thread_status[i].thread_id
-                << std::endl;
-      std::cout << "Thread Type: "
-                << thread_status[i].GetThreadTypeName(
-                       thread_status[i].thread_type)
-                << std::endl;
-      std::cout << "Thread db_name: " << thread_status[i].db_name << std::endl;
-      std::cout << "Thread cd_name: " << thread_status[i].cf_name << std::endl;
-      std::cout << "Thread operation_type: "
-                << thread_status[i].GetOperationName(
-                       thread_status[i].operation_type)
-                << std::endl;
-      std::cout << "Thread elapsed_micro: "
-                << thread_status[i].op_elapsed_micros << std::endl;
-      std::cout << "Thread operation_stage: "
-                << thread_status[i].GetOperationStageName(
-                       thread_status[i].operation_stage)
-                << std::endl;
-      std::cout << "Thread stage_type: "
-                << thread_status[i].GetStateName(thread_status[i].state_type)
-                << std::endl;
-    }
+  for (int i = 0; i < thread_status.size(); i++) {
+    std::cout << "##########\nThread Id: " << thread_status[i].thread_id
+              << std::endl;
+    std::cout << "Thread Type: "
+              << thread_status[i].GetThreadTypeName(
+                      thread_status[i].thread_type)
+              << std::endl;
+    std::cout << "Thread db_name: " << thread_status[i].db_name << std::endl;
+    std::cout << "Thread cd_name: " << thread_status[i].cf_name << std::endl;
+    std::cout << "Thread operation_type: "
+              << thread_status[i].GetOperationName(
+                      thread_status[i].operation_type)
+              << std::endl;
+    std::cout << "Thread elapsed_micro: "
+              << thread_status[i].op_elapsed_micros << std::endl;
+    std::cout << "Thread operation_stage: "
+              << thread_status[i].GetOperationStageName(
+                      thread_status[i].operation_stage)
+              << std::endl;
+    std::cout << "Thread stage_type: "
+              << thread_status[i].GetStateName(thread_status[i].state_type)
+              << std::endl;
   }
 
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(

@@ -37,6 +37,7 @@ class ColumnFamilyMemTables {
   // been processed)
   virtual uint64_t GetLogNumber() const = 0;
   virtual MemTable* GetMemTable() const = 0;
+  virtual MemTable* GetRangeMemTable() const = 0;
   virtual ColumnFamilyHandle* GetColumnFamilyHandle() = 0;
   virtual ColumnFamilyData* current() { return nullptr; }
 };
@@ -58,11 +59,18 @@ class ColumnFamilyMemTablesDefault : public ColumnFamilyMemTables {
     return mem_;
   }
 
+  // TODO: (shubham) Remove this extra memtable .. its not used anywhere
+  MemTable* GetRangeMemTable() const override {
+    assert(ok_);
+    return mem_range_;
+  }
+
   ColumnFamilyHandle* GetColumnFamilyHandle() override { return nullptr; }
 
  private:
   bool ok_;
   MemTable* mem_;
+  MemTable* mem_range_;
 };
 
 struct WriteBatch::ProtectionInfo {

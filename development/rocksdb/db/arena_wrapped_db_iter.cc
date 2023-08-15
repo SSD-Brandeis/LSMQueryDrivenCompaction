@@ -69,9 +69,24 @@ Status ArenaWrappedDBIter::Refresh(const Slice& start_key, const Slice& end_key)
     prev_iterate_upper_bound = read_options_.iterate_upper_bound;
   }
 
-  read_options_.iterate_upper_bound = new Slice(start_key);
-  read_options_.iterate_lower_bound = new Slice(end_key);
+  read_options_.iterate_upper_bound = new Slice(end_key);
+  read_options_.iterate_lower_bound = new Slice(start_key);
   read_options_.range_query_compaction_enabled = true; // making it default for this refresh func
+  db_impl_->PauseBackgroundWork();
+  db_impl_->range_edit_ = new VersionEdit();
+  db_impl_->range_edit_->SetColumnFamily(cfd_->GetID());
+
+  std::string levels_state_before = "Range Query Started:";
+  auto storage_info_before = cfd_->current()->storage_info();
+  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    levels_state_before += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    for (size_t file_index = 0; file_index < num_files; file_index++) {
+      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+      levels_state_before += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+    }
+  }
+  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_before.c_str());
   return Refresh();
 }
 
@@ -80,6 +95,30 @@ Status ArenaWrappedDBIter::Reset() {
   delete read_options_.iterate_upper_bound;
   read_options_.iterate_lower_bound = prev_iterate_lower_bound;
   read_options_.iterate_upper_bound = prev_iterate_upper_bound;
+  std::cout << "[Shubham] Waiting for Flushes to complete " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // db_impl_->SchedulePartialOrRangeFileFlush();
+  // db_impl_->WaitForCompact(WaitForCompactOptions());
+  while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 || 
+         db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
+         db_impl_->bg_partial_or_range_flush_running_ > 0) {
+    std::cout << "[Shubham] Still Pending ... " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    db_impl_->SchedulePartialOrRangeFileFlush();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+  }
+  // db_impl_->TryAndInstallRangeQueryEdits(cfd_);
+
+  std::string levels_state_before = "Range Query Complete:";
+  auto storage_info_before = cfd_->current()->storage_info();
+  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    levels_state_before += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    for (size_t file_index = 0; file_index < num_files; file_index++) {
+      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+      levels_state_before += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+    }
+  }
+  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_before.c_str());
+  db_impl_->ContinueBackgroundWork();
   return Status::OK();
 }
 
@@ -102,11 +141,6 @@ Status ArenaWrappedDBIter::Refresh() {
     arena_.~Arena();
     new (&arena_) Arena();
 
-    while (cfd_->IsQueuedOrCompactionInProgress()){
-      std::cout << "[****]: Compaction Queue size: " << db_impl_->CompactionQueueSize() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
-      std::cout << "[****]: Compaction queue is not empty or already in progress!" << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
 
     std::string levels_state_before = "Before capture of super version:";
     auto storage_info_before = cfd_->current()->storage_info();

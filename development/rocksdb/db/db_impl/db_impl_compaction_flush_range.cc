@@ -642,4 +642,10 @@ void DBImpl::DumpHumanReadableFormatOfFullLSM(std::string name, ColumnFamilyHand
   human_readable_file.close();
 }
 
+// TODO: (shubham)
+//  - We may need to add mem_range_ in new_superversion while
+//  InstallSuperVersion in ColumnFamily
+//  - Remove the start_key and end_key from the BlockBasedIterator and
+//  TableReader
+
 }  // namespace ROCKSDB_NAMESPACE

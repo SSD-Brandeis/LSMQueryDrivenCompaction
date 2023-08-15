@@ -1312,7 +1312,6 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     uint64_t total_num_entries = 0, total_num_deletes = 0;
     uint64_t total_data_size = 0;
     size_t total_memory_usage = 0;
-
     assert(job_context_);
     memtables.push_back(memtable_->NewIterator(ro, &arena));
     total_num_entries = memtable_->num_entries();
@@ -1437,7 +1436,6 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     TEST_SYNC_POINT_CALLBACK("FlushJob::WriteLevel0Table", &mems_);
     db_mutex_->Lock();
   }
-
   base_->Unref();
   const bool has_output = meta_.fd.GetFileSize() > 0;
 

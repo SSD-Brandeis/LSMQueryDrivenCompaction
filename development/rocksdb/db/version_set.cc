@@ -1624,19 +1624,21 @@ bool LevelIterator::SkipEmptyFileForward() {
       //    file to the same level
 
       if (db_impl_ != nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
-          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, *read_options_.iterate_lower_bound) <= 0 &&
-          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, *read_options_.iterate_upper_bound) >= 0) {
+          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, *read_options_.iterate_upper_bound) <= 0 &&
+          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, *read_options_.iterate_lower_bound) >= 0) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
-        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, file_index_, level_, true);
+        uint64_t fnumber = flevel_->files[file_index_].fd.GetNumber();
+        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_, true, fnumber);
         // TODO: (shubham) why column family is nullptr?
       } else if (Valid() && db_impl_!=nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
-          ((icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].largest_key) < 0 &&
-          icomparator_.user_comparator()->Compare( *read_options_.iterate_lower_bound, flevel_->files[file_index_].smallest_key) > 0) || 
-          (icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].smallest_key) > 0 &&
-          icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].largest_key) < 0))) {
+          ((icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].largest_key) < 0 &&
+          icomparator_.user_comparator()->Compare( *read_options_.iterate_upper_bound, flevel_->files[file_index_].smallest_key) > 0) || 
+          (icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].smallest_key) > 0 &&
+          icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].largest_key) < 0))) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
+        uint64_t fnumber = flevel_->files[file_index_].fd.GetNumber();
         db_impl_->range_query_last_level_ = std::max(level_, db_impl_->range_query_last_level_);
-        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, file_index_, level_, false);
+        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_, false, fnumber);
       }
 
       // if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&

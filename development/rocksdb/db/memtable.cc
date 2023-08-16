@@ -359,8 +359,6 @@ class MemTableIterator : public InternalIterator {
         protection_bytes_per_key_(mem.moptions_.protection_bytes_per_key),
         status_(Status::OK()),
         logger_(mem.moptions_.info_log) {
-    // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     if (use_range_del_table) {
       iter_ = mem.range_del_table_->GetIterator(arena);
     } else if (prefix_extractor_ != nullptr && !read_options.total_order_seek &&
@@ -399,13 +397,9 @@ class MemTableIterator : public InternalIterator {
 
   bool Valid() const override { return valid_ && status_.ok(); }
   void Seek(const Slice& k) override {
-    std::cout << "[Shubham]: Seek in MemTable "<< __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     PERF_TIMER_GUARD(seek_on_memtable_time);
     PERF_COUNTER_ADD(seek_on_memtable_count, 1);
     if (bloom_) {
-      // std::cout << "[Shubham]: if bloom_: " << bloom_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
       // iterator should only use prefix bloom filter
       auto ts_sz = comparator_.comparator.user_comparator()->timestamp_size();
       Slice user_k_without_ts(ExtractUserKeyAndStripTimestamp(k, ts_sz));
@@ -533,8 +527,6 @@ class MemTableIterator : public InternalIterator {
 
 InternalIterator* MemTable::NewIterator(const ReadOptions& read_options,
                                         Arena* arena) {
-  std::cout << "[Shubham]: Creating MemTable NewIterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   assert(arena != nullptr);
   auto mem = arena->AllocateAligned(sizeof(MemTableIterator));
   return new (mem) MemTableIterator(*this, read_options, arena);

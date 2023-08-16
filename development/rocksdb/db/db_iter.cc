@@ -191,12 +191,14 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
 
-  if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) ==
+  if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) >=
           0 &&
       read_options_.range_query_compaction_enabled) {
-    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                           Slice(key().data(), key().size()),
-                           Slice(value().data(), value().size()), nullptr);
+    if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) == 0) {
+      cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
+                            Slice(key().data(), key().size()),
+                            Slice(value().data(), value().size()), nullptr);
+    }
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 imm_range);

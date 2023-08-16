@@ -55,6 +55,8 @@ class VersionEdit;
 class VersionSet;
 class Arena;
 
+extern const char* GetFlushReasonString(FlushReason flush_reason);
+
 class FlushJob {
  public:
   // TODO(icanadi) make effort to reduce number of parameters here
@@ -198,29 +200,31 @@ class FlushJob {
 };
 
 class PartialOrRangeFlushJob : public FlushJob {
-  public:
-    PartialOrRangeFlushJob(const std::string& dbname, ColumnFamilyData* cfd,
-           const ImmutableDBOptions& db_options,
-           const MutableCFOptions& mutable_cf_options, uint64_t max_memtable_id,
-           const FileOptions& file_options, VersionSet* versions,
-           InstrumentedMutex* db_mutex, std::atomic<bool>* shutting_down,
-           std::vector<SequenceNumber> existing_snapshots,
-           SequenceNumber earliest_write_conflict_snapshot,
-           SnapshotChecker* snapshot_checker, JobContext* job_context,
-           FlushReason flush_reason, LogBuffer* log_buffer,
-           FSDirectory* db_directory, FSDirectory* output_file_directory,
-           CompressionType output_compression, Statistics* stats,
-           EventLogger* event_logger, bool measure_io_stats,
-           const bool sync_output_directory, const bool write_manifest,
-           Env::Priority thread_pri, const std::shared_ptr<IOTracer>& io_tracer,
-           const SeqnoToTimeMapping& seq_time_mapping, const ReadOptions& read_options,
-           const std::string& db_id = "", const std::string& db_session_id = "",
-           std::string full_history_ts_low = "",
-           BlobFileCompletionCallback* blob_callback = nullptr,
-           MemTable* memtable=nullptr, size_t file_index=-1, int level=-1, 
-           uint64_t file_number=-1);
+ public:
+  PartialOrRangeFlushJob(
+      const std::string& dbname, ColumnFamilyData* cfd,
+      const ImmutableDBOptions& db_options,
+      const MutableCFOptions& mutable_cf_options, uint64_t max_memtable_id,
+      const FileOptions& file_options, VersionSet* versions,
+      InstrumentedMutex* db_mutex, std::atomic<bool>* shutting_down,
+      std::vector<SequenceNumber> existing_snapshots,
+      SequenceNumber earliest_write_conflict_snapshot,
+      SnapshotChecker* snapshot_checker, JobContext* job_context,
+      FlushReason flush_reason, LogBuffer* log_buffer,
+      FSDirectory* db_directory, FSDirectory* output_file_directory,
+      CompressionType output_compression, Statistics* stats,
+      EventLogger* event_logger, bool measure_io_stats,
+      const bool sync_output_directory, const bool write_manifest,
+      Env::Priority thread_pri, const std::shared_ptr<IOTracer>& io_tracer,
+      const SeqnoToTimeMapping& seq_time_mapping,
+      const ReadOptions& read_options, const std::string& db_id = "",
+      const std::string& db_session_id = "",
+      std::string full_history_ts_low = "",
+      BlobFileCompletionCallback* blob_callback = nullptr,
+      MemTable* memtable = nullptr, int level = -1,
+      FileMetaData* file_meta = nullptr);
 
-    ~PartialOrRangeFlushJob();
+  ~PartialOrRangeFlushJob();
 
   void InitNewTable(VersionEdit* edit);
   Status Run(LogsWithPrepTracker* prep_tracker = nullptr,
@@ -229,15 +233,14 @@ class PartialOrRangeFlushJob : public FlushJob {
   void Cancel();
   VersionEdit* GetJobEdits() { return edit_; }
 
-  private:
-    Status WriteLevelNTable();
-    Status WritePartialTable();
-    const ReadOptions read_options_;
-    MemTable* memtable_ = nullptr;
-    size_t file_index_ = -1;
-    int level_ = -1;
-    uint64_t file_number_ = -1;
-    LevelFilesBrief flevel_;
+ private:
+  Status WriteLevelNTable();
+  Status WritePartialTable();
+  const ReadOptions read_options_;
+  MemTable* memtable_ = nullptr;
+  int level_ = -1;
+  uint64_t file_number_ = -1;
+  FileMetaData* file_meta_;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

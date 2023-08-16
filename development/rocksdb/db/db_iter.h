@@ -151,7 +151,6 @@ class DBIter final : public Iterator {
     return valid_;
   }
   Slice key() const override {
-    // std::cout << "[Shubham]: Spitting Key from DbIter saved_key_: " << saved_key_.GetUserKey().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(valid_);
     if (timestamp_lb_) {
       return saved_key_.GetInternalKey();

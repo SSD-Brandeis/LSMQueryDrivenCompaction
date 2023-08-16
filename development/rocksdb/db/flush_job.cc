@@ -1122,7 +1122,7 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
     const ReadOptions& read_options, const std::string& db_id,
     const std::string& db_session_id, std::string full_history_ts_low,
     BlobFileCompletionCallback* blob_callback, MemTable* memtable,
-    size_t file_index, int level, uint64_t file_number)
+    int level, FileMetaData* file_meta)
     : FlushJob(dbname, cfd, db_options, mutable_cf_options, max_memtable_id,
                file_options, versions, db_mutex, shutting_down,
                existing_snapshots, earliest_write_conflict_snapshot,
@@ -1133,11 +1133,13 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
                db_session_id, full_history_ts_low, blob_callback),
       read_options_(read_options),
       memtable_(memtable),
-      file_index_(file_index),
       level_(level),
-      file_number_(file_number) {
+      file_number_(0),
+      file_meta_(file_meta) {
   // Update the thread status to indicate flush.
-  flevel_ = cfd_->current()->storage_info()->LevelFilesBrief(level);
+  if (file_meta_ != nullptr) {
+    file_number_ = file_meta_->fd.GetNumber();
+  }
   ReportStartedFlush();
   TEST_SYNC_POINT("PartialOrRangeFlushJob::PartialOrRangeFlushJob()");
 }
@@ -1430,6 +1432,26 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
   const bool has_output = meta_.fd.GetFileSize() > 0;
 
   if (s.ok() && has_output) {
+
+    TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
+
+    // ############## dump new file to human readable format #############
+
+    // Options op;
+    // Temperature tmpperature = meta_.temperature;
+    // SstFileDumper sst_dump(
+    //     op,
+    //     TableFileName(db_options_.db_paths,
+    //                   meta_.fd.GetNumber(), 0),
+    //     tmpperature, cfd_->GetLatestCFOptions().target_file_size_base, false,
+    //     false, false);
+    // sst_dump.DumpTable(
+    //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
+    //     ") FileNumber: [" +
+    //     std::to_string(meta_.fd.GetNumber()) + "new_range_file" );
+    
+    // ############## dump new file to human readable format #############
+
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
     edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(),
                    meta_.fd.GetPathId(), meta_.fd.GetFileSize(), meta_.smallest,
@@ -1507,12 +1529,31 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     uint64_t total_num_entries = 0, total_num_deletes = 0;
     uint64_t total_data_size = 0;
     size_t total_memory_usage = 0;
-    FileMetaData* old_file_meta = flevel_.files[file_index_].file_metadata;
+
+    // ############## dump old file to human readable format #############
+
+    // Options op;
+    // Temperature tmpperature = file_meta_->temperature;
+    // SstFileDumper sst_dump(
+    //     op,
+    //     TableFileName(db_options_.db_paths,
+    //                   file_meta_->fd.GetNumber(), 0),
+    //     tmpperature, cfd_->GetLatestCFOptions().target_file_size_base, false,
+    //     false, false);
+    // sst_dump.DumpTable(
+    //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
+    //     ") FileNumber: [" +
+    //     std::to_string(file_meta_->fd.GetNumber()) + "old_file" );
+    
+    // ############## dump old file to human readable format #############
+
+    ReadOptions range_options = read_options_;
+    range_options.range_query_partial_block_read = true;
 
     assert(job_context_);
     memtables.push_back(cfd_->table_cache()->NewIterator(
-        read_options_, file_options_, cfd_->internal_comparator(),
-        *old_file_meta, /*range_del_agg=*/nullptr,
+        range_options, file_options_, cfd_->internal_comparator(),
+        *file_meta_, /*range_del_agg=*/nullptr,
         mutable_cf_options_.prefix_extractor, nullptr,
         cfd_->internal_stats()->GetFileReadHist(0),
         TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
@@ -1521,10 +1562,10 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
         /*allow_unprepared_value=*/true,
         cfd_->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
         /*range_del_iter=*/nullptr));
-    total_num_entries = old_file_meta->num_entries;
-    total_num_deletes = old_file_meta->num_deletions;
-    total_data_size = old_file_meta->fd.GetFileSize();
-    total_memory_usage = old_file_meta->ApproximateMemoryUsage();
+    total_num_entries = file_meta_->num_entries;
+    total_num_deletes = file_meta_->num_deletions;
+    total_data_size = file_meta_->fd.GetFileSize();
+    total_memory_usage = file_meta_->ApproximateMemoryUsage();
 
     event_logger_->Log() << "job" << job_context_->job_id << "event"
                          << "partial_flush_started"
@@ -1557,7 +1598,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
             status.ToString().c_str());
       }
       const uint64_t current_time = static_cast<uint64_t>(_current_time);
-      uint64_t oldest_key_time = old_file_meta->file_creation_time;
+      uint64_t oldest_key_time = file_meta_->file_creation_time;
       uint64_t oldest_ancester_time = std::min(current_time, oldest_key_time);
 
       meta_.oldest_ancester_time = oldest_ancester_time;
@@ -1595,7 +1636,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
                      &memtable_payload_bytes, &memtable_garbage_bytes);
 
       assert(!s.ok() || io_s.ok());
-      io_s.PermitUncheckedError();
+      io_s.PermitUncheckedError();      
       if (num_input_entries > total_num_entries && s.ok()) {
         std::string msg = "Expected less than " +
                           std::to_string(total_num_entries) +
@@ -1621,9 +1662,28 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
 
   base_->Unref();
   const bool has_output = meta_.fd.GetFileSize() > 0;
-
+  
   if (s.ok() && has_output) {
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
+
+    // ############## dump new file to human readable format #############
+
+    // Options op;
+    // Temperature tmpperature = meta_.temperature;
+    // SstFileDumper sst_dump(
+    //     op,
+    //     TableFileName(db_options_.db_paths,
+    //                   meta_.fd.GetNumber(), 0),
+    //     tmpperature, cfd_->GetLatestCFOptions().target_file_size_base, false,
+    //     false, false);
+    // sst_dump.DumpTable(
+    //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
+    //     ") FileNumber: [" +
+    //     std::to_string(meta_.fd.GetNumber()) + "new_file" );
+    
+    // ############## dump new file to human readable format #############
+
+
     edit_->DeleteFile(level_, file_number_);
     edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(),
                    meta_.fd.GetPathId(), meta_.fd.GetFileSize(), meta_.smallest,

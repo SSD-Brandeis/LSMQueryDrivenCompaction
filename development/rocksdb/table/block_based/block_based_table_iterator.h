@@ -256,7 +256,7 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   bool block_iter_points_to_real_block_;
   // See InternalIteratorBase::IsOutOfBound().
   bool is_out_of_bound_ = false;
-  bool is_seeked_for_range_query = false;
+  bool is_seeked_for_range_query_once = false;
   // How current data block's boundary key with the next block is compared with
   // iterate upper bound.
   BlockUpperBound block_upper_bound_check_ = BlockUpperBound::kUnknown;

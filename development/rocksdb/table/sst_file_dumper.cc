@@ -202,10 +202,7 @@ Status SstFileDumper::VerifyChecksum() {
                                        TableReaderCaller::kSSTDumpTool);
 }
 
-Status SstFileDumper::DumpTable(const std::string& out_filename) {
-  std::cout << "DUMPING SST FILE TO: " << out_filename << " " << __FILE__ << ":" << __LINE__
-            << " " << __FUNCTION__ << std::endl;
-  
+Status SstFileDumper::DumpTable(const std::string& out_filename) {  
   std::unique_ptr<WritableFile> out_file;
   Env* env = options_.env;
   Status s = env->NewWritableFile(out_filename, &out_file, soptions_);

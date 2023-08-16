@@ -215,9 +215,6 @@ IOStatus WritableFileWriter::Pad(const size_t pad_bytes,
 }
 
 IOStatus WritableFileWriter::Close() {
-  std::cout << "Closing File Name: " << file_name_ << " " << __FILE__ << ":" << __LINE__
-            << " " << __FUNCTION__ << std::endl;
-
   if (seen_error()) {
     IOStatus interim;
     if (writable_file_.get() != nullptr) {
@@ -241,11 +238,6 @@ IOStatus WritableFileWriter::Close() {
   if (writable_file_.get() == nullptr) {
     return IOStatus::OK();
   }
-
-  std::cout << "Flushing before Closing File Name: " << file_name_ << " " << __FILE__ << ":" << __LINE__
-            << " " << __FUNCTION__ << std::endl;
-  std::cout << "Use direct IP set to " << use_direct_io() << " File Name: " << file_name_ << " " << __FILE__ << ":" << __LINE__
-            << " " << __FUNCTION__ << std::endl;
 
   IOStatus s;
   s = Flush();  // flush cache to OS
@@ -317,15 +309,11 @@ IOStatus WritableFileWriter::Close() {
   TEST_KILL_RANDOM("WritableFileWriter::Close:1");
 
   if (s.ok()) {
-    std::cout << "Write completed success for File Name: " << file_name_ << " " << __FILE__ << ":" << __LINE__
-              << " " << __FUNCTION__ << std::endl;
     if (checksum_generator_ != nullptr && !checksum_finalized_) {
       checksum_generator_->Finalize();
       checksum_finalized_ = true;
     }
   } else {
-    std::cout << "Setting seen errror for File: " << file_name_ << " " << __FILE__ << ":" << __LINE__
-              << " " << __FUNCTION__ << std::endl;
     set_seen_error();
   }
 

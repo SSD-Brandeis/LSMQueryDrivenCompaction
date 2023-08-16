@@ -734,10 +734,6 @@ int runWorkload(EmuEnv *_env) {
 
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
-        std::cout << std::endl << std::endl << std::endl << std::endl;
-        std::cout << "######### Range query started here ############"
-                  << "" << std::endl;
-        std::cout << std::endl << std::endl << std::endl << std::endl;
         db_impl_ = reinterpret_cast<DBImpl *>(db);
 
         // db_impl_->SetRangeQueryRunningToTrue(new Slice(to_string(start_key)),
@@ -748,10 +744,10 @@ int runWorkload(EmuEnv *_env) {
 
         assert(it->status().ok());
         for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
-          std::cout << "found key = " << it->key().ToString() << std::endl;
-          if (it->key().ToString() == to_string(end_key)) {
+          if (it->key().ToString() >= to_string(end_key)) {
             break;
           }
+          std::cout << "found key = " << it->key().ToString() << std::endl;
         }
         // db_impl_->SetRangeQueryRunningToFalse();
         if (!it->status().ok()) {
@@ -787,39 +783,11 @@ int runWorkload(EmuEnv *_env) {
 
   workload_file.close();
   // CompactionMayAllComplete(db);
-
-  std::vector<ThreadStatus> thread_status;
-  db->GetEnv()->GetThreadList(&thread_status);
-
-  for (int i = 0; i < thread_status.size(); i++) {
-    std::cout << "##########\nThread Id: " << thread_status[i].thread_id
-              << std::endl;
-    std::cout << "Thread Type: "
-              << thread_status[i].GetThreadTypeName(
-                      thread_status[i].thread_type)
-              << std::endl;
-    std::cout << "Thread db_name: " << thread_status[i].db_name << std::endl;
-    std::cout << "Thread cd_name: " << thread_status[i].cf_name << std::endl;
-    std::cout << "Thread operation_type: "
-              << thread_status[i].GetOperationName(
-                      thread_status[i].operation_type)
-              << std::endl;
-    std::cout << "Thread elapsed_micro: "
-              << thread_status[i].op_elapsed_micros << std::endl;
-    std::cout << "Thread operation_stage: "
-              << thread_status[i].GetOperationStageName(
-                      thread_status[i].operation_stage)
-              << std::endl;
-    std::cout << "Thread stage_type: "
-              << thread_status[i].GetStateName(thread_status[i].state_type)
-              << std::endl;
-  }
-
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
       db_impl_->DefaultColumnFamily());
   ColumnFamilyData *cfd = cfh->cfd();
 
-  std::string levels_state_before = "Before Waiting for Compaction:";
+  std::string levels_state_before = "Workload done, waiting for compaction...";
   auto storage_info_before = cfd->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     levels_state_before +=

@@ -101,7 +101,7 @@ Status ArenaWrappedDBIter::Reset() {
               << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
               << std::endl;
     db_impl_->SchedulePartialOrRangeFileFlush();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
   // db_impl_->TryAndInstallRangeQueryEdits(cfd_);
 

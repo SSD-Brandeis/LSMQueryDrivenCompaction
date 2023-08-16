@@ -222,13 +222,9 @@ void MemTableListVersion::AddIterators(
 void MemTableListVersion::AddIterators(const ReadOptions& options,
                                        MergeIteratorBuilder* merge_iter_builder,
                                        bool add_range_tombstone_iter) {
-  std::cout << "[Shubham]: Adding Iterators for Immutable memtables " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  std::cout << "[Shubham]: Size of memlist_: " << memlist_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   for (auto& m : memlist_) {
     auto mem_iter = m->NewIterator(options, merge_iter_builder->GetArena());
     if (!add_range_tombstone_iter || options.ignore_range_deletions) {
-      std::cout << "[Shubham]: Adding point Iterators to merge_iter_builder for immutable memtable " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddIterator(mem_iter);
     } else {
       // Except for snapshot read, using kMaxSequenceNumber is OK because these
@@ -240,7 +236,6 @@ void MemTableListVersion::AddIterators(const ReadOptions& options,
       auto range_del_iter = m->NewRangeTombstoneIterator(
           options, read_seq, true /* immutale_memtable */);
       if (range_del_iter == nullptr || range_del_iter->empty()) {
-        std::cout << "[Shubham]: Dropping Range Delete Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         delete range_del_iter;
       } else {
         mem_tombstone_iter = new TruncatedRangeDelIterator(
@@ -248,7 +243,6 @@ void MemTableListVersion::AddIterators(const ReadOptions& options,
             &m->GetInternalKeyComparator(), nullptr /* smallest */,
             nullptr /* largest */);
       }
-      std::cout << "[Shubham]: Adding point iterator & tombstone iterator to merge_iter_builder for immutable memtable " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddPointAndTombstoneIterator(mem_iter,
                                                        mem_tombstone_iter);
     }

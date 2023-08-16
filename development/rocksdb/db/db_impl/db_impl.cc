@@ -573,7 +573,6 @@ Status DBImpl::CloseHelper() {
 
   // Cancel manual compaction if there's any
   if (HasPendingManualCompaction()) {
-    std::cout << "\nHas Pending Manual Compaction : " << HasPendingManualCompaction() << "\n" << std::endl;
     DisableManualCompaction();
   }
   mutex_.Lock();
@@ -1857,12 +1856,6 @@ InternalIterator* DBImpl::NewInternalIterator(
     bool allow_unprepared_value, ArenaWrappedDBIter* db_iter) {
   InternalIterator* internal_iter;
   assert(arena != nullptr);
-  edits_->SetColumnFamily(cfd->GetID());
-  edits_->SetPrevLogNumber(cfd->GetLogNumber());
-  SequenceNumber seq = versions_->LastSequence();
-  range_query_memtable_ = cfd->ConstructNewMemtable(super_version->mutable_cf_options, seq);
-
-  std::cout << "[Shubham]: Creating Merge Iterator Builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   // Need to create internal iterator from the arena.
   MergeIteratorBuilder merge_iter_builder(
@@ -1871,20 +1864,15 @@ InternalIterator* DBImpl::NewInternalIterator(
           super_version->mutable_cf_options.prefix_extractor != nullptr,
       read_options.iterate_upper_bound, this);
 
-  std::cout << "[Shubham]: Collecting Iterator for mutable memtable " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   // Collect iterator for mutable memtable
   auto mem_iter = super_version->mem->NewIterator(read_options, arena);
   Status s;
   if (!read_options.ignore_range_deletions) {
-    std::cout << "[Shubham]: read_options.ignore_range_deletions: " << read_options.ignore_range_deletions << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Shubham]: Creating New Range Tombstone Iterator for mutable memtable " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     TruncatedRangeDelIterator* mem_tombstone_iter = nullptr;
     auto range_del_iter = super_version->mem->NewRangeTombstoneIterator(
         read_options, sequence, false /* immutable_memtable */);
     if (range_del_iter == nullptr || range_del_iter->empty()) {
-      std::cout << "[Shubham]: Dropping Range Delete Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
       delete range_del_iter;
     } else {
@@ -1893,16 +1881,11 @@ InternalIterator* DBImpl::NewInternalIterator(
           &cfd->ioptions()->internal_comparator, nullptr /* smallest */,
           nullptr /* largest */);
     }
-    std::cout << "[Shubham]: Adding memtable iterator and memtable tombstone iterator to merge iter builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     merge_iter_builder.AddPointAndTombstoneIterator(mem_iter,
                                                     mem_tombstone_iter);
   } else {
-    std::cout << "[Shubham]: Else Adding memtable iterator to merge iter builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     merge_iter_builder.AddIterator(mem_iter);
   }
-
-  std::cout << "[Shubham]: Collecting Iterator for immutable memtables " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   // Collect all needed child iterators for immutable memtables
   if (s.ok()) {
@@ -1911,9 +1894,6 @@ InternalIterator* DBImpl::NewInternalIterator(
   }
   TEST_SYNC_POINT_CALLBACK("DBImpl::NewInternalIterator:StatusCallback", &s);
   if (s.ok()) {
-    std::cout << "[Shubham]: Collecting Iterators for files in levels from 0 -> n " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Shubham]: read_options.read_tier[kMemtableTier 0x3]: " << read_options.read_tier << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     // Collect iterators for files in L0 - Ln
     if (read_options.read_tier != kMemtableTier) {
       super_version->current->AddIterators(read_options, file_options_,
@@ -1926,12 +1906,6 @@ InternalIterator* DBImpl::NewInternalIterator(
         this, &mutex_, super_version,
         read_options.background_purge_on_iterator_cleanup ||
             immutable_db_options_.avoid_unnecessary_blocking_io);
-
-    while (cfd->IsQueuedOrCompactionInProgress()){
-      std::cout << "[****]: Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
-      std::cout << "[****]: Compaction queue is not empty or already in progress!" << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
 
     internal_iter->RegisterCleanup(CleanupSuperVersionHandle, cleanup, nullptr);
 
@@ -3417,8 +3391,6 @@ bool DBImpl::KeyMayExist(const ReadOptions& read_options,
 
 Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
                               ColumnFamilyHandle* column_family) {
-  std::cout << "[Shubham]: NewIterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   if (read_options.managed) {
     return NewErrorIterator(
         Status::NotSupported("Managed iterator is not supported anymore."));
@@ -3454,8 +3426,6 @@ Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
   assert(cfd != nullptr);
   ReadCallback* read_callback = nullptr;  // No read callback provided.
   if (read_options.tailing) {
-    std::cout << "[Shubham]: read_options.tailing " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     SuperVersion* sv = cfd->GetReferencedSuperVersion(this);
     auto iter = new ForwardIterator(this, read_options, cfd, sv,
                                     /* allow_unprepared_value */ true);
@@ -3468,8 +3438,6 @@ Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
     // Note: no need to consider the special case of
     // last_seq_same_as_publish_seq_==false since NewIterator is overridden in
     // WritePreparedTxnDB
-    std::cout << "[Shubham]: NO read_options.tailing " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     result = NewIteratorImpl(read_options, cfd,
                              (read_options.snapshot != nullptr)
                                  ? read_options.snapshot->GetSequenceNumber()
@@ -3485,7 +3453,6 @@ ArenaWrappedDBIter* DBImpl::NewIteratorImpl(const ReadOptions& read_options,
                                             ReadCallback* read_callback,
                                             bool expose_blob_index,
                                             bool allow_refresh) {
-  std::cout << "[Shubham]: NewIteratorImpl " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   read_options_ = read_options;
   SuperVersion* sv = cfd->GetReferencedSuperVersion(this);
 
@@ -3503,7 +3470,6 @@ ArenaWrappedDBIter* DBImpl::NewIteratorImpl(const ReadOptions& read_options,
     // super version, which is a valid consistent state after the user
     // calls NewIterator().
     snapshot = versions_->LastSequence();
-    std::cout << "[Shubham]: versions_->LastSequence() = " << snapshot << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     TEST_SYNC_POINT("DBImpl::NewIterator:3");
     TEST_SYNC_POINT("DBImpl::NewIterator:4");
@@ -3556,9 +3522,6 @@ ArenaWrappedDBIter* DBImpl::NewIteratorImpl(const ReadOptions& read_options,
       snapshot, sv->mutable_cf_options.max_sequential_skip_in_iterations,
       sv->version_number, read_callback, this, cfd, expose_blob_index,
       read_options.snapshot != nullptr ? false : allow_refresh);
-
-  std::cout << "[Shubham]: Arena Wrapped DBIter Created " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  std::cout << "[Shubham]: Creating New Iternal Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   InternalIterator* internal_iter = NewInternalIterator(
       db_iter->GetReadOptions(), cfd, sv, db_iter->GetArena(), snapshot,

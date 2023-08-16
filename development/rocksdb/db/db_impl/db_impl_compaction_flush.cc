@@ -2760,18 +2760,14 @@ DBImpl::BGJobLimits DBImpl::GetBGJobLimits(int max_background_flushes,
 void DBImpl::AddToCompactionQueue(ColumnFamilyData* cfd) {
   assert(!cfd->queued_for_compaction());
   cfd->Ref();
-  // std::cout << "[Shubham]: Adding new cfd to Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   compaction_queue_.push_back(cfd);
-  // std::cout << "[Shubham]: Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   cfd->set_queued_for_compaction(true);
 }
 
 ColumnFamilyData* DBImpl::PopFirstFromCompactionQueue() {
   assert(!compaction_queue_.empty());
   auto cfd = *compaction_queue_.begin();
-  // std::cout << "[Shubham]: Poping from Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   compaction_queue_.pop_front();
-  // std::cout << "[Shubham]: Popped from Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   assert(cfd->queued_for_compaction());
   cfd->set_queued_for_compaction(false);
   return cfd;
@@ -2780,9 +2776,7 @@ ColumnFamilyData* DBImpl::PopFirstFromCompactionQueue() {
 DBImpl::FlushRequest DBImpl::PopFirstFromFlushQueue() {
   assert(!flush_queue_.empty());
   FlushRequest flush_req = flush_queue_.front();
-  // std::cout << "[Shubham]: Poping from Flush Queue size: " << flush_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   flush_queue_.pop_front();
-  // std::cout << "[Shubham]: Popped from Flush Queue size: " << flush_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   if (!immutable_db_options_.atomic_flush) {
     assert(flush_req.cfd_to_max_mem_id_to_persist.size() == 1);
   }
@@ -2805,9 +2799,7 @@ ColumnFamilyData* DBImpl::PickCompactionFromQueue(
   ColumnFamilyData* cfd = nullptr;
   while (!compaction_queue_.empty()) {
     auto first_cfd = *compaction_queue_.begin();
-    // std::cout << "[Shubham]: Poping from Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     compaction_queue_.pop_front();
-    // std::cout << "[Shubham]: Popped from Compaction Queue size: " << compaction_queue_.size() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(first_cfd->queued_for_compaction());
     if (!RequestCompactionToken(first_cfd, false, token, log_buffer)) {
       throttled_candidates.push_back(first_cfd);
@@ -3402,8 +3394,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():BeforePickCompaction");
       c.reset(cfd->PickCompaction(*mutable_cf_options, mutable_db_options_,
                                   log_buffer));
-      std::cout << "[####] Picked Up a new Compaction here " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
-
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():AfterPickCompaction");
 
       if (c != nullptr) {
@@ -3930,9 +3920,6 @@ void DBImpl::InstallSuperVersionAndScheduleWork(
     ColumnFamilyData* cfd, SuperVersionContext* sv_context,
     const MutableCFOptions& mutable_cf_options) {
   mutex_.AssertHeld();
-
-  std::cout << "[####] Something happend Installing new super version from dBImpl " 
-            << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; 
 
   // Update max_total_in_memory_state_
   size_t old_memtable_size = 0;

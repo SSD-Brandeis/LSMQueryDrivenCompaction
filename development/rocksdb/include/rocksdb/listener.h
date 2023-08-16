@@ -178,6 +178,8 @@ enum class FlushReason : int {
   // will not be called to avoid many small immutable memtables.
   kErrorRecoveryRetryFlush = 0xc,
   kWalFull = 0xd,
+  kPartialFlush = 0xe,
+  kRangeFlush = 0xf,
 };
 
 // TODO: In the future, BackgroundErrorReason will only be used to indicate

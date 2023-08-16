@@ -1200,7 +1200,6 @@ class VersionSet {
     mutable_cf_options_list.emplace_back(&mutable_cf_options);
     autovector<autovector<VersionEdit*>> edit_lists;
     edit_lists.emplace_back(edit_list);
-    std::cout << "[####]: Calling LogAndApply in Version Edit " << __FILE__ << ":" << __LINE__ << __FUNCTION__ << std::endl;
     return LogAndApply(cfds, mutable_cf_options_list, read_options, edit_lists,
                        mu, dir_contains_current_file, new_descriptor_log,
                        column_family_options, {manifest_wcb});

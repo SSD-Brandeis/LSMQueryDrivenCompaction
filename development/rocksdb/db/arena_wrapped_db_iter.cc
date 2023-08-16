@@ -7,10 +7,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#include <iostream>
-
 #include "db/arena_wrapped_db_iter.h"
 
+#include <iostream>
+
+#include "logging/logging.h"
 #include "memory/arena.h"
 #include "rocksdb/env.h"
 #include "rocksdb/iterator.h"
@@ -39,11 +40,7 @@ void ArenaWrappedDBIter::Init(
     const SequenceNumber& sequence, uint64_t max_sequential_skip_in_iteration,
     uint64_t version_number, ReadCallback* read_callback, DBImpl* db_impl,
     ColumnFamilyData* cfd, bool expose_blob_index, bool allow_refresh) {
-  // std::cout << "[Shubham]: Initializing Arena Wrapped Db Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   auto mem = arena_.AllocateAligned(sizeof(DBIter));
-  // std::cout << "[Shubham]: Creating new object of DBIter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   db_iter_ =
       new (mem) DBIter(env, read_options, ioptions, mutable_cf_options,
                        ioptions.user_comparator, /* iter */ nullptr, version,
@@ -60,11 +57,79 @@ void ArenaWrappedDBIter::Init(
   }
 }
 
+Status ArenaWrappedDBIter::Refresh(const std::string start_key,
+                                   const std::string end_key) {
+  read_options_.range_end_key = end_key;
+  read_options_.range_start_key = start_key;
+  read_options_.range_query_compaction_enabled =
+      true;  // making it default for this refresh func
+  db_impl_->read_options_ = read_options_;
+  db_impl_->PauseBackgroundWork();
+  db_impl_->range_edit_ = new VersionEdit();
+  db_impl_->range_edit_->SetColumnFamily(cfd_->GetID());
+
+  std::string levels_state_before = "Range Query Started:";
+  auto storage_info_before = cfd_->current()->storage_info();
+  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    levels_state_before +=
+        "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+        std::to_string(l) + ": ";
+    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    for (size_t file_index = 0; file_index < num_files; file_index++) {
+      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+      levels_state_before +=
+          "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+          fd.file_metadata->smallest.user_key().ToString() + ", " +
+          fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+    }
+  }
+  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
+                 levels_state_before.c_str());
+  return Refresh();
+}
+
+Status ArenaWrappedDBIter::Reset() {
+  // db_impl_->WaitForCompact(WaitForCompactOptions());
+  while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
+         db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
+         db_impl_->bg_partial_or_range_flush_running_ > 0) {
+    std::cout << "[Shubham] Still Pending ... scheduled: "
+              << db_impl_->bg_partial_or_range_flush_scheduled_
+              << " unscheduled: "
+              << db_impl_->unscheduled_partial_or_range_flushes_
+              << " running: " << db_impl_->bg_partial_or_range_flush_running_
+              << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+              << std::endl;
+    db_impl_->SchedulePartialOrRangeFileFlush();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  }
+  // db_impl_->TryAndInstallRangeQueryEdits(cfd_);
+
+  std::string levels_state_before = "Range Query Complete:";
+  auto storage_info_before = cfd_->current()->storage_info();
+  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    levels_state_before +=
+        "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+        std::to_string(l) + ": ";
+    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    for (size_t file_index = 0; file_index < num_files; file_index++) {
+      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+      levels_state_before +=
+          "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+          fd.file_metadata->smallest.user_key().ToString() + ", " +
+          fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+    }
+  }
+  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
+                 levels_state_before.c_str());
+  db_impl_->ContinueBackgroundWork();
+  return Status::OK();
+}
+
 Status ArenaWrappedDBIter::Refresh() {
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
   }
-  // std::cout << "[Shubham]: Refreshing ArenaWrappedDBIter: " << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   assert(db_iter_ != nullptr);
   // TODO(yiwu): For last_seq_same_as_publish_seq_==false, this is not the
@@ -78,6 +143,25 @@ Status ArenaWrappedDBIter::Refresh() {
     db_iter_->~DBIter();
     arena_.~Arena();
     new (&arena_) Arena();
+
+    std::string levels_state_before = "Before capture of super version:";
+    auto storage_info_before = cfd_->current()->storage_info();
+    for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+      levels_state_before +=
+          "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+          std::to_string(l) + ": ";
+      auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+      for (size_t file_index = 0; file_index < num_files; file_index++) {
+        auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+        levels_state_before +=
+            "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+            fd.file_metadata->smallest.user_key().ToString() + ", " +
+            fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+      }
+    }
+
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
+                   levels_state_before.c_str());
 
     SuperVersion* sv = cfd_->GetReferencedSuperVersion(db_impl_);
     SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();
@@ -94,6 +178,25 @@ Status ArenaWrappedDBIter::Refresh() {
         read_options_, cfd_, sv, &arena_, latest_seq,
         /* allow_unprepared_value */ true, /* db_iter */ this);
     SetIterUnderDBIter(internal_iter);
+
+    std::string levels_state_after = "LSM While Refresh:";
+    auto storage_info_after = cfd_->current()->storage_info();
+    for (int l = 0; l < storage_info_after->num_non_empty_levels(); l++) {
+      levels_state_after +=
+          "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+          std::to_string(l) + ": ";
+      auto num_files = storage_info_after->LevelFilesBrief(l).num_files;
+      for (size_t file_index = 0; file_index < num_files; file_index++) {
+        auto fd = storage_info_after->LevelFilesBrief(l).files[file_index];
+        levels_state_after +=
+            "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+            fd.file_metadata->smallest.user_key().ToString() + ", " +
+            fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+      }
+    }
+
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
+                   levels_state_after.c_str());
   };
   while (true) {
     if (sv_number_ != cur_sv_number) {
@@ -159,15 +262,10 @@ ArenaWrappedDBIter* NewArenaWrappedDbIterator(
     const SequenceNumber& sequence, uint64_t max_sequential_skip_in_iterations,
     uint64_t version_number, ReadCallback* read_callback, DBImpl* db_impl,
     ColumnFamilyData* cfd, bool expose_blob_index, bool allow_refresh) {
-
-  // std::cout << "[Shubham]: Creating New Arena Wrapped Db Iterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   ArenaWrappedDBIter* iter = new ArenaWrappedDBIter();
   iter->Init(env, read_options, ioptions, mutable_cf_options, version, sequence,
              max_sequential_skip_in_iterations, version_number, read_callback,
              db_impl, cfd, expose_blob_index, allow_refresh);
-
-  // std::cout << "[Shubham]: Arena Wrapped DBIter Initialized " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   if (db_impl != nullptr && cfd != nullptr && allow_refresh) {
     iter->StoreRefreshInfo(db_impl, cfd, read_callback, expose_blob_index);

@@ -83,7 +83,7 @@ struct JobContext;
 struct ExternalSstFileInfo;
 struct MemTableInfo;
 
-struct TrackLevels{
+struct TrackLevels {
   int index;
   int level;
   Slice start;
@@ -210,18 +210,6 @@ class DBImpl : public DB {
                const Slice& key, const Slice& value) override;
   Status Merge(const WriteOptions& options, ColumnFamilyHandle* column_family,
                const Slice& key, const Slice& ts, const Slice& value) override;
-
-  // using DB::RangeQueryDrivenCompaction;
-  // void RangeQueryDrivenCompaction(Slice& start_key, Slice& end_key) override;
-  //
-  // int GetHighestLevelFromCompact(const std::vector<CompactionInputFiles>& files);
-  // std::vector<CompactionInputFiles> FilterFileThatCanBeCompacted(std::vector<CompactionInputFiles> all_files, 
-  //                                                             Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_);
-  // std::vector<CompactionInputFiles> HighestFilesSizeAcrossLevels(std::vector<std::vector<CompactionInputFiles>> files_to_be_compacted);
-  // std::vector<CompactionInputFiles> FilterOnlyInRangeFiles(std::vector<CompactionInputFiles>& all_files, 
-  //                                                       Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_);
-  // std::vector<CompactionInputFiles> FilesToBeCompactedAcrossLevels(std::vector<CompactionInputFiles> all_files, 
-  //                                                               std::queue<TrackLevels>& track_levels);
 
   using DB::Delete;
   Status Delete(const WriteOptions& options, ColumnFamilyHandle* column_family,
@@ -458,22 +446,45 @@ class DBImpl : public DB {
   virtual Status UnlockWAL() override;
 
   // Flush partial sst file to the level
-  void SetRangeQueryRunningToTrue(Slice* start_key, Slice* end_key);
-  void SetRangeQueryRunningToFalse();
-  void ApplyRangeQueryEdits();
-  Status FlushLevelNFile();
-  Status FlushLevelNPartialFile(const LevelFilesBrief* flevel_, size_t file_index, int level);
-  void DumpHumanReadableFormatOfFullLSM(std::string name, ColumnFamilyHandle* column_family=nullptr);
+  void DumpHumanReadableFormatOfFullLSM(
+      std::string name, ColumnFamilyHandle* column_family = nullptr);
+  int CompactionQueueSize() { return compaction_queue_.size(); }
 
+  static void BGWorkPartialOrRangeFlush(void* args);
+  void BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri);
+  Status BackgroundPartialOrRangeFlush(bool* made_progress,
+                                       JobContext* job_context,
+                                       LogBuffer* log_buffer,
+                                       FlushReason* reason,
+                                       Env::Priority thread_pri);
+  void SchedulePartialOrRangeFileFlush();
+  static void UnschedulePartialOrRangeFlushCallback(void* arg);
+  Status FlushPartialOrRangeFile(
+      ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
+      bool* made_progress, JobContext* job_context, FlushReason flush_reason,
+      SuperVersionContext* superversion_context,
+      std::vector<SequenceNumber>& snapshot_seqs,
+      SequenceNumber earliest_write_conflict_snapshot,
+      SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
+      Env::Priority thread_pri, MemTable* memtable, int level,
+      FileMetaData* meta_data);
+  void AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
+                                         ColumnFamilyData* cfd,
+                                         MemTable* mem_range = nullptr,
+                                         int level = -1,
+                                         bool just_delete = false,
+                                         FileMetaData* file_meta = nullptr);
+
+  int unscheduled_partial_or_range_flushes_ = 0;
+  int bg_partial_or_range_flush_scheduled_ = 0;
+  int bg_partial_or_range_flush_running_ = 0;
 
   ReadOptions read_options_;
-  std::string range_start_key_ = "";
-  std::string range_end_key_ = "";
-  MemTable* range_query_memtable_;
   int range_query_last_level_ = 0;
 
   // keep track of version edits for range queries
-  VersionEdit* const edits_ = new VersionEdit();
+  // VersionEdit* edits_ = new VersionEdit();
+  VersionEdit* range_edit_;
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
@@ -518,8 +529,7 @@ class DBImpl : public DB {
   virtual Status GetSortedWalFiles(VectorLogPtr& files) override;
   virtual Status GetCurrentWalFile(
       std::unique_ptr<LogFile>* current_log_file) override;
-  virtual Status GetCreationTimeOfOldestFile(
-      uint64_t* creation_time) override;
+  virtual Status GetCreationTimeOfOldestFile(uint64_t* creation_time) override;
 
   virtual Status GetUpdatesSince(
       SequenceNumber seq_number, std::unique_ptr<TransactionLogIterator>* iter,
@@ -640,7 +650,6 @@ class DBImpl : public DB {
   virtual Status GetPropertiesOfTablesInRange(
       ColumnFamilyHandle* column_family, const Range* range, std::size_t n,
       TablePropertiesCollection* props) override;
-
 
   // ---- End of implementations of the DB interface ----
   SystemClock* GetSystemClock() const;
@@ -1732,6 +1741,20 @@ class DBImpl : public DB {
           superversion_context_(superversion_context),
           flush_reason_(flush_reason) {}
 
+    BGFlushArg(ColumnFamilyData* cfd, uint64_t max_memtable_id,
+               SuperVersionContext* superversion_context,
+               FlushReason flush_reason, MemTable* memtable,
+               int level, bool just_delete,
+               FileMetaData* meta_data)
+        : cfd_(cfd),
+          max_memtable_id_(max_memtable_id),
+          superversion_context_(superversion_context),
+          flush_reason_(flush_reason),
+          memtable_(memtable),
+          level_(level),
+          just_delete_(just_delete),
+          meta_data_(meta_data) {}
+
     // Column family to flush.
     ColumnFamilyData* cfd_;
     // Maximum ID of memtable to flush. In this column family, memtables with
@@ -1742,6 +1765,10 @@ class DBImpl : public DB {
     // requires a SuperVersionContext object (currently embedded in JobContext).
     SuperVersionContext* superversion_context_;
     FlushReason flush_reason_;
+    MemTable* memtable_ = nullptr;
+    int level_ = -1;
+    bool just_delete_ = false;
+    FileMetaData* meta_data_ = nullptr;
   };
 
   // Argument passed to flush thread.
@@ -1782,8 +1809,8 @@ class DBImpl : public DB {
     const InternalKey* begin = nullptr;  // nullptr means beginning of key range
     const InternalKey* end = nullptr;    // nullptr means end of key range
     InternalKey* manual_end = nullptr;   // how far we are compacting
-    InternalKey tmp_storage;      // Used to keep track of compaction progress
-    InternalKey tmp_storage1;     // Used to keep track of compaction progress
+    InternalKey tmp_storage;   // Used to keep track of compaction progress
+    InternalKey tmp_storage1;  // Used to keep track of compaction progress
 
     // When the user provides a canceled pointer in CompactRangeOptions, the
     // above varaibe is the reference of the user-provided
@@ -1882,6 +1909,12 @@ class DBImpl : public DB {
   Status FlushMemTablesToOutputFiles(
       const autovector<BGFlushArg>& bg_flush_args, bool* made_progress,
       JobContext* job_context, LogBuffer* log_buffer, Env::Priority thread_pri);
+
+  // Flush partial or range files
+  Status FlushPartialOrRangeFiles(const autovector<BGFlushArg>& bg_flush_args,
+                                  bool* made_progress, JobContext* job_context,
+                                  LogBuffer* log_buffer,
+                                  Env::Priority thread_pri);
 
   Status AtomicFlushMemTablesToOutputFiles(
       const autovector<BGFlushArg>& bg_flush_args, bool* made_progress,
@@ -2100,12 +2133,18 @@ class DBImpl : public DB {
     // flush is considered complete.
     std::unordered_map<ColumnFamilyData*, uint64_t>
         cfd_to_max_mem_id_to_persist;
+    MemTable* mem_to_flush = nullptr;
+    int level = -1;                     // For partial/range file flush
+    bool just_delete = false;           // For partial/range file flush
+    FileMetaData* meta_data = nullptr;  // For partial/range file flush
   };
 
   void GenerateFlushRequest(const autovector<ColumnFamilyData*>& cfds,
                             FlushReason flush_reason, FlushRequest* req);
 
   void SchedulePendingFlush(const FlushRequest& req);
+
+  void SchedulePendingPartialRangeFlush(const FlushRequest& flush_req);
 
   void SchedulePendingCompaction(ColumnFamilyData* cfd);
   void SchedulePendingPurge(std::string fname, std::string dir_to_sync,

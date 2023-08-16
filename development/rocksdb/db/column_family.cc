@@ -539,6 +539,7 @@ ColumnFamilyData::ColumnFamilyData(
       imm_(ioptions_.min_write_buffer_number_to_merge,
            ioptions_.max_write_buffer_number_to_maintain,
            ioptions_.max_write_buffer_size_to_maintain),
+      mem_range_(nullptr),
       super_version_(nullptr),
       super_version_number_(0),
       local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)),
@@ -681,6 +682,9 @@ ColumnFamilyData::~ColumnFamilyData() {
 
   if (mem_ != nullptr) {
     delete mem_->Unref();
+  }
+  if (mem_range_ != nullptr) {
+    delete mem_range_->Unref();
   }
   autovector<MemTable*> to_delete;
   imm_.current()->Unref(&to_delete);
@@ -866,6 +870,7 @@ int GetL0ThresholdSpeedupCompaction(int level0_file_num_compaction_trigger,
 }
 }  // anonymous namespace
 
+// TODO: (shubham) Remove this kind of blocking .. do Pause and Continue background work
 bool ColumnFamilyData::IsQueuedOrCompactionInProgress() {
   return queued_for_compaction() || compaction_picker()->IsCompactionInProgress(); 
 }
@@ -1117,6 +1122,12 @@ void ColumnFamilyData::CreateNewMemtable(
   }
   SetMemtable(ConstructNewMemtable(mutable_cf_options, earliest_seq));
   mem_->Ref();
+
+  if (mem_range_ != nullptr) {
+    delete mem_range_->Unref();
+  }
+  SetMemtableRange(ConstructNewMemtable(mutable_cf_options, earliest_seq));
+  mem_range_->Ref();
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {
@@ -1222,8 +1233,6 @@ Compaction* ColumnFamilyData::CompactRange(
 }
 
 SuperVersion* ColumnFamilyData::GetReferencedSuperVersion(DBImpl* db) {
-  // std::cout << "[Shubham]: get referenced super version " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   SuperVersion* sv = GetThreadLocalSuperVersion(db);
 
   sv->Ref();
@@ -1684,6 +1693,11 @@ uint64_t ColumnFamilyMemTablesImpl::GetLogNumber() const {
 MemTable* ColumnFamilyMemTablesImpl::GetMemTable() const {
   assert(current_ != nullptr);
   return current_->mem();
+}
+
+MemTable* ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
+  assert(current_ != nullptr);
+  return current_->mem_range();
 }
 
 ColumnFamilyHandle* ColumnFamilyMemTablesImpl::GetColumnFamilyHandle() {

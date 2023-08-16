@@ -10,8 +10,8 @@
 #pragma once
 #include <stdint.h>
 
-#include <string>
 #include <iostream>
+#include <string>
 
 #include "db/db_impl/db_impl.h"
 #include "db/db_iter.h"
@@ -81,6 +81,9 @@ class ArenaWrappedDBIter : public Iterator {
   Status GetProperty(std::string prop_name, std::string* prop) override;
 
   Status Refresh() override;
+  Status Refresh(const std::string /*start_key*/,
+                 const std::string /*end_key*/) override;
+  Status Reset() override;
 
   void Init(Env* env, const ReadOptions& read_options,
             const ImmutableOptions& ioptions,
@@ -94,9 +97,6 @@ class ArenaWrappedDBIter : public Iterator {
   // with these same params
   void StoreRefreshInfo(DBImpl* db_impl, ColumnFamilyData* cfd,
                         ReadCallback* read_callback, bool expose_blob_index) {
-    // std::cout << "[Shubham]: Storing Refresh Info " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    // std::cout << "[Shubham]: db_impl, cfd_, read_callback_, expose_blob_index_ " << db_impl << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     db_impl_ = db_impl;
     cfd_ = cfd;
     read_callback_ = read_callback;
@@ -116,6 +116,8 @@ class ArenaWrappedDBIter : public Iterator {
   // If this is nullptr, it means the mutable memtable does not contain range
   // tombstone when added under this DBIter.
   TruncatedRangeDelIterator** memtable_range_tombstone_iter_ = nullptr;
+  const Slice* prev_iterate_upper_bound = nullptr;
+  const Slice* prev_iterate_lower_bound = nullptr;
 };
 
 // Generate the arena wrapped iterator class.

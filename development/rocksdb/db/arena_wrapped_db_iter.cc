@@ -65,26 +65,6 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       true;  // making it default for this refresh func
   db_impl_->read_options_ = read_options_;
   db_impl_->PauseBackgroundWork();
-  db_impl_->range_edit_ = new VersionEdit();
-  db_impl_->range_edit_->SetColumnFamily(cfd_->GetID());
-
-  std::string levels_state_before = "Range Query Started:";
-  auto storage_info_before = cfd_->current()->storage_info();
-  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-    levels_state_before +=
-        "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
-        std::to_string(l) + ": ";
-    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-    for (size_t file_index = 0; file_index < num_files; file_index++) {
-      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-      levels_state_before +=
-          "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-          fd.file_metadata->smallest.user_key().ToString() + ", " +
-          fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
-    }
-  }
-  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                 levels_state_before.c_str());
   return Refresh();
 }
 
@@ -103,13 +83,12 @@ Status ArenaWrappedDBIter::Reset() {
     db_impl_->SchedulePartialOrRangeFileFlush();
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
-  // db_impl_->TryAndInstallRangeQueryEdits(cfd_);
 
   std::string levels_state_before = "Range Query Complete:";
   auto storage_info_before = cfd_->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     levels_state_before +=
-        "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+        "\n\tLevel-" +
         std::to_string(l) + ": ";
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
     for (size_t file_index = 0; file_index < num_files; file_index++) {
@@ -144,25 +123,6 @@ Status ArenaWrappedDBIter::Refresh() {
     arena_.~Arena();
     new (&arena_) Arena();
 
-    std::string levels_state_before = "Before capture of super version:";
-    auto storage_info_before = cfd_->current()->storage_info();
-    for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-      levels_state_before +=
-          "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
-          std::to_string(l) + ": ";
-      auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-      for (size_t file_index = 0; file_index < num_files; file_index++) {
-        auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-        levels_state_before +=
-            "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-            fd.file_metadata->smallest.user_key().ToString() + ", " +
-            fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
-      }
-    }
-
-    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                   levels_state_before.c_str());
-
     SuperVersion* sv = cfd_->GetReferencedSuperVersion(db_impl_);
     SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();
     if (read_callback_) {
@@ -179,11 +139,11 @@ Status ArenaWrappedDBIter::Refresh() {
         /* allow_unprepared_value */ true, /* db_iter */ this);
     SetIterUnderDBIter(internal_iter);
 
-    std::string levels_state_after = "LSM While Refresh:";
+    std::string levels_state_after = "Range Query Started:";
     auto storage_info_after = cfd_->current()->storage_info();
     for (int l = 0; l < storage_info_after->num_non_empty_levels(); l++) {
       levels_state_after +=
-          "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+          "\n\tLevel-" +
           std::to_string(l) + ": ";
       auto num_files = storage_info_after->LevelFilesBrief(l).num_files;
       for (size_t file_index = 0; file_index < num_files; file_index++) {

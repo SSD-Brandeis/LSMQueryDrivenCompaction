@@ -1148,7 +1148,7 @@ PartialOrRangeFlushJob::~PartialOrRangeFlushJob() {
   ThreadStatusUtil::ResetThreadStatus();
 }
 
-void PartialOrRangeFlushJob::InitNewTable(VersionEdit* /*edit*/) {
+void PartialOrRangeFlushJob::InitNewTable() {
   // TODO: (shubham) initiate new table here
   db_mutex_->AssertHeld();
   edit_ = new VersionEdit();

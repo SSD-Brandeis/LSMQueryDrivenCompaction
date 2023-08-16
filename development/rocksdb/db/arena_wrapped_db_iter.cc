@@ -7,8 +7,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#include <iostream>
-
 #include "db/arena_wrapped_db_iter.h"
 
 #include <iostream>
@@ -21,7 +19,6 @@
 #include "table/internal_iterator.h"
 #include "table/iterator_wrapper.h"
 #include "util/user_comparator_wrapper.h"
-#include "logging/logging.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -43,11 +40,7 @@ void ArenaWrappedDBIter::Init(
     const SequenceNumber& sequence, uint64_t max_sequential_skip_in_iteration,
     uint64_t version_number, ReadCallback* read_callback, DBImpl* db_impl,
     ColumnFamilyData* cfd, bool expose_blob_index, bool allow_refresh) {
-  // std::cout << "[Shubham]: Initializing Arena Wrapped Db Iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   auto mem = arena_.AllocateAligned(sizeof(DBIter));
-  // std::cout << "[Shubham]: Creating new object of DBIter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   db_iter_ =
       new (mem) DBIter(env, read_options, ioptions, mutable_cf_options,
                        ioptions.user_comparator, /* iter */ nullptr, version,
@@ -157,19 +150,24 @@ Status ArenaWrappedDBIter::Refresh() {
     arena_.~Arena();
     new (&arena_) Arena();
 
-
     std::string levels_state_before = "Before capture of super version:";
     auto storage_info_before = cfd_->current()->storage_info();
     for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-      levels_state_before += "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" + std::to_string(l) + ": ";
+      levels_state_before +=
+          "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
+          std::to_string(l) + ": ";
       auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
       for (size_t file_index = 0; file_index < num_files; file_index++) {
         auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-        levels_state_before += "[" + std::to_string(fd.fd.GetNumber()) + "(" + fd.file_metadata->smallest.user_key().ToString() + ", " + fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+        levels_state_before +=
+            "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+            fd.file_metadata->smallest.user_key().ToString() + ", " +
+            fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
       }
     }
 
-    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n", levels_state_before.c_str());
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
+                   levels_state_before.c_str());
 
     SuperVersion* sv = cfd_->GetReferencedSuperVersion(db_impl_);
     SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();

@@ -20,7 +20,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
 
 #include "db/blob/blob_fetcher.h"
 #include "db/blob/blob_file_cache.h"
@@ -100,9 +99,6 @@ namespace {
 int FindFileInRange(const InternalKeyComparator& icmp,
                     const LevelFilesBrief& file_level, const Slice& key,
                     uint32_t left, uint32_t right) {
-  std::cout << "[Shubham]: file_level.num_files " << file_level.num_files << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  // std::cout << "[Shubham]: Doing binary search for right file: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   auto cmp = [&](const FdWithKeyRange& f, const Slice& k) -> bool {
     return icmp.InternalKeyComparator::Compare(f.largest_key, k) < 0;
   };
@@ -849,7 +845,6 @@ Version::~Version() {
 
 int FindFile(const InternalKeyComparator& icmp,
              const LevelFilesBrief& file_level, const Slice& key) {
-  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   return FindFileInRange(icmp, file_level, key, 0,
                          static_cast<uint32_t>(file_level.num_files));
@@ -1013,8 +1008,6 @@ class LevelIterator final : public InternalIterator {
     return file_iter_.Valid() || to_return_sentinel_;
   }
   Slice key() const override {
-    // std::cout << "[Shubham]: Spitting Key to Application: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    
     assert(Valid());
     if (to_return_sentinel_) {
       // Sentinel should be returned after file_iter_ reaches the end of the
@@ -1104,7 +1097,6 @@ class LevelIterator final : public InternalIterator {
   // range_tombstone_iter_ is updated with a range tombstone iterator
   // into the new file. Old range tombstone iterator is cleared.
   InternalIterator* NewFileIterator() {
-
     assert(file_index_ < flevel_->num_files);
     auto file_meta = flevel_->files[file_index_];
     if (should_sample_) {
@@ -1116,8 +1108,6 @@ class LevelIterator final : public InternalIterator {
     if (compaction_boundaries_ != nullptr) {
       smallest_compaction_key = (*compaction_boundaries_)[file_index_].smallest;
       largest_compaction_key = (*compaction_boundaries_)[file_index_].largest;
-      // std::cout << "[Shubham]: File Smallest compaction key: " << smallest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      // std::cout << "[Shubham]: File Largest compaction key: " << largest_compaction_key->user_key().data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     }
     CheckMayBeOutOfLowerBound();
     ClearRangeTombstoneIter();
@@ -1228,7 +1218,6 @@ void LevelIterator::Seek(const Slice& target) {
   // Check whether the seek key fall under the same file
   bool need_to_reseek = true;
   if (file_iter_.iter() != nullptr && file_index_ < flevel_->num_files) {
-    // std::cout << "[Shubham]: file_iter != nullptr and file_index < flevel_->num_files " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
     const FdWithKeyRange& cur_file = flevel_->files[file_index_];
     if (icomparator_.InternalKeyComparator::Compare(
@@ -1239,12 +1228,10 @@ void LevelIterator::Seek(const Slice& target) {
       assert(static_cast<size_t>(FindFile(icomparator_, *flevel_, target)) ==
              file_index_);
     }
-    std::cout << "[####]: File Name after Seek in LevelIterator FN: " << cur_file.fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   }
   if (need_to_reseek) {
     TEST_SYNC_POINT("LevelIterator::Seek:BeforeFindFile");
     size_t new_file_index = FindFile(icomparator_, *flevel_, target);
-    // std::cout << "[Shubham]: New File Index: " << new_file_index << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     InitFileIterator(new_file_index);
   }
 
@@ -1598,7 +1585,6 @@ bool LevelIterator::SkipEmptyFileForward() {
     if (file_index_ >= flevel_->num_files - 1 ||
         KeyReachedUpperBound(file_smallest_key(file_index_ + 1)) ||
         prefix_exhausted_) {
-      // std::cout << "[Shubham]: (file_index_ >= flevel_->num_files-1) file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       SetFileIterator(nullptr);
       ClearRangeTombstoneIter();
       break;
@@ -1613,52 +1599,55 @@ bool LevelIterator::SkipEmptyFileForward() {
     // LevelIterator::Seek*, it should also call Seek* into the corresponding
     // range tombstone iterator.
     if (file_iter_.iter() != nullptr) {
-      // std::cout << "[Shubham]: Performing SeeToFirst file_index_: " << file_index_ << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
       // (shubham) We actually have 2 choices here
-      // 1. If the last file was the first file than partial part of that file was already added
-      //    and old file was added to deleted files so now this new file could be a file which falls 
-      //    completely in the range db_impl_->range_start_key_ and db_impl_->range_end_key_ 
-      //    if so just delete this file
-      // 2. If this is the last file of this level which falls in the range than write a new partial 
+      // 1. If the last file was the first file than partial part of that file
+      // was already added
+      //    and old file was added to deleted files so now this new file could
+      //    be a file which falls completely in the range
+      //    db_impl_->range_start_key_ and db_impl_->range_end_key_ if so just
+      //    delete this file
+      // 2. If this is the last file of this level which falls in the range than
+      // write a new partial
       //    file to the same level
 
-      if (db_impl_ != nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
-          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, *read_options_.iterate_upper_bound) <= 0 &&
-          icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, *read_options_.iterate_lower_bound) >= 0) {
+      if (db_impl_ != nullptr && file_index_ < flevel_->num_files &&
+          read_options_.range_query_compaction_enabled &&
+          icomparator_.user_comparator()->Compare(
+              flevel_->files[file_index_].largest_key,
+              Slice(read_options_.range_start_key)) <= 0 &&
+          icomparator_.user_comparator()->Compare(
+              flevel_->files[file_index_].smallest_key,
+              Slice(read_options_.range_end_key)) >= 0) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
         uint64_t fnumber = flevel_->files[file_index_].fd.GetNumber();
-        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_, true, fnumber);
+        db_impl_->AddPartialOrRangeFileFlushRequest(
+            FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_,
+            true, fnumber);
         // TODO: (shubham) why column family is nullptr?
-      } else if (Valid() && db_impl_!=nullptr && file_index_ < flevel_->num_files && read_options_.range_query_compaction_enabled &&
-          ((icomparator_.user_comparator()->Compare(*read_options_.iterate_upper_bound, flevel_->files[file_index_].largest_key) < 0 &&
-          icomparator_.user_comparator()->Compare( *read_options_.iterate_upper_bound, flevel_->files[file_index_].smallest_key) > 0) || 
-          (icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].smallest_key) > 0 &&
-          icomparator_.user_comparator()->Compare(*read_options_.iterate_lower_bound, flevel_->files[file_index_].largest_key) < 0))) {
+      } else if (Valid() && db_impl_ != nullptr &&
+                 file_index_ < flevel_->num_files &&
+                 read_options_.range_query_compaction_enabled &&
+                 ((icomparator_.user_comparator()->Compare(
+                       Slice(read_options_.range_start_key),
+                       flevel_->files[file_index_].largest_key) < 0 &&
+                   icomparator_.user_comparator()->Compare(
+                       Slice(read_options_.range_start_key),
+                       flevel_->files[file_index_].smallest_key) > 0) ||
+                  (icomparator_.user_comparator()->Compare(
+                       Slice(read_options_.range_end_key),
+                       flevel_->files[file_index_].smallest_key) > 0 &&
+                   icomparator_.user_comparator()->Compare(
+                       Slice(read_options_.range_end_key),
+                       flevel_->files[file_index_].largest_key) < 0))) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
         uint64_t fnumber = flevel_->files[file_index_].fd.GetNumber();
-        db_impl_->range_query_last_level_ = std::max(level_, db_impl_->range_query_last_level_);
-        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_, false, fnumber);
+        db_impl_->range_query_last_level_ =
+            std::max(level_, db_impl_->range_query_last_level_);
+        db_impl_->AddPartialOrRangeFileFlushRequest(
+            FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_,
+            false, fnumber);
       }
-
-      // if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
-      //     ((icomparator_.user_comparator()->Compare(Slice(db_impl_->range_end_key_), flevel_->files[file_index_].largest_key) < 0 &&
-      //     icomparator_.user_comparator()->Compare( Slice(db_impl_->range_end_key_), flevel_->files[file_index_].smallest_key) > 0) || 
-      //     (icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].smallest_key) > 0 &&
-      //     icomparator_.user_comparator()->Compare(Slice(db_impl_->range_start_key_), flevel_->files[file_index_].largest_key) < 0)))
-      // {
-      //   flevel_->files[file_index_].file_metadata->being_compacted = true;
-      //   db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-      //   db_impl_->FlushLevelNPartialFile(flevel_, file_index_, level_);
-      // } else if (db_impl_!=nullptr && db_impl_->range_end_key_ != "" && file_index_ < flevel_->num_files &&
-      //            icomparator_.user_comparator()->Compare(flevel_->files[file_index_].largest_key, Slice(db_impl_->range_end_key_)) <= 0 &&
-      //            icomparator_.user_comparator()->Compare(flevel_->files[file_index_].smallest_key, Slice(db_impl_->range_start_key_)) >= 0) 
-      // {
-      //   flevel_->files[file_index_].file_metadata->being_compacted = true;
-      //   std::cout << "[@@@@] Adding file to delete edits_ FileNo.: " << flevel_->files[file_index_].file_metadata->fd.GetNumber() << " Level: " << level_ 
-      //             << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      //   db_impl_->edits_->DeleteFile(level_, flevel_->files[file_index_].file_metadata->fd.GetNumber());
-      // }
 
       file_iter_.SeekToFirst();
       if (range_tombstone_iter_) {
@@ -1802,7 +1791,6 @@ void LevelIterator::SkipEmptyFileBackward() {
 }
 
 void LevelIterator::SetFileIterator(InternalIterator* iter) {
-  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   if (pinned_iters_mgr_ && iter) {
     iter->SetPinnedItersMgr(pinned_iters_mgr_);
@@ -1823,7 +1811,6 @@ void LevelIterator::SetFileIterator(InternalIterator* iter) {
 }
 
 void LevelIterator::InitFileIterator(size_t new_file_index) {
-  // std::cout << "[Shubham]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   if (new_file_index >= flevel_->num_files) {
     file_index_ = new_file_index;
     SetFileIterator(nullptr);
@@ -2276,10 +2263,8 @@ void Version::AddIterators(const ReadOptions& read_options,
                            MergeIteratorBuilder* merge_iter_builder,
                            bool allow_unprepared_value, DBImpl* db_impl) {
   assert(storage_info_.finalized_);
-  // std::cout << "[Shubham]: Number of Non Empty Levels: " << storage_info_.num_non_empty_levels() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   for (int level = 0; level < storage_info_.num_non_empty_levels(); level++) {
-    // std::cout << "[Shubham]: Trying to add for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     AddIteratorsForLevel(read_options, soptions, merge_iter_builder, level,
                          allow_unprepared_value, db_impl);
   }
@@ -2298,19 +2283,14 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
   }
 
   bool should_sample = should_sample_file_read();
-  // std::cout << "[Shubham]: Should sample file read should_sample: " << should_sample << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   auto* arena = merge_iter_builder->GetArena();
   if (level == 0) {
     // Merge all level zero files together since they may overlap
 
-    std::cout << "[Shubham]: Adding level 0 files to merge_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     TruncatedRangeDelIterator* tombstone_iter = nullptr;
     for (size_t i = 0; i < storage_info_.LevelFilesBrief(0).num_files; i++) {
       const auto& file = storage_info_.LevelFilesBrief(0).files[i];
-      std::cout << "[Shubham]: Level 0 file number: " << file.file_metadata->fd.GetNumber() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      std::cout << "[Shubham]: Creating table iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
       auto table_iter = cfd_->table_cache()->NewIterator(
           read_options, soptions, cfd_->internal_comparator(),
           *file.file_metadata, /*range_del_agg=*/nullptr,
@@ -2323,10 +2303,8 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
           mutable_cf_options_.block_protection_bytes_per_key, &tombstone_iter);
       table_iter->SetLevel(level);
       if (read_options.ignore_range_deletions) {
-        std::cout << "[Shubham]: Add Iterator for level 0 for table_iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         merge_iter_builder->AddIterator(table_iter);
       } else {
-        std::cout << "[Shubham]: Add Iterator for level 0 for table_iter & Tombstone iter " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         merge_iter_builder->AddPointAndTombstoneIterator(table_iter,
                                                          tombstone_iter);
       }
@@ -2344,7 +2322,6 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
     // For levels > 0, we can use a concatenating iterator that sequentially
     // walks through the non-overlapping files in the level, opening them
     // lazily.
-    std::cout << "[Shubham]: Adding level > 0 files to merge_iter level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     auto* mem = arena->AllocateAligned(sizeof(LevelIterator));
     TruncatedRangeDelIterator*** tombstone_iter_ptr = nullptr;
     auto level_iter = new (mem) LevelIterator(
@@ -2359,10 +2336,8 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
         &tombstone_iter_ptr, db_impl);
     level_iter->SetLevel(level);
     if (read_options.ignore_range_deletions) {
-      std::cout << "[Shubham]: Add level iter for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddIterator(level_iter);
     } else {
-      std::cout << "[Shubham]: Add level iter & tombstone iter for level: " << level << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       merge_iter_builder->AddPointAndTombstoneIterator(
           level_iter, nullptr /* tombstone_iter */, tombstone_iter_ptr);
     }

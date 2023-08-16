@@ -13,7 +13,6 @@
 #include "table/block_based/block_based_table_reader_impl.h"
 #include "table/block_based/block_prefetcher.h"
 #include "table/block_based/reader_common.h"
-#include <iostream>
 
 namespace ROCKSDB_NAMESPACE {
 // Iterates over the contents of BlockBasedTable.
@@ -28,8 +27,7 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
       std::unique_ptr<InternalIteratorBase<IndexValue>>&& index_iter,
       bool check_filter, bool need_upper_bound_check,
       const SliceTransform* prefix_extractor, TableReaderCaller caller,
-      size_t compaction_readahead_size = 0, bool allow_unprepared_value = false,
-      std::string start_key = "", std::string end_key = "")
+      size_t compaction_readahead_size = 0, bool allow_unprepared_value = false)
       : index_iter_(std::move(index_iter)),
         table_(table),
         read_options_(read_options),
@@ -42,8 +40,6 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
             compaction_readahead_size,
             table_->get_rep()->table_options.initial_auto_readahead_size),
         allow_unprepared_value_(allow_unprepared_value),
-        start_key_(start_key),
-        end_key_(end_key),
         block_iter_points_to_real_block_(false),
         check_filter_(check_filter),
         need_upper_bound_check_(need_upper_bound_check),
@@ -65,7 +61,6 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
             (block_iter_points_to_real_block_ && block_iter_.Valid()));
   }
   Slice key() const override {
-    // std::cout << "[Shubham]: Spitting Key back: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     assert(Valid());
     if (is_at_first_key_from_index_) {
       return index_iter_->value().first_internal_key;

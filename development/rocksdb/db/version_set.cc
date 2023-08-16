@@ -845,7 +845,6 @@ Version::~Version() {
 
 int FindFile(const InternalKeyComparator& icmp,
              const LevelFilesBrief& file_level, const Slice& key) {
-
   return FindFileInRange(icmp, file_level, key, 0,
                          static_cast<uint32_t>(file_level.num_files));
 }
@@ -1218,7 +1217,6 @@ void LevelIterator::Seek(const Slice& target) {
   // Check whether the seek key fall under the same file
   bool need_to_reseek = true;
   if (file_iter_.iter() != nullptr && file_index_ < flevel_->num_files) {
-
     const FdWithKeyRange& cur_file = flevel_->files[file_index_];
     if (icomparator_.InternalKeyComparator::Compare(
             target, cur_file.largest_key) <= 0 &&
@@ -1599,6 +1597,13 @@ bool LevelIterator::SkipEmptyFileForward() {
     // LevelIterator::Seek*, it should also call Seek* into the corresponding
     // range tombstone iterator.
     if (file_iter_.iter() != nullptr) {
+      file_iter_.SeekToFirst();
+      if (range_tombstone_iter_) {
+        if (*range_tombstone_iter_) {
+          (*range_tombstone_iter_)->SeekToFirst();
+        }
+        TrySetDeleteRangeSentinel(file_largest_key(file_index_));
+      }
 
       // (shubham) We actually have 2 choices here
       // 1. If the last file was the first file than partial part of that file
@@ -1615,15 +1620,15 @@ bool LevelIterator::SkipEmptyFileForward() {
           read_options_.range_query_compaction_enabled &&
           icomparator_.user_comparator()->Compare(
               flevel_->files[file_index_].largest_key,
-              Slice(read_options_.range_start_key)) <= 0 &&
+              Slice(read_options_.range_end_key)) <= 0 &&
           icomparator_.user_comparator()->Compare(
               flevel_->files[file_index_].smallest_key,
-              Slice(read_options_.range_end_key)) >= 0) {
+              Slice(read_options_.range_start_key)) >= 0) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
-        uint64_t fnumber = flevel_->files[file_index_].fd.GetNumber();
-        db_impl_->AddPartialOrRangeFileFlushRequest(
-            FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_,
-            true, fnumber);
+        FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
+                                                    nullptr, nullptr, level_,
+                                                    true, file_meta);
         // TODO: (shubham) why column family is nullptr?
       } else if (Valid() && db_impl_ != nullptr &&
                  file_index_ < flevel_->num_files &&
@@ -1633,28 +1638,20 @@ bool LevelIterator::SkipEmptyFileForward() {
                        flevel_->files[file_index_].largest_key) < 0 &&
                    icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_start_key),
-                       flevel_->files[file_index_].smallest_key) > 0) ||
+                       flevel_->files[file_index_].smallest_key) >= 0) ||
                   (icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_end_key),
                        flevel_->files[file_index_].smallest_key) > 0 &&
                    icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_end_key),
-                       flevel_->files[file_index_].largest_key) < 0))) {
+                       flevel_->files[file_index_].largest_key) <= 0))) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
-        uint64_t fnumber = flevel_->files[file_index_].fd.GetNumber();
         db_impl_->range_query_last_level_ =
             std::max(level_, db_impl_->range_query_last_level_);
-        db_impl_->AddPartialOrRangeFileFlushRequest(
-            FlushReason::kPartialFlush, nullptr, nullptr, file_index_, level_,
-            false, fnumber);
-      }
-
-      file_iter_.SeekToFirst();
-      if (range_tombstone_iter_) {
-        if (*range_tombstone_iter_) {
-          (*range_tombstone_iter_)->SeekToFirst();
-        }
-        TrySetDeleteRangeSentinel(file_largest_key(file_index_));
+        FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
+                                                    nullptr, nullptr, level_,
+                                                    false, file_meta);
       }
 
       // (shubham) We actually have 2 choices here
@@ -1791,7 +1788,6 @@ void LevelIterator::SkipEmptyFileBackward() {
 }
 
 void LevelIterator::SetFileIterator(InternalIterator* iter) {
-
   if (pinned_iters_mgr_ && iter) {
     iter->SetPinnedItersMgr(pinned_iters_mgr_);
   }

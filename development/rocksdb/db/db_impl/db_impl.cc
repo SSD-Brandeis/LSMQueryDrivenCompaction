@@ -1881,16 +1881,11 @@ InternalIterator* DBImpl::NewInternalIterator(
           &cfd->ioptions()->internal_comparator, nullptr /* smallest */,
           nullptr /* largest */);
     }
-    std::cout << "[Shubham]: Adding memtable iterator and memtable tombstone iterator to merge iter builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     merge_iter_builder.AddPointAndTombstoneIterator(mem_iter,
                                                     mem_tombstone_iter);
   } else {
-    std::cout << "[Shubham]: Else Adding memtable iterator to merge iter builder " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     merge_iter_builder.AddIterator(mem_iter);
   }
-
-  std::cout << "[Shubham]: Collecting Iterator for immutable memtables " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
 
   // Collect all needed child iterators for immutable memtables
   if (s.ok()) {
@@ -1899,9 +1894,6 @@ InternalIterator* DBImpl::NewInternalIterator(
   }
   TEST_SYNC_POINT_CALLBACK("DBImpl::NewInternalIterator:StatusCallback", &s);
   if (s.ok()) {
-    std::cout << "[Shubham]: Collecting Iterators for files in levels from 0 -> n " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Shubham]: read_options.read_tier[kMemtableTier 0x3]: " << read_options.read_tier << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     // Collect iterators for files in L0 - Ln
     if (read_options.read_tier != kMemtableTier) {
       super_version->current->AddIterators(read_options, file_options_,
@@ -3399,8 +3391,6 @@ bool DBImpl::KeyMayExist(const ReadOptions& read_options,
 
 Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
                               ColumnFamilyHandle* column_family) {
-  std::cout << "[Shubham]: NewIterator " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
   if (read_options.managed) {
     return NewErrorIterator(
         Status::NotSupported("Managed iterator is not supported anymore."));
@@ -3436,8 +3426,6 @@ Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
   assert(cfd != nullptr);
   ReadCallback* read_callback = nullptr;  // No read callback provided.
   if (read_options.tailing) {
-    std::cout << "[Shubham]: read_options.tailing " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     SuperVersion* sv = cfd->GetReferencedSuperVersion(this);
     auto iter = new ForwardIterator(this, read_options, cfd, sv,
                                     /* allow_unprepared_value */ true);
@@ -3450,8 +3438,6 @@ Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
     // Note: no need to consider the special case of
     // last_seq_same_as_publish_seq_==false since NewIterator is overridden in
     // WritePreparedTxnDB
-    std::cout << "[Shubham]: NO read_options.tailing " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     result = NewIteratorImpl(read_options, cfd,
                              (read_options.snapshot != nullptr)
                                  ? read_options.snapshot->GetSequenceNumber()

@@ -519,7 +519,9 @@ void BlockBasedTableIterator::CheckOutOfBound() {
 
       if (is_in_range_) {
         is_out_of_bound_ = false;
-        is_seeked_for_range_query = true;
+      } else {
+        is_out_of_bound_ = false;
+        is_seeked_for_range_query_once = true;
         const Slice target{read_options_.range_end_key};
         Seek(target);
       }

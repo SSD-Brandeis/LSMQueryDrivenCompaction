@@ -68,9 +68,6 @@ class MockTableReader : public TableReader {
 class MockTableIterator : public InternalIterator {
  public:
   explicit MockTableIterator(const KVVector& table) : table_(table) {
-    // std::cout << "[Shubham]: Creating MockTableIterator with [KVVector] table
-    // size: " << table.size() << " " << __FILE__ << ":" << __LINE__ << " " <<
-    // __FUNCTION__ << std::endl;
     itr_ = table_.end();
   }
 

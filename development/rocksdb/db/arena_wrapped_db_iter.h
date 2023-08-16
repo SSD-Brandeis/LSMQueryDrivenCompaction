@@ -10,8 +10,8 @@
 #pragma once
 #include <stdint.h>
 
-#include <string>
 #include <iostream>
+#include <string>
 
 #include "db/db_impl/db_impl.h"
 #include "db/db_iter.h"
@@ -81,7 +81,8 @@ class ArenaWrappedDBIter : public Iterator {
   Status GetProperty(std::string prop_name, std::string* prop) override;
 
   Status Refresh() override;
-  Status Refresh(const Slice& /*start_key*/, const Slice& /*end_key*/) override;
+  Status Refresh(const std::string /*start_key*/,
+                 const std::string /*end_key*/) override;
   Status Reset() override;
 
   void Init(Env* env, const ReadOptions& read_options,
@@ -96,9 +97,6 @@ class ArenaWrappedDBIter : public Iterator {
   // with these same params
   void StoreRefreshInfo(DBImpl* db_impl, ColumnFamilyData* cfd,
                         ReadCallback* read_callback, bool expose_blob_index) {
-    // std::cout << "[Shubham]: Storing Refresh Info " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    // std::cout << "[Shubham]: db_impl, cfd_, read_callback_, expose_blob_index_ " << db_impl << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-
     db_impl_ = db_impl;
     cfd_ = cfd;
     read_callback_ = read_callback;

@@ -40,6 +40,7 @@
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "table/merging_iterator.h"
+#include "table/sst_file_dumper.h"  // TODO: (shubham) You may want to remove this
 #include "table/table_builder.h"
 #include "table/two_level_iterator.h"
 #include "test_util/sync_point.h"
@@ -1117,44 +1118,42 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
     Statistics* stats, EventLogger* event_logger, bool measure_io_stats,
     const bool sync_output_directory, const bool write_manifest,
     Env::Priority thread_pri, const std::shared_ptr<IOTracer>& io_tracer,
-    const SeqnoToTimeMapping& seqno_time_mapping, const ReadOptions& read_options, 
-    const std::string& db_id, const std::string& db_session_id, 
-    std::string full_history_ts_low, BlobFileCompletionCallback* blob_callback,  
-    MemTable* memtable, size_t file_index, int level, uint64_t file_number)
-    : FlushJob(dbname, cfd, db_options,
-    mutable_cf_options, max_memtable_id,
-    file_options, versions,
-    db_mutex, shutting_down,
-    existing_snapshots,
-    earliest_write_conflict_snapshot,
-    snapshot_checker, job_context,
-    flush_reason, log_buffer, db_directory,
-    output_file_directory, output_compression,
-    stats, event_logger, measure_io_stats,
-    sync_output_directory, write_manifest,
-    thread_pri, io_tracer,
-    seqno_time_mapping, db_id,
-    db_session_id, full_history_ts_low,
-    blob_callback), read_options_(read_options),
-    memtable_(memtable), file_index_(file_index), 
-    level_(level), file_number_(file_number) {
+    const SeqnoToTimeMapping& seqno_time_mapping,
+    const ReadOptions& read_options, const std::string& db_id,
+    const std::string& db_session_id, std::string full_history_ts_low,
+    BlobFileCompletionCallback* blob_callback, MemTable* memtable,
+    size_t file_index, int level, uint64_t file_number)
+    : FlushJob(dbname, cfd, db_options, mutable_cf_options, max_memtable_id,
+               file_options, versions, db_mutex, shutting_down,
+               existing_snapshots, earliest_write_conflict_snapshot,
+               snapshot_checker, job_context, flush_reason, log_buffer,
+               db_directory, output_file_directory, output_compression, stats,
+               event_logger, measure_io_stats, sync_output_directory,
+               write_manifest, thread_pri, io_tracer, seqno_time_mapping, db_id,
+               db_session_id, full_history_ts_low, blob_callback),
+      read_options_(read_options),
+      memtable_(memtable),
+      file_index_(file_index),
+      level_(level),
+      file_number_(file_number) {
   // Update the thread status to indicate flush.
   flevel_ = cfd_->current()->storage_info()->LevelFilesBrief(level);
   ReportStartedFlush();
   TEST_SYNC_POINT("PartialOrRangeFlushJob::PartialOrRangeFlushJob()");
 }
 
-PartialOrRangeFlushJob::~PartialOrRangeFlushJob() {  ThreadStatusUtil::ResetThreadStatus();  }
+PartialOrRangeFlushJob::~PartialOrRangeFlushJob() {
+  ThreadStatusUtil::ResetThreadStatus();
+}
 
 void PartialOrRangeFlushJob::InitNewTable(VersionEdit* /*edit*/) {
   // TODO: (shubham) initiate new table here
   db_mutex_->AssertHeld();
-  // edit_ = edit;
   edit_ = new VersionEdit();
   edit_->SetPrevLogNumber(0);
   edit_->SetLogNumber(0);
   edit_->SetColumnFamily(cfd_->GetID());
-  meta_.fd = FileDescriptor(versions_->NewFileNumber(), level_, 0);
+  meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
   meta_.epoch_number = cfd_->NewEpochNumber();
 
   base_ = cfd_->current();
@@ -1162,12 +1161,13 @@ void PartialOrRangeFlushJob::InitNewTable(VersionEdit* /*edit*/) {
 }
 
 Status PartialOrRangeFlushJob::Run(LogsWithPrepTracker* /*prep_tracker*/,
-             FileMetaData* file_meta,
-             bool* /*switched_to_mempurge*/) {
+                                   FileMetaData* file_meta,
+                                   bool* /*switched_to_mempurge*/) {
   db_mutex_->AssertHeld();
-  
+
   AutoThreadOperationStageUpdater stage_run(ThreadStatus::STAGE_FLUSH_RUN);
-  if (flush_reason_ == FlushReason::kRangeFlush && (memtable_ == nullptr || memtable_->num_entries() == 0)) {
+  if (flush_reason_ == FlushReason::kRangeFlush &&
+      (memtable_ == nullptr || memtable_->num_entries() == 0)) {
     ROCKS_LOG_BUFFER(log_buffer_, "[%s] Nothing in memtable to flush",
                      cfd_->GetName().c_str());
     return Status::OK();
@@ -1220,11 +1220,13 @@ Status PartialOrRangeFlushJob::Run(LogsWithPrepTracker* /*prep_tracker*/,
     // Replace immutable memtable with the generated Table
     // s = cfd_->imm()->TryInstallMemtableFlushResults(
     //     cfd_, mutable_cf_options_, mems_, prep_tracker, versions_, db_mutex_,
-    //     meta_.fd.GetNumber(), &job_context_->memtables_to_free, db_directory_,
-    //     log_buffer_, &committed_flush_jobs_info_,
-    //     !(mempurge_s.ok()) /* write_edit : true if no mempurge happened (or if aborted),
-    //                           but 'false' if mempurge successful: no new min log number
-    //                           or new level 0 file path to write to manifest. */);
+    //     meta_.fd.GetNumber(), &job_context_->memtables_to_free,
+    //     db_directory_, log_buffer_, &committed_flush_jobs_info_,
+    //     !(mempurge_s.ok()) /* write_edit : true if no mempurge happened (or
+    //     if aborted),
+    //                           but 'false' if mempurge successful: no new min
+    //                           log number or new level 0 file path to write to
+    //                           manifest. */);
   }
 
   if (s.ok() && file_meta != nullptr) {
@@ -1277,9 +1279,7 @@ Status PartialOrRangeFlushJob::Run(LogsWithPrepTracker* /*prep_tracker*/,
   return s;
 }
 
-void PartialOrRangeFlushJob::Cancel() {
-  FlushJob::Cancel();
-}
+void PartialOrRangeFlushJob::Cancel() { FlushJob::Cancel(); }
 
 Status PartialOrRangeFlushJob::WriteLevelNTable() {
   AutoThreadOperationStageUpdater stage_updater(
@@ -1310,7 +1310,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     uint64_t total_num_entries = 0, total_num_deletes = 0;
     uint64_t total_data_size = 0;
     size_t total_memory_usage = 0;
-  
+
     assert(job_context_);
     memtables.push_back(memtable_->NewIterator(ro, &arena));
     total_num_entries = memtable_->num_entries();
@@ -1330,9 +1330,10 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     {
       ScopedArenaIterator iter(
           NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
-                            static_cast<int>(memtables.size()), &arena));
+                             static_cast<int>(memtables.size()), &arena));
       ROCKS_LOG_INFO(db_options_.info_log,
-                     "[%s] [JOB %d] Level-%d range flush table #%" PRIu64 ": started",
+                     "[%s] [JOB %d] Level-%d range flush table #%" PRIu64
+                     ": started",
                      cfd_->GetName().c_str(), job_context_->job_id, level_,
                      meta_.fd.GetNumber());
 
@@ -1407,14 +1408,14 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
       LogFlush(db_options_.info_log);
     }
 
-    ROCKS_LOG_BUFFER(log_buffer_,
-                     "[%s] [JOB %d] Level-%d range flush table #%" PRIu64 ": %" PRIu64
-                     " bytes %s"
-                     "%s",
-                     cfd_->GetName().c_str(), job_context_->job_id, level_,
-                     meta_.fd.GetNumber(), meta_.fd.GetFileSize(),
-                     s.ToString().c_str(),
-                     meta_.marked_for_compaction ? " (needs compaction)" : "");
+    ROCKS_LOG_BUFFER(
+        log_buffer_,
+        "[%s] [JOB %d] Level-%d range flush table #%" PRIu64 ": %" PRIu64
+        " bytes %s"
+        "%s",
+        cfd_->GetName().c_str(), job_context_->job_id, level_,
+        meta_.fd.GetNumber(), meta_.fd.GetFileSize(), s.ToString().c_str(),
+        meta_.marked_for_compaction ? " (needs compaction)" : "");
 
     if (s.ok() && output_file_directory_ != nullptr && sync_output_directory_) {
       s = output_file_directory_->FsyncWithDirOptions(
@@ -1424,21 +1425,22 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     TEST_SYNC_POINT_CALLBACK("FlushJob::WriteLevel0Table", &mems_);
     db_mutex_->Lock();
   }
-  
+
   base_->Unref();
   const bool has_output = meta_.fd.GetFileSize() > 0;
 
   if (s.ok() && has_output) {
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
-    edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(), meta_.fd.GetPathId(),
-                   meta_.fd.GetFileSize(), meta_.smallest, meta_.largest,
-                   meta_.fd.smallest_seqno, meta_.fd.largest_seqno,
-                   meta_.marked_for_compaction, meta_.temperature,
-                   meta_.oldest_blob_file_number, meta_.oldest_ancester_time,
-                   meta_.file_creation_time, meta_.epoch_number,
-                   meta_.file_checksum, meta_.file_checksum_func_name,
-                   meta_.unique_id, meta_.compensated_range_deletion_size,
-                   meta_.tail_size, meta_.user_defined_timestamps_persisted);
+    edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(),
+                   meta_.fd.GetPathId(), meta_.fd.GetFileSize(), meta_.smallest,
+                   meta_.largest, meta_.fd.smallest_seqno,
+                   meta_.fd.largest_seqno, meta_.marked_for_compaction,
+                   meta_.temperature, meta_.oldest_blob_file_number,
+                   meta_.oldest_ancester_time, meta_.file_creation_time,
+                   meta_.epoch_number, meta_.file_checksum,
+                   meta_.file_checksum_func_name, meta_.unique_id,
+                   meta_.compensated_range_deletion_size, meta_.tail_size,
+                   meta_.user_defined_timestamps_persisted);
     edit_->SetBlobFileAdditions(std::move(blob_file_additions));
   }
 
@@ -1487,7 +1489,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   // NOTE: SequenceNumber mapping with time
 
   std::vector<BlobFileAddition> blob_file_additions;
-  
+
   {
     auto write_hint = cfd_->CalculateSSTWriteHint(0);
     Env::IOPriority io_priority = GetRateLimiterPriorityForWrite();
@@ -1509,13 +1511,16 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
 
     assert(job_context_);
     memtables.push_back(cfd_->table_cache()->NewIterator(
-      read_options_, file_options_, cfd_->internal_comparator(),
-      *old_file_meta, /*range_del_agg=*/nullptr, mutable_cf_options_.prefix_extractor,
-      nullptr, cfd_->internal_stats()->GetFileReadHist(0), TableReaderCaller::kUserIterator,
-      &arena, /*skip_filters=*/false, level_, MaxFileSizeForL0MetaPin(mutable_cf_options_),
-      /*smallest_compaction_key=*/nullptr, /*largest_compaction_key=*/nullptr, 
-      /*allow_unprepared_value=*/true, cfd_->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
-      /*range_del_iter=*/nullptr));
+        read_options_, file_options_, cfd_->internal_comparator(),
+        *old_file_meta, /*range_del_agg=*/nullptr,
+        mutable_cf_options_.prefix_extractor, nullptr,
+        cfd_->internal_stats()->GetFileReadHist(0),
+        TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
+        level_, MaxFileSizeForL0MetaPin(mutable_cf_options_),
+        /*smallest_compaction_key=*/nullptr, /*largest_compaction_key=*/nullptr,
+        /*allow_unprepared_value=*/true,
+        cfd_->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
+        /*range_del_iter=*/nullptr));
     total_num_entries = old_file_meta->num_entries;
     total_num_deletes = old_file_meta->num_deletions;
     total_data_size = old_file_meta->fd.GetFileSize();
@@ -1523,21 +1528,23 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
 
     event_logger_->Log() << "job" << job_context_->job_id << "event"
                          << "partial_flush_started"
-                         << "num_memtables" << mems_.size() << "num_entries"
-                         << total_num_entries << "num_deletes"
-                         << total_num_deletes << "total_data_size"
-                         << total_data_size << "memory_usage"
-                         << total_memory_usage << "flush_reason"
+                         << "file_number" << file_number_ << "num_memtables"
+                         << mems_.size() << "num_entries" << total_num_entries
+                         << "num_deletes" << total_num_deletes
+                         << "total_data_size" << total_data_size
+                         << "memory_usage" << total_memory_usage
+                         << "flush_reason"
                          << GetFlushReasonString(flush_reason_);
 
     {
       ScopedArenaIterator iter(
           NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
-                            static_cast<int>(memtables.size()), &arena));
+                             static_cast<int>(memtables.size()), &arena));
       ROCKS_LOG_INFO(db_options_.info_log,
-                     "[%s] [JOB %d] Level-%d partial flush table #%" PRIu64 ": started",
+                     "[%s] [JOB %d] Level-%d partial flush table #%" PRIu64
+                     ": started for #%" PRIu64,
                      cfd_->GetName().c_str(), job_context_->job_id, level_,
-                     meta_.fd.GetNumber());
+                     meta_.fd.GetNumber(), file_number_);
 
       int64_t _current_time = 0;
       auto status = clock_->GetCurrentTime(&_current_time);
@@ -1590,7 +1597,8 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
       assert(!s.ok() || io_s.ok());
       io_s.PermitUncheckedError();
       if (num_input_entries > total_num_entries && s.ok()) {
-        std::string msg = "Expected less than " + std::to_string(total_num_entries) +
+        std::string msg = "Expected less than " +
+                          std::to_string(total_num_entries) +
                           " entries in memtables, but read " +
                           std::to_string(num_input_entries);
         ROCKS_LOG_WARN(db_options_.info_log, "[%s] [JOB %d] Level-%d flush %s",
@@ -1617,15 +1625,16 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   if (s.ok() && has_output) {
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
     edit_->DeleteFile(level_, file_number_);
-    edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(), meta_.fd.GetPathId(),
-                   meta_.fd.GetFileSize(), meta_.smallest, meta_.largest,
-                   meta_.fd.smallest_seqno, meta_.fd.largest_seqno,
-                   meta_.marked_for_compaction, meta_.temperature,
-                   meta_.oldest_blob_file_number, meta_.oldest_ancester_time,
-                   meta_.file_creation_time, meta_.epoch_number,
-                   meta_.file_checksum, meta_.file_checksum_func_name,
-                   meta_.unique_id, meta_.compensated_range_deletion_size,
-                   meta_.tail_size, meta_.user_defined_timestamps_persisted);
+    edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(),
+                   meta_.fd.GetPathId(), meta_.fd.GetFileSize(), meta_.smallest,
+                   meta_.largest, meta_.fd.smallest_seqno,
+                   meta_.fd.largest_seqno, meta_.marked_for_compaction,
+                   meta_.temperature, meta_.oldest_blob_file_number,
+                   meta_.oldest_ancester_time, meta_.file_creation_time,
+                   meta_.epoch_number, meta_.file_checksum,
+                   meta_.file_checksum_func_name, meta_.unique_id,
+                   meta_.compensated_range_deletion_size, meta_.tail_size,
+                   meta_.user_defined_timestamps_persisted);
     edit_->SetBlobFileAdditions(std::move(blob_file_additions));
   }
 

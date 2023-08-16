@@ -696,8 +696,8 @@ Status DBImpl::FlushPartialOrRangeFile(
     std::vector<SequenceNumber>& snapshot_seqs,
     SequenceNumber earliest_write_conflict_snapshot,
     SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
-    Env::Priority thread_pri, MemTable* memtable, size_t file_index,
-    int level, uint64_t file_number) {
+    Env::Priority thread_pri, MemTable* memtable, size_t file_index, int level,
+    uint64_t file_number) {
   mutex_.AssertHeld();
   assert(cfd);
   assert(flush_reason == FlushReason::kRangeFlush ||
@@ -738,11 +738,12 @@ Status DBImpl::FlushPartialOrRangeFile(
   if (s.ok()) {
     // TODO: (shubham) Instead collect all edits and install it once in end of
     // range query
-    // versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
-    //                     read_options_, flush_job.GetJobEdits(), &mutex_,
-    //                     directories_.GetDbDir());
-    // InstallSuperVersionAndScheduleWork(cfd, superversion_context,
-    //                                    mutable_cf_options);
+    Status ios = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
+                                        read_options_, flush_job.GetJobEdits(),
+                                        &mutex_, directories_.GetDbDir());
+    std::cout << "LOGANDAPPLY STATUS: " << ios.ToString() << std::endl;
+    InstallSuperVersionAndScheduleWork(cfd, superversion_context,
+                                       mutable_cf_options);
     if (made_progress) {
       *made_progress = true;
     }
@@ -920,9 +921,9 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
         continue;
       }
       superversion_contexts.emplace_back(SuperVersionContext(true));
-      bg_flush_args.emplace_back(cfd, iter.second,
-                                 &(superversion_contexts.back()), flush_reason,
-                                 memtable, file_index, level, just_delete, file_number);
+      bg_flush_args.emplace_back(
+          cfd, iter.second, &(superversion_contexts.back()), flush_reason,
+          memtable, file_index, level, just_delete, file_number);
     }
     if (!bg_flush_args.empty()) {
       break;

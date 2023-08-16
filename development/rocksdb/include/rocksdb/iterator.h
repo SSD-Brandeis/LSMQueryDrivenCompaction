@@ -114,10 +114,13 @@ class Iterator : public Cleanable {
     return Status::NotSupported("Refresh() is not supported");
   }
 
-  // If supported, behave similar to Refresh() except the read opetion would be updated
-  // read_options.iterate_lower_bound and read_options.iterate_upper_bound would be updated
-  virtual Status Refresh(const Slice& /*start_key*/, const Slice& /*end_key*/) {
-    return Status::NotSupported("Refresh(const Slice&, const Slice&) is not supported");
+  // If supported, behave similar to Refresh() except the read opetion would be
+  // updated read_options.iterate_lower_bound and
+  // read_options.iterate_upper_bound would be updated
+  virtual Status Refresh(const std::string /*start_key*/,
+                         const std::string /*end_key*/) {
+    return Status::NotSupported(
+        "Refresh(const std::string, const std::string) is not supported");
   }
 
   // If supported, reset the start_key & end_key back to previous value

@@ -1604,6 +1604,12 @@ struct ReadOptions {
   // point to key without timestamp part.
   const Slice* iterate_upper_bound = nullptr;
 
+  // Only used when `range_query_compaction_enabled is true
+  // start_key represent the range start key and
+  // end_key represent the end key of the range query
+  std::string range_start_key;
+  std::string range_end_key;
+
   // Used to check if the range query compaction is enabled
   bool range_query_compaction_enabled = false;
 

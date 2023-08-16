@@ -130,11 +130,15 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 
 void DBIter::Next() {
   if (read_options_.range_query_compaction_enabled) {
-    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
+    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
+                           Slice(key().data(), key().size()),
+                           Slice(value().data(), value().size()), nullptr);
 
-    if (cfd_->mem_range()->get_data_size() > db_impl_->GetOptions().target_file_size_base) {
+    if (cfd_->mem_range()->get_data_size() >
+        db_impl_->GetOptions().target_file_size_base) {
       MemTable* imm_range = cfd_->mem_range();
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_, imm_range);
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
+                                                  cfd_, imm_range);
     }
   }
 
@@ -186,11 +190,16 @@ void DBIter::Next() {
     local_stats_.next_found_count_++;
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
-  
-  if (user_comparator_.Compare(key(), *read_options_.iterate_lower_bound) == 0 && read_options_.range_query_compaction_enabled) {
-    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue, Slice(key().data(), key().size()), Slice(value().data(), value().size()), nullptr);
+
+  if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) ==
+          0 &&
+      read_options_.range_query_compaction_enabled) {
+    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
+                           Slice(key().data(), key().size()),
+                           Slice(value().data(), value().size()), nullptr);
     MemTable* imm_range = cfd_->mem_range();
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_, imm_range);
+    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
+                                                imm_range);
   }
 }
 

@@ -115,7 +115,7 @@ Status DBImpl::FlushPartialOrRangeFile(
 
   Status s = Status::OK();
 
-  flush_job.InitNewTable(range_edit_);
+  flush_job.InitNewTable();
 
   NotifyOnFlushBegin(cfd, &file_meta, mutable_cf_options, job_context->job_id,
                      flush_reason);

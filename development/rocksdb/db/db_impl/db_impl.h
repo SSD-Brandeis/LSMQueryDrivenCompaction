@@ -482,10 +482,6 @@ class DBImpl : public DB {
   ReadOptions read_options_;
   int range_query_last_level_ = 0;
 
-  // keep track of version edits for range queries
-  // VersionEdit* edits_ = new VersionEdit();
-  VersionEdit* range_edit_;
-
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
   // IncreaseFullHistoryTsLow(ColumnFamilyHandle*, std::string) will acquire

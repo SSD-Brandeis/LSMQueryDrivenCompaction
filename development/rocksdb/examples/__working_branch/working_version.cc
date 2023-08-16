@@ -791,8 +791,7 @@ int runWorkload(EmuEnv *_env) {
   auto storage_info_before = cfd->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     levels_state_before +=
-        "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLevel-" +
-        std::to_string(l) + ": ";
+        "\n\tLevel-" + std::to_string(l) + ": ";
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
     for (size_t file_index = 0; file_index < num_files; file_index++) {
       auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];

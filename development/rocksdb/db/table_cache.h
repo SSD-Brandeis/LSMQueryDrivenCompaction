@@ -97,8 +97,7 @@ class TableCache {
       const InternalKey* smallest_compaction_key,
       const InternalKey* largest_compaction_key, bool allow_unprepared_value,
       uint8_t protection_bytes_per_key,
-      TruncatedRangeDelIterator** range_del_iter = nullptr,
-      std::string start_key = "", std::string end_key = "");
+      TruncatedRangeDelIterator** range_del_iter = nullptr);
 
   // If a seek to internal key "k" in specified file finds an entry,
   // call get_context->SaveValue() repeatedly until

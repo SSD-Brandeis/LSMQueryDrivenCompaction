@@ -446,10 +446,6 @@ class DBImpl : public DB {
   virtual Status UnlockWAL() override;
 
   // Flush partial sst file to the level
-  void DumpHumanReadableFormatOfFullLSM(
-      std::string name, ColumnFamilyHandle* column_family = nullptr);
-  int CompactionQueueSize() { return compaction_queue_.size(); }
-
   static void BGWorkPartialOrRangeFlush(void* args);
   void BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri);
   Status BackgroundPartialOrRangeFlush(bool* made_progress,

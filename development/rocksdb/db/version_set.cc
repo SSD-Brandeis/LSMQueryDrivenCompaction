@@ -2097,6 +2097,7 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
           /*smallest_compaction_key=*/nullptr,
           /*largest_compaction_key=*/nullptr, allow_unprepared_value,
           mutable_cf_options_.block_protection_bytes_per_key, &tombstone_iter);
+      table_iter->SetLevel(level);
       if (read_options.ignore_range_deletions) {
         merge_iter_builder->AddIterator(table_iter);
       } else {
@@ -2129,6 +2130,7 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
         /*range_del_agg=*/nullptr,
         /*compaction_boundaries=*/nullptr, allow_unprepared_value,
         &tombstone_iter_ptr, db_impl);
+    level_iter->SetLevel(level);
     if (read_options.ignore_range_deletions) {
       merge_iter_builder->AddIterator(level_iter);
     } else {

@@ -421,7 +421,9 @@ class MergingIterator : public InternalIterator {
 
   Slice key() const override {
     assert(Valid());
-    return current_->key();
+    Slice slice = current_->key();
+    slice.level_ = current_->GetLevel();
+    return slice;
   }
 
   Slice value() const override {

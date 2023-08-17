@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <iostream>
 
 #include "rocksdb/comparator.h"
 #include "rocksdb/slice.h"
@@ -110,6 +111,7 @@ struct ParsedInternalKey {
   Slice user_key;
   SequenceNumber sequence;
   ValueType type;
+  int level;
 
   ParsedInternalKey()
       : sequence(kMaxSequenceNumber),
@@ -413,7 +415,8 @@ inline Status ParseInternalKey(const Slice& internal_key,
   result->sequence = num >> 8;
   result->type = static_cast<ValueType>(c);
   assert(result->type <= ValueType::kMaxValue);
-  result->user_key = Slice(internal_key.data(), n - kNumInternalBytes);
+  result->user_key = Slice(internal_key.data(), n - kNumInternalBytes, internal_key.level_);
+  result->level = internal_key.level_;
 
   if (IsExtendedValueType(result->type)) {
     return Status::OK();
@@ -473,17 +476,17 @@ class IterKey {
 
   Slice GetInternalKey() const {
     assert(!IsUserKey());
-    return Slice(key_, key_size_);
+    return Slice(key_, key_size_, level_);
   }
 
   // If user-defined timestamp is enabled, then timestamp is included in the
   // return result of GetUserKey();
   Slice GetUserKey() const {
     if (IsUserKey()) {
-      return Slice(key_, key_size_);
+      return Slice(key_, key_size_, level_);
     } else {
       assert(key_size_ >= kNumInternalBytes);
-      return Slice(key_, key_size_ - kNumInternalBytes);
+      return Slice(key_, key_size_ - kNumInternalBytes, level_);
     }
   }
 
@@ -689,6 +692,14 @@ class IterKey {
 
   bool IsUserKey() const { return is_user_key_; }
 
+  void SetLevel(int level) {
+    level_ = level;
+  }
+
+  int GetLevel() {
+    return level_;
+  }
+
  private:
   char* buf_;
   const char* key_;
@@ -696,6 +707,7 @@ class IterKey {
   size_t buf_size_;
   char space_[39];  // Avoid allocation for short keys
   bool is_user_key_;
+  int level_ = 0;
 
   Slice SetKeyImpl(const Slice& key, bool copy) {
     size_t size = key.size();

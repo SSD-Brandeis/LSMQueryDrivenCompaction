@@ -1440,7 +1440,6 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
   const bool has_output = meta_.fd.GetFileSize() > 0;
 
   if (s.ok() && has_output) {
-
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
 
     // ############## dump new file to human readable format #############
@@ -1457,8 +1456,18 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
     //     ") FileNumber: [" +
     //     std::to_string(meta_.fd.GetNumber()) + "new_range_file" );
-    
+
     // ############## dump new file to human readable format #############
+
+    if (db_options_.verbosity > 0) {
+      std::cout << "[Verbosity]: range new file: " << meta_.fd.GetNumber()
+                << " at level: " << level_
+                << " smallest: " << meta_.smallest.user_key().data()
+                << " largest: " << meta_.largest.user_key().data()
+                << " against memtable: " << memtable_->GetID() << " "
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
+                << std::endl;
+    }
 
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
 
@@ -1904,7 +1913,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
       }
 
       assert(!s.ok() || io_s.ok());
-      io_s.PermitUncheckedError();      
+      io_s.PermitUncheckedError();
       if (num_input_entries > total_num_entries && s.ok()) {
         std::string msg = "Expected less than " +
                           std::to_string(total_num_entries) +

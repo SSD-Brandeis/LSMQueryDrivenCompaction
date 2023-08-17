@@ -422,6 +422,10 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   f_op->wait = _env->wait;
   f_op->allow_write_stall = _env->allow_write_stall;
 
+  // verbostity
+  std::cout << "verbosity: " << _env->verbosity << std::endl;
+  op->verbosity = _env->verbosity;
+
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
   // flushed op->db_write_buffer_size = 0;   // disable op->arena_block_size =
   // 0; op->memtable_huge_page_size = 0;
@@ -589,6 +593,8 @@ int runWorkload(EmuEnv *_env) {
             << std::endl;  // !YBS-sep07-XX!
   std::cout << "Maximum #ThreadsUsedToOpenFiles = "
             << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
+  std::cout << "verbosity before opening db: " << options.verbosity
+            << std::endl;
   Status s = DB::Open(options, kDBPath, &db);
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
@@ -736,10 +742,12 @@ int runWorkload(EmuEnv *_env) {
         workload_file >> start_key >> end_key;
         db_impl_ = reinterpret_cast<DBImpl *>(db);
 
-        // db_impl_->SetRangeQueryRunningToTrue(new Slice(to_string(start_key)),
-        //                                      new Slice(to_string(end_key)));
-
         // it->Refresh();
+        if (_env->verbosity > 0) {
+          std::cout << "[Verbosity]: range query starting " << __FILE__ ":"
+                    << __LINE__ << " " << __FUNCTION__ << std::endl
+                    << std::endl;
+        }
         it->Refresh(to_string(start_key), to_string(end_key));
 
         assert(it->status().ok());
@@ -747,14 +755,20 @@ int runWorkload(EmuEnv *_env) {
           if (it->key().ToString() >= to_string(end_key)) {
             break;
           }
-          std::cout << "found key = " << it->key().ToString() << std::endl;
+          if (_env->verbosity > 0) {
+            std::cout << "found key = " << it->key().ToString() << std::endl;
+          }
         }
-        // db_impl_->SetRangeQueryRunningToFalse();
         if (!it->status().ok()) {
           std::cerr << it->status().ToString() << std::endl;
         }
 
         it->Reset();
+        if (_env->verbosity > 0) {
+          std::cout << "[Verbosity]: range query completed " << __FILE__ ":"
+                    << __LINE__ << " " << __FUNCTION__ << std::endl
+                    << std::endl;
+        }
 
         op_track._range_queries_completed++;
         counter++;
@@ -790,8 +804,7 @@ int runWorkload(EmuEnv *_env) {
   std::string levels_state_before = "Workload done, waiting for compaction...";
   auto storage_info_before = cfd->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-    levels_state_before +=
-        "\n\tLevel-" + std::to_string(l) + ": ";
+    levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
     for (size_t file_index = 0; file_index < num_files; file_index++) {
       auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];

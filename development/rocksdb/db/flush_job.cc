@@ -1121,8 +1121,8 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
     const SeqnoToTimeMapping& seqno_time_mapping,
     const ReadOptions& read_options, const std::string& db_id,
     const std::string& db_session_id, std::string full_history_ts_low,
-    BlobFileCompletionCallback* blob_callback, MemTable* memtable,
-    int level, FileMetaData* file_meta)
+    BlobFileCompletionCallback* blob_callback, MemTable* memtable, int level,
+    FileMetaData* file_meta)
     : FlushJob(dbname, cfd, db_options, mutable_cf_options, max_memtable_id,
                file_options, versions, db_mutex, shutting_down,
                existing_snapshots, earliest_write_conflict_snapshot,
@@ -1387,6 +1387,17 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
                      blob_callback_, base_, &num_input_entries,
                      &memtable_payload_bytes, &memtable_garbage_bytes);
 
+      if (db_options_.verbosity > 0) {
+        std::cout << "[Verbosity]: built table for file: "
+                  << meta_.fd.GetNumber() << " at level: " << level_
+                  << " num_entries: " << num_input_entries
+                  << " against memtable: " << memtable_->GetID()
+                  << " had num_entries: " << total_num_entries
+                  << " status: " << s.ToString() << " " << __FILE__ ":"
+                  << __LINE__ << " " << __FUNCTION__ << std::endl
+                  << std::endl;
+      }
+
       assert(!s.ok() || io_s.ok());
       io_s.PermitUncheckedError();
       if (num_input_entries != total_num_entries && s.ok()) {
@@ -1432,7 +1443,6 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
   const bool has_output = meta_.fd.GetFileSize() > 0;
 
   if (s.ok() && has_output) {
-
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
 
     // ############## dump new file to human readable format #############
@@ -1449,8 +1459,18 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
     //     ") FileNumber: [" +
     //     std::to_string(meta_.fd.GetNumber()) + "new_range_file" );
-    
+
     // ############## dump new file to human readable format #############
+
+    if (db_options_.verbosity > 0) {
+      std::cout << "[Verbosity]: range new file: " << meta_.fd.GetNumber()
+                << " at level: " << level_
+                << " smallest: " << meta_.smallest.user_key().data()
+                << " largest: " << meta_.largest.user_key().data()
+                << " against memtable: " << memtable_->GetID() << " "
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
+                << std::endl;
+    }
 
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
     edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(),
@@ -1544,7 +1564,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
     //     ") FileNumber: [" +
     //     std::to_string(file_meta_->fd.GetNumber()) + "old_file" );
-    
+
     // ############## dump old file to human readable format #############
 
     ReadOptions range_options = read_options_;
@@ -1552,10 +1572,9 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
 
     assert(job_context_);
     memtables.push_back(cfd_->table_cache()->NewIterator(
-        range_options, file_options_, cfd_->internal_comparator(),
-        *file_meta_, /*range_del_agg=*/nullptr,
-        mutable_cf_options_.prefix_extractor, nullptr,
-        cfd_->internal_stats()->GetFileReadHist(0),
+        range_options, file_options_, cfd_->internal_comparator(), *file_meta_,
+        /*range_del_agg=*/nullptr, mutable_cf_options_.prefix_extractor,
+        nullptr, cfd_->internal_stats()->GetFileReadHist(0),
         TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
         level_, MaxFileSizeForL0MetaPin(mutable_cf_options_),
         /*smallest_compaction_key=*/nullptr, /*largest_compaction_key=*/nullptr,
@@ -1635,8 +1654,19 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
                      blob_callback_, base_, &num_input_entries,
                      &memtable_payload_bytes, &memtable_garbage_bytes);
 
+      if (db_options_.verbosity > 0) {
+        std::cout << "[Verbosity]: built table for file: "
+                  << meta_.fd.GetNumber() << " at level: " << level_
+                  << " num_entries: " << num_input_entries
+                  << " against file: " << file_number_
+                  << " had num_entries: " << total_num_entries
+                  << " status: " << s.ToString() << " " << __FILE__ ":"
+                  << __LINE__ << " " << __FUNCTION__ << std::endl
+                  << std::endl;
+      }
+
       assert(!s.ok() || io_s.ok());
-      io_s.PermitUncheckedError();      
+      io_s.PermitUncheckedError();
       if (num_input_entries > total_num_entries && s.ok()) {
         std::string msg = "Expected less than " +
                           std::to_string(total_num_entries) +
@@ -1662,7 +1692,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
 
   base_->Unref();
   const bool has_output = meta_.fd.GetFileSize() > 0;
-  
+
   if (s.ok() && has_output) {
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
 
@@ -1680,9 +1710,25 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
     //     ") FileNumber: [" +
     //     std::to_string(meta_.fd.GetNumber()) + "new_file" );
-    
+
     // ############## dump new file to human readable format #############
 
+    if (db_options_.verbosity > 0) {
+      std::cout << "[Verbosity]: writing partial file: " << meta_.fd.GetNumber()
+                << " at level: " << level_ << " against file: " << file_number_
+                << " will be deleted " << __FILE__ ":" << __LINE__ << " "
+                << __FUNCTION__ << std::endl
+                << std::endl;
+      std::cout << "[Verbosity]: partial new file: " << meta_.fd.GetNumber()
+                << " at level: " << level_
+                << " smallest: " << meta_.smallest.user_key().data()
+                << " largest: " << meta_.largest.user_key().data()
+                << " old file: " << file_number_ << " at level: " << level_
+                << " smallest: " << file_meta_->smallest.user_key().data()
+                << " largest: " << file_meta_->largest.user_key().data() << " "
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
+                << std::endl;
+    }
 
     edit_->DeleteFile(level_, file_number_);
     edit_->AddFile(level_ /* level */, meta_.fd.GetNumber(),

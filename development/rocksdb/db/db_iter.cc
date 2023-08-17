@@ -130,6 +130,14 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 
 void DBIter::Next() {
   if (read_options_.range_query_compaction_enabled && key().level_ > 0) {
+    if (db_impl_->immutable_db_options().verbosity > 1) {
+      std::cout << "[Verbosity]: adding new key: " << key().data()
+                << " at level: " << db_impl_->range_query_last_level_
+                << " via memtable: " << cfd_->mem_range()->GetID()
+                << " total_entries: " << cfd_->mem_range()->num_entries()
+                << __LINE__ << " " << __FUNCTION__ << std::endl
+                << std::endl;
+    }
     cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                            Slice(key().data(), key().size()),
                            Slice(value().data(), value().size()), nullptr);
@@ -194,10 +202,19 @@ void DBIter::Next() {
   if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) >=
           0 &&
       read_options_.range_query_compaction_enabled && key().level_ > 0) {
-    if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) == 0) {
+    if (db_impl_->immutable_db_options().verbosity > 1) {
+      std::cout << "[Verbosity]: adding last new key: " << key().data()
+                << " at level: " << db_impl_->range_query_last_level_
+                << " via memtable: " << cfd_->mem_range()->GetID()
+                << " total_entries: " << cfd_->mem_range()->num_entries()
+                << __LINE__ << " " << __FUNCTION__ << std::endl
+                << std::endl;
+    }
+    if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) ==
+        0) {
       cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                            Slice(key().data(), key().size()),
-                            Slice(value().data(), value().size()), nullptr);
+                             Slice(key().data(), key().size()),
+                             Slice(value().data(), value().size()), nullptr);
     }
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,

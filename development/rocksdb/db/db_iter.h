@@ -157,8 +157,12 @@ class DBIter final : public Iterator {
       return saved_key_.GetInternalKey();
     } else {
       const Slice ukey_and_ts = saved_key_.GetUserKey();
+<<<<<<< HEAD
       return Slice(ukey_and_ts.data(), ukey_and_ts.size() - timestamp_size_,
                    ikey_.level);
+=======
+      return Slice(ukey_and_ts.data(), ukey_and_ts.size() - timestamp_size_, ikey_.level);
+>>>>>>> efa059c (Added level info to slice)
     }
   }
   Slice value() const override {

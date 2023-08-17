@@ -164,6 +164,10 @@ class IteratorWrapperBase {
     return iter_->IsDeleteRangeSentinelKey();
   }
 
+  int GetLevel() {
+    return iter_->GetLevel();
+  }
+
  private:
   void Update() {
     valid_ = iter_->Valid();

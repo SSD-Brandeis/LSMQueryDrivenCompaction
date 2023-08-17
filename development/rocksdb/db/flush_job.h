@@ -226,7 +226,7 @@ class PartialOrRangeFlushJob : public FlushJob {
 
   ~PartialOrRangeFlushJob();
 
-  void InitNewTable(VersionEdit* edit);
+  void InitNewTable();
   Status Run(LogsWithPrepTracker* prep_tracker = nullptr,
              FileMetaData* file_meta = nullptr,
              bool* switched_to_mempurge = nullptr);

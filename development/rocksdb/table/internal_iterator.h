@@ -193,6 +193,14 @@ class InternalIteratorBase : public Cleanable {
   // used by MergingIterator and LevelIterator for now.
   virtual bool IsDeleteRangeSentinelKey() const { return false; }
 
+  void SetLevel(int level) {
+    level_ = level;
+  }
+
+  int GetLevel() {
+    return level_;
+  }
+
  protected:
   void SeekForPrevImpl(const Slice& target, const CompareInterface* cmp) {
     Seek(target);
@@ -203,6 +211,9 @@ class InternalIteratorBase : public Cleanable {
       Prev();
     }
   }
+
+  // this would be used for range queries
+  int level_;
 };
 
 using InternalIterator = InternalIteratorBase<Slice>;

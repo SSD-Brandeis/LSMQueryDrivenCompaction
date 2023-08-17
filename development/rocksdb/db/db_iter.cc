@@ -129,7 +129,7 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (read_options_.range_query_compaction_enabled) {
+  if (read_options_.range_query_compaction_enabled && key().level_ > 0) {
     cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                            Slice(key().data(), key().size()),
                            Slice(value().data(), value().size()), nullptr);
@@ -193,7 +193,7 @@ void DBIter::Next() {
 
   if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) >=
           0 &&
-      read_options_.range_query_compaction_enabled) {
+      read_options_.range_query_compaction_enabled && key().level_ > 0) {
     if (user_comparator_.Compare(key(), Slice(read_options_.range_end_key)) == 0) {
       cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                             Slice(key().data(), key().size()),
@@ -380,12 +380,14 @@ bool DBIter::FindNextUserEntryInternal(bool skipping_saved_key,
             // they are hidden by this deletion.
             if (timestamp_lb_) {
               saved_key_.SetInternalKey(ikey_);
+              saved_key_.SetLevel(ikey_.level);
               valid_ = true;
               return true;
             } else {
               saved_key_.SetUserKey(
                   ikey_.user_key, !pin_thru_lifetime_ ||
                                       !iter_.iter()->IsKeyPinned() /* copy */);
+              saved_key_.SetLevel(ikey_.level);
               skipping_saved_key = true;
               PERF_COUNTER_ADD(internal_delete_skipped_count, 1);
             }
@@ -404,6 +406,7 @@ bool DBIter::FindNextUserEntryInternal(bool skipping_saved_key,
               saved_key_.SetUserKey(
                   ikey_.user_key, !pin_thru_lifetime_ ||
                                       !iter_.iter()->IsKeyPinned() /* copy */);
+              saved_key_.SetLevel(ikey_.level);
             }
 
             if (ikey_.type == kTypeBlobIndex) {

@@ -37,6 +37,9 @@ class Slice {
   // Create a slice that refers to d[0,n-1].
   Slice(const char* d, size_t n) : data_(d), size_(n) {}
 
+  // Create a slice with level info attached to it
+  Slice(const char* d, size_t n, int level) : data_(d), size_(n), level_(level) {}
+
   // Create a slice that refers to the contents of "s"
   /* implicit */
   Slice(const std::string& s) : data_(s.data()), size_(s.size()) {}
@@ -125,6 +128,9 @@ class Slice {
   // private: make these public for rocksdbjni access
   const char* data_;
   size_t size_;
+
+  // used for range query compaction
+  int level_ = 0;
 
   // Intentionally copyable
 };

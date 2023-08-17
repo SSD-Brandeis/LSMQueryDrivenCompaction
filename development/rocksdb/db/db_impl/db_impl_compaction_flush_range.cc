@@ -16,69 +16,6 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-void DBImpl::DumpHumanReadableFormatOfFullLSM(
-    std::string name, ColumnFamilyHandle* column_family) {
-  std::ofstream human_readable_file;
-  human_readable_file.open(name + ".txt");
-
-  if (!human_readable_file.is_open()) {
-    std::cerr << "Error opening the file!" << std::endl;
-    exit(1);
-  }
-
-  ColumnFamilyData* cfd;
-  if (column_family == nullptr) {
-    cfd = default_cf_handle_->cfd();
-  } else {
-    auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(column_family);
-    cfd = cfh->cfd();
-  }
-  mutex_.Lock();
-  SuperVersion* super_version = cfd->GetSuperVersion()->Ref();
-  // Arena arena;
-  mutex_.Unlock();
-
-  // LEVELS
-  auto storage_info_ = super_version->current->storage_info();
-
-  for (int level = 0; level < storage_info_->num_non_empty_levels(); level++) {
-    human_readable_file << "Level: " << level << std::endl;
-    if (level >= storage_info_->num_non_empty_levels()) {
-      human_readable_file << std::endl << std::endl;
-      continue;
-    } else if (storage_info_->LevelFilesBrief(level).num_files == 0) {
-      human_readable_file << std::endl << std::endl;
-      continue;
-    }
-    for (size_t i = 0; i < storage_info_->LevelFilesBrief(level).num_files;
-         i++) {
-      const auto& file = storage_info_->LevelFilesBrief(level).files[i];
-      human_readable_file << "\tFile[" << file.fd.GetNumber()
-                          << "(Smallest Key: "
-                          << file.file_metadata->smallest.user_key().ToString()
-                          << ", Largest Key: "
-                          << file.file_metadata->largest.user_key().ToString()
-                          << ")]" << std::endl;
-
-      Options op;
-      Temperature tmpperature = file.file_metadata->temperature;
-      SstFileDumper sst_dump(
-          op,
-          TableFileName(immutable_db_options_.db_paths,
-                        file.file_metadata->fd.GetNumber(), 0),
-          tmpperature, cfd->GetLatestCFOptions().target_file_size_base, false,
-          false, false);
-      sst_dump.DumpTable(
-          "db_working_home/DumpOf(Level: " + std::to_string(level) +
-          ") FileNumber: [" +
-          std::to_string(file.file_metadata->fd.GetNumber()) + "]_" + name);
-    }
-    human_readable_file << std::endl << std::endl;
-  }
-
-  human_readable_file.close();
-}
-
 Status DBImpl::FlushPartialOrRangeFile(
     ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
     bool* made_progress, JobContext* job_context, FlushReason flush_reason,

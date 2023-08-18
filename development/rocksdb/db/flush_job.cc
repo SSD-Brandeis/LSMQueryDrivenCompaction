@@ -1388,14 +1388,13 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
                      &memtable_payload_bytes, &memtable_garbage_bytes);
 
       if (db_options_.verbosity > 0) {
-        std::cout << "[Verbosity]: built table for file: "
+        std::cout << "\n[Verbosity]: built table for range file: "
                   << meta_.fd.GetNumber() << " at level: " << level_
                   << " num_entries: " << num_input_entries
                   << " against memtable: " << memtable_->GetID()
                   << " had num_entries: " << total_num_entries
                   << " status: " << s.ToString() << " " << __FILE__ ":"
-                  << __LINE__ << " " << __FUNCTION__ << std::endl
-                  << std::endl;
+                  << __LINE__ << " " << __FUNCTION__ << std::endl;
       }
 
       assert(!s.ok() || io_s.ok());
@@ -1463,13 +1462,12 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     // ############## dump new file to human readable format #############
 
     if (db_options_.verbosity > 0) {
-      std::cout << "[Verbosity]: range new file: " << meta_.fd.GetNumber()
-                << " at level: " << level_
+      std::cout << "\n[Verbosity]: adding range new file: "
+                << meta_.fd.GetNumber() << " at level: " << level_
                 << " smallest: " << meta_.smallest.user_key().data()
                 << " largest: " << meta_.largest.user_key().data()
                 << " against memtable: " << memtable_->GetID() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
-                << std::endl;
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     }
 
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
@@ -1529,6 +1527,16 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   Status s;
 
   // NOTE: SequenceNumber mapping with time
+  bool tail_part = false;
+
+  if (cfd_->internal_comparator().user_comparator()->Compare(
+          file_meta_->smallest.user_key(), read_options_.range_start_key) < 0 &&
+      cfd_->internal_comparator().user_comparator()->Compare(
+          file_meta_->largest.user_key(), read_options_.range_end_key) > 0) {
+    tail_meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
+    tail_meta_.epoch_number = cfd_->NewEpochNumber();
+    tail_part = true;
+  }
 
   std::vector<BlobFileAddition> blob_file_additions;
 
@@ -1568,7 +1576,17 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     // ############## dump old file to human readable format #############
 
     ReadOptions range_options = read_options_;
-    range_options.range_query_partial_block_read = true;
+    range_options.iterate_upper_bound =
+        new Slice(read_options_.range_start_key);
+
+    if (cfd_->internal_comparator().user_comparator()->Compare(
+            file_meta_->largest.user_key(), read_options_.range_end_key) > 0 &&
+        !tail_part) {
+      range_options.iterate_upper_bound = nullptr;
+      range_options.range_query_partial_block_read = true;
+      range_options.range_start_key = read_options_.range_start_key;
+      range_options.range_end_key = read_options_.range_end_key;
+    }
 
     assert(job_context_);
     memtables.push_back(cfd_->table_cache()->NewIterator(
@@ -1655,14 +1673,173 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
                      &memtable_payload_bytes, &memtable_garbage_bytes);
 
       if (db_options_.verbosity > 0) {
-        std::cout << "[Verbosity]: built table for file: "
+        std::cout << "\n[Verbosity]: built table for partial file: "
                   << meta_.fd.GetNumber() << " at level: " << level_
                   << " num_entries: " << num_input_entries
                   << " against file: " << file_number_
                   << " had num_entries: " << total_num_entries
                   << " status: " << s.ToString() << " " << __FILE__ ":"
-                  << __LINE__ << " " << __FUNCTION__ << std::endl
-                  << std::endl;
+                  << __LINE__ << " " << __FUNCTION__ << std::endl;
+      }
+
+      assert(!s.ok() || io_s.ok());
+      io_s.PermitUncheckedError();
+      if (num_input_entries > total_num_entries && s.ok()) {
+        std::string msg = "Expected less than " +
+                          std::to_string(total_num_entries) +
+                          " entries in memtables, but read " +
+                          std::to_string(num_input_entries);
+        ROCKS_LOG_WARN(db_options_.info_log, "[%s] [JOB %d] Level-%d flush %s",
+                       cfd_->GetName().c_str(), job_context_->job_id, level_,
+                       msg.c_str());
+        if (db_options_.flush_verify_memtable_count) {
+          s = Status::Corruption(msg);
+        }
+      }
+      if (tboptions.reason == TableFileCreationReason::kFlush) {
+        TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
+        RecordTick(stats_, MEMTABLE_PAYLOAD_BYTES_AT_FLUSH,
+                   memtable_payload_bytes);
+        RecordTick(stats_, MEMTABLE_GARBAGE_BYTES_AT_FLUSH,
+                   memtable_garbage_bytes);
+      }
+      LogFlush(db_options_.info_log);
+    }
+  }
+
+  if (tail_part && s.ok()) {
+    auto write_hint = cfd_->CalculateSSTWriteHint(0);
+    Env::IOPriority io_priority = GetRateLimiterPriorityForWrite();
+    db_mutex_->Unlock();
+    if (log_buffer_) {
+      log_buffer_->FlushBufferToLog();
+    }
+    std::vector<InternalIterator*> memtables;
+    std::vector<std::unique_ptr<FragmentedRangeTombstoneIterator>>
+        range_del_iters;
+    ReadOptions ro;
+    ro.total_order_seek = true;
+    ro.io_activity = Env::IOActivity::kFlush;
+    Arena arena;
+    uint64_t total_num_entries = 0, total_num_deletes = 0;
+    uint64_t total_data_size = 0;
+    size_t total_memory_usage = 0;
+
+    // ############## dump old file to human readable format #############
+
+    // Options op;
+    // Temperature tmpperature = file_meta_->temperature;
+    // SstFileDumper sst_dump(
+    //     op,
+    //     TableFileName(db_options_.db_paths,
+    //                   file_meta_->fd.GetNumber(), 0),
+    //     tmpperature, cfd_->GetLatestCFOptions().target_file_size_base, false,
+    //     false, false);
+    // sst_dump.DumpTable(
+    //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
+    //     ") FileNumber: [" +
+    //     std::to_string(file_meta_->fd.GetNumber()) + "]_old_file" );
+
+    // ############## dump old file to human readable format #############
+
+    ReadOptions range_options = read_options_;
+    range_options.iterate_upper_bound = nullptr;
+    range_options.range_query_partial_block_read = true;
+    range_options.range_start_key = read_options_.range_start_key;
+    range_options.range_end_key = read_options_.range_end_key;
+
+    assert(job_context_);
+    memtables.push_back(cfd_->table_cache()->NewIterator(
+        range_options, file_options_, cfd_->internal_comparator(), *file_meta_,
+        /*range_del_agg=*/nullptr, mutable_cf_options_.prefix_extractor,
+        nullptr, cfd_->internal_stats()->GetFileReadHist(0),
+        TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
+        level_, MaxFileSizeForL0MetaPin(mutable_cf_options_),
+        /*smallest_compaction_key=*/nullptr, /*largest_compaction_key=*/nullptr,
+        /*allow_unprepared_value=*/true,
+        cfd_->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
+        /*range_del_iter=*/nullptr));
+    total_num_entries = file_meta_->num_entries;
+    total_num_deletes = file_meta_->num_deletions;
+    total_data_size = file_meta_->fd.GetFileSize();
+    total_memory_usage = file_meta_->ApproximateMemoryUsage();
+
+    event_logger_->Log() << "job" << job_context_->job_id << "event"
+                         << "partial_flush_started"
+                         << "file_number" << file_number_ << "num_memtables"
+                         << mems_.size() << "num_entries" << total_num_entries
+                         << "num_deletes" << total_num_deletes
+                         << "total_data_size" << total_data_size
+                         << "memory_usage" << total_memory_usage
+                         << "flush_reason"
+                         << GetFlushReasonString(flush_reason_);
+
+    {
+      ScopedArenaIterator iter(
+          NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
+                             static_cast<int>(memtables.size()), &arena));
+      ROCKS_LOG_INFO(db_options_.info_log,
+                     "[%s] [JOB %d] Level-%d partial flush tail table #%" PRIu64
+                     ": started for #%" PRIu64,
+                     cfd_->GetName().c_str(), job_context_->job_id, level_,
+                     tail_meta_.fd.GetNumber(), file_number_);
+
+      int64_t _current_time = 0;
+      auto status = clock_->GetCurrentTime(&_current_time);
+      // Safe to proceed even if GetCurrentTime fails. So, log and proceed.
+      if (!status.ok()) {
+        ROCKS_LOG_WARN(
+            db_options_.info_log,
+            "Failed to get current time to populate creation_time property. "
+            "Status: %s",
+            status.ToString().c_str());
+      }
+      const uint64_t current_time = static_cast<uint64_t>(_current_time);
+      uint64_t oldest_key_time = file_meta_->file_creation_time;
+      uint64_t oldest_ancester_time = std::min(current_time, oldest_key_time);
+
+      tail_meta_.oldest_ancester_time = oldest_ancester_time;
+      tail_meta_.file_creation_time = current_time;
+
+      uint64_t num_input_entries = 0;
+      uint64_t memtable_payload_bytes = 0;
+      uint64_t memtable_garbage_bytes = 0;
+      IOStatus io_s;
+
+      const std::string* const full_history_ts_low =
+          (full_history_ts_low_.empty()) ? nullptr : &full_history_ts_low_;
+      TableBuilderOptions tboptions(
+          *cfd_->ioptions(), mutable_cf_options_, cfd_->internal_comparator(),
+          cfd_->int_tbl_prop_collector_factories(), output_compression_,
+          mutable_cf_options_.compression_opts, cfd_->GetID(), cfd_->GetName(),
+          level_ /* level */, false /* is_bottommost */,
+          TableFileCreationReason::kFlush, oldest_key_time, current_time,
+          db_id_, db_session_id_, 0 /* target_file_size */,
+          tail_meta_.fd.GetNumber());
+      const SequenceNumber job_snapshot_seq =
+          job_context_->GetJobSnapshotSequence();
+      const ReadOptions read_options(Env::IOActivity::kFlush);
+      s = BuildTable(
+          dbname_, versions_, db_options_, tboptions, file_options_,
+          read_options, cfd_->table_cache(), iter.get(),
+          std::move(range_del_iters), &tail_meta_, &blob_file_additions,
+          existing_snapshots_, earliest_write_conflict_snapshot_,
+          job_snapshot_seq, snapshot_checker_,
+          mutable_cf_options_.paranoid_file_checks, cfd_->internal_stats(),
+          &io_s, io_tracer_, BlobFileCreationReason::kFlush,
+          seqno_to_time_mapping_, event_logger_, job_context_->job_id,
+          io_priority, &table_properties_, write_hint, full_history_ts_low,
+          blob_callback_, base_, &num_input_entries, &memtable_payload_bytes,
+          &memtable_garbage_bytes);
+
+      if (db_options_.verbosity > 0) {
+        std::cout << "\n[Verbosity]: built table for partial tail file: "
+                  << tail_meta_.fd.GetNumber() << " at level: " << level_
+                  << " num_entries: " << num_input_entries
+                  << " against file: " << file_number_
+                  << " had num_entries: " << total_num_entries
+                  << " status: " << s.ToString() << " " << __FILE__ ":"
+                  << __LINE__ << " " << __FUNCTION__ << std::endl;
       }
 
       assert(!s.ok() || io_s.ok());
@@ -1691,7 +1868,8 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   }
 
   base_->Unref();
-  const bool has_output = meta_.fd.GetFileSize() > 0;
+  const bool has_output = meta_.fd.GetFileSize() > 0 &&
+                          (tail_part ? tail_meta_.fd.GetFileSize() > 0 : true);
 
   if (s.ok() && has_output) {
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
@@ -1714,20 +1892,35 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     // ############## dump new file to human readable format #############
 
     if (db_options_.verbosity > 0) {
-      std::cout << "[Verbosity]: writing partial file: " << meta_.fd.GetNumber()
-                << " at level: " << level_ << " against file: " << file_number_
-                << " will be deleted " << __FILE__ ":" << __LINE__ << " "
-                << __FUNCTION__ << std::endl
-                << std::endl;
-      std::cout << "[Verbosity]: partial new file: " << meta_.fd.GetNumber()
+      std::cout << "\n[Verbosity]: writing partial file: "
+                << meta_.fd.GetNumber() << " at level: " << level_
+                << " against file: " << file_number_ << " will be deleted "
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      std::cout << "adding partial new file: " << meta_.fd.GetNumber()
                 << " at level: " << level_
                 << " smallest: " << meta_.smallest.user_key().data()
                 << " largest: " << meta_.largest.user_key().data()
                 << " old file: " << file_number_ << " at level: " << level_
                 << " smallest: " << file_meta_->smallest.user_key().data()
                 << " largest: " << file_meta_->largest.user_key().data() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
-                << std::endl;
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+      if (tail_part) {
+        std::cout << "\n[Verbosity]: writing partial tail file: "
+                  << tail_meta_.fd.GetNumber() << " at level: " << level_
+                  << " against file: " << file_number_ << " will be deleted "
+                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
+                  << std::endl;
+        std::cout << "adding partial new file: " << tail_meta_.fd.GetNumber()
+                  << " at level: " << level_
+                  << " smallest: " << tail_meta_.smallest.user_key().data()
+                  << " largest: " << tail_meta_.largest.user_key().data()
+                  << " old file: " << file_number_ << " at level: " << level_
+                  << " smallest: " << file_meta_->smallest.user_key().data()
+                  << " largest: " << file_meta_->largest.user_key().data()
+                  << " " << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
+                  << std::endl;
+      }
     }
 
     edit_->DeleteFile(level_, file_number_);
@@ -1741,6 +1934,19 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
                    meta_.file_checksum_func_name, meta_.unique_id,
                    meta_.compensated_range_deletion_size, meta_.tail_size,
                    meta_.user_defined_timestamps_persisted);
+    if (tail_part) {
+      edit_->AddFile(
+          level_ /* level */, tail_meta_.fd.GetNumber(),
+          tail_meta_.fd.GetPathId(), tail_meta_.fd.GetFileSize(),
+          tail_meta_.smallest, tail_meta_.largest, tail_meta_.fd.smallest_seqno,
+          tail_meta_.fd.largest_seqno, tail_meta_.marked_for_compaction,
+          tail_meta_.temperature, tail_meta_.oldest_blob_file_number,
+          tail_meta_.oldest_ancester_time, tail_meta_.file_creation_time,
+          tail_meta_.epoch_number, tail_meta_.file_checksum,
+          tail_meta_.file_checksum_func_name, tail_meta_.unique_id,
+          tail_meta_.compensated_range_deletion_size, tail_meta_.tail_size,
+          tail_meta_.user_defined_timestamps_persisted);
+    }
     edit_->SetBlobFileAdditions(std::move(blob_file_additions));
   }
 
@@ -1759,6 +1965,11 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   if (has_output) {
     stats.bytes_written = meta_.fd.GetFileSize();
     stats.num_output_files = 1;
+
+    if (tail_part) {
+      stats.bytes_written += tail_meta_.fd.GetFileSize();
+      stats.num_output_files += 1;
+    }
   }
 
   const auto& blobs = edit_->GetBlobFileAdditions();

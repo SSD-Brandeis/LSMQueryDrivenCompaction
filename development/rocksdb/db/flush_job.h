@@ -241,6 +241,7 @@ class PartialOrRangeFlushJob : public FlushJob {
   int level_ = -1;
   uint64_t file_number_ = -1;
   FileMetaData* file_meta_;
+  FileMetaData tail_meta_;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

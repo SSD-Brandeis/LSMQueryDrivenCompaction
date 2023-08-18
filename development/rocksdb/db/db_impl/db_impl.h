@@ -1735,9 +1735,8 @@ class DBImpl : public DB {
 
     BGFlushArg(ColumnFamilyData* cfd, uint64_t max_memtable_id,
                SuperVersionContext* superversion_context,
-               FlushReason flush_reason, MemTable* memtable,
-               int level, bool just_delete,
-               FileMetaData* meta_data)
+               FlushReason flush_reason, MemTable* memtable, int level,
+               bool just_delete, FileMetaData* meta_data)
         : cfd_(cfd),
           max_memtable_id_(max_memtable_id),
           superversion_context_(superversion_context),

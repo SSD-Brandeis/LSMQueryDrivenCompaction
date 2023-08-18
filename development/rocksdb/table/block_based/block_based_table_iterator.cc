@@ -489,25 +489,20 @@ void BlockBasedTableIterator::CheckOutOfBound() {
   }
 
   if (read_options_.range_query_partial_block_read && Valid()) {
-    bool is_in_range_ = user_comparator_.CompareWithoutTimestamp(
-                            Slice(read_options_.range_start_key),
-                            /*a_has_ts=*/false, user_key(),
-                            /*b_has_ts=*/true) <= 0;
-    if (is_in_range_) {
-      if (is_seeked_for_range_query_once) {
-        is_out_of_bound_ = false;
-      } else {
-        is_out_of_bound_ = false;
-        is_seeked_for_range_query_once = true;
-        const Slice target{read_options_.range_end_key};
-        Seek(target);
-        bool still_in_range;
-        while ((still_in_range = (user_comparator_.CompareWithoutTimestamp(
-                            Slice(read_options_.range_end_key),
-                            /*a_has_ts=*/false, user_key(),
-                            /*b_has_ts=*/true) > 0) && Valid())) {
-          Next();
-        }
+    if (is_seeked_for_range_query_once) {
+      is_out_of_bound_ = false;
+    } else {
+      is_out_of_bound_ = false;
+      is_seeked_for_range_query_once = true;
+      const Slice target{read_options_.range_end_key};
+      Seek(target);
+      bool still_in_range;
+      while ((still_in_range = (user_comparator_.CompareWithoutTimestamp(
+                                    Slice(read_options_.range_end_key),
+                                    /*a_has_ts=*/false, user_key(),
+                                    /*b_has_ts=*/true) > 0) &&
+                               Valid())) {
+        Next();
       }
     }
   }

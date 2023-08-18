@@ -59,8 +59,6 @@ void ArenaWrappedDBIter::Init(
 
 Status ArenaWrappedDBIter::Refresh(const std::string start_key,
                                    const std::string end_key) {
-  std::cout << "Verbosity in refresh "
-            << db_impl_->immutable_db_options().verbosity << std::endl;
   if (db_impl_->immutable_db_options().verbosity > 0) {
     std::cout << "[Verbosity]: refreshing iterator " << __FILE__ ":" << __LINE__
               << " " << __FUNCTION__ << std::endl

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <iostream>
+#include <string>
 
 #include "db/db_impl/db_impl.h"
 #include "db/range_del_aggregator.h"
@@ -158,11 +159,16 @@ class DBIter final : public Iterator {
     } else {
       const Slice ukey_and_ts = saved_key_.GetUserKey();
 <<<<<<< HEAD
+<<<<<<< HEAD
       return Slice(ukey_and_ts.data(), ukey_and_ts.size() - timestamp_size_,
                    ikey_.level);
 =======
       return Slice(ukey_and_ts.data(), ukey_and_ts.size() - timestamp_size_, ikey_.level);
 >>>>>>> efa059c (Added level info to slice)
+=======
+      return Slice(ukey_and_ts.data(), ukey_and_ts.size() - timestamp_size_,
+                   ikey_.level);
+>>>>>>> f3f727f (split partial file implemented)
     }
   }
   Slice value() const override {

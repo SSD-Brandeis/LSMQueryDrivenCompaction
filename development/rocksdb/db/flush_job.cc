@@ -1460,13 +1460,12 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     // ############## dump new file to human readable format #############
 
     if (db_options_.verbosity > 0) {
-      std::cout << "[Verbosity]: range new file: " << meta_.fd.GetNumber()
-                << " at level: " << level_
+      std::cout << "\n[Verbosity]: adding range new file: "
+                << meta_.fd.GetNumber() << " at level: " << level_
                 << " smallest: " << meta_.smallest.user_key().data()
                 << " largest: " << meta_.largest.user_key().data()
                 << " against memtable: " << memtable_->GetID() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
-                << std::endl;
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     }
 
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");

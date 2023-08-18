@@ -60,18 +60,14 @@ void ArenaWrappedDBIter::Init(
 Status ArenaWrappedDBIter::Refresh(const std::string start_key,
                                    const std::string end_key) {
   if (db_impl_->immutable_db_options().verbosity > 0) {
-    std::cout << "[Verbosity]: refreshing iterator " << __FILE__ ":" << __LINE__
-              << " " << __FUNCTION__ << std::endl
-              << std::endl;
-    std::cout << "[Verbosity]: setting range_start_key to: " << start_key << " "
-              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
-              << std::endl;
-    std::cout << "[Verbosity]: setting range_end_key to: " << end_key << " "
-              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl
-              << std::endl;
-    std::cout << "[Verbosity]: enabling read compaction " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl
-              << std::endl;
+    std::cout << "\n[Verbosity]: refreshing iterator " << __FILE__ ":"
+              << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "setting range_start_key to: " << start_key << " "
+              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "setting range_end_key to: " << end_key << " " << __FILE__ ":"
+              << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "enabling read compaction " << __FILE__ ":" << __LINE__ << " "
+              << __FUNCTION__ << std::endl;
   }
   read_options_.range_end_key = end_key;
   read_options_.range_start_key = start_key;
@@ -80,9 +76,8 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
   db_impl_->read_options_ = read_options_;
 
   if (db_impl_->immutable_db_options().verbosity > 0) {
-    std::cout << "[Verbosity]: pausing background work " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl
-              << std::endl;
+    std::cout << "\n[Verbosity]: pausing background work " << __FILE__ ":"
+              << __LINE__ << " " << __FUNCTION__ << std::endl;
   }
 
   db_impl_->PauseBackgroundWork();
@@ -95,7 +90,7 @@ Status ArenaWrappedDBIter::Reset() {
          db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
          db_impl_->bg_partial_or_range_flush_running_ > 0) {
     if (db_impl_->immutable_db_options().verbosity > 0) {
-      std::cout << "[Verbosity] waiting for flush jobs, scheduled: "
+      std::cout << "\n[Verbosity] waiting for flush jobs, scheduled: "
                 << db_impl_->bg_partial_or_range_flush_scheduled_
                 << " unscheduled: "
                 << db_impl_->unscheduled_partial_or_range_flushes_
@@ -103,7 +98,6 @@ Status ArenaWrappedDBIter::Reset() {
                 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
                 << std::endl;
     }
-
     db_impl_->SchedulePartialOrRangeFileFlush();
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
@@ -130,9 +124,8 @@ Status ArenaWrappedDBIter::Reset() {
   db_impl_->read_options_ = read_options_;
 
   if (db_impl_->immutable_db_options().verbosity > 0) {
-    std::cout << "[Verbosity]: continuing background work " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl
-              << std::endl;
+    std::cout << "\n[Verbosity]: continuing background work " << __FILE__ ":"
+              << __LINE__ << " " << __FUNCTION__ << std::endl;
   }
 
   db_impl_->ContinueBackgroundWork();

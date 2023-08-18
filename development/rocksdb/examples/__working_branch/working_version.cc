@@ -592,12 +592,12 @@ int runWorkload(EmuEnv *_env) {
             << std::endl;  // !YBS-sep07-XX!
   std::cout << "Maximum #ThreadsUsedToOpenFiles = "
             << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
-  std::cout << "Verbosity = " << options.verbosity
-            << std::endl;
+  std::cout << "Verbosity = " << options.verbosity << std::endl;
   Status s = DB::Open(options, kDBPath, &db);
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
 
+  db_impl_ = reinterpret_cast<DBImpl *>(db);
   Stats *fade_stats = Stats::getInstance();
   fade_stats->db_open = true;
 
@@ -739,22 +739,25 @@ int runWorkload(EmuEnv *_env) {
 
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
-        db_impl_ = reinterpret_cast<DBImpl *>(db);
 
         // it->Refresh();
         if (_env->verbosity > 0) {
           std::cout << "[Verbosity]: range query starting " << __FILE__ ":"
-                    << __LINE__ << " " << __FUNCTION__ << std::endl
-                    << std::endl;
+                    << __LINE__ << " " << __FUNCTION__ << std::endl;
         }
-        it->Refresh(to_string(start_key), to_string(end_key));
+
+        if (_env->enable_range_query_compaction) {
+          it->Refresh(to_string(start_key), to_string(end_key));
+        } else {
+          it->Refresh();
+        }
 
         assert(it->status().ok());
         for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
           if (it->key().ToString() >= to_string(end_key)) {
             break;
           }
-          if (_env->verbosity > 0) {
+          if (_env->verbosity > 1) {
             std::cout << "found key = " << it->key().ToString() << std::endl;
           }
         }
@@ -762,11 +765,12 @@ int runWorkload(EmuEnv *_env) {
           std::cerr << it->status().ToString() << std::endl;
         }
 
-        it->Reset();
+        if (_env->enable_range_query_compaction) {
+          it->Reset();
+        }
         if (_env->verbosity > 0) {
           std::cout << "[Verbosity]: range query completed " << __FILE__ ":"
-                    << __LINE__ << " " << __FUNCTION__ << std::endl
-                    << std::endl;
+                    << __LINE__ << " " << __FUNCTION__ << std::endl;
         }
 
         op_track._range_queries_completed++;
@@ -964,6 +968,11 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       "The number of unique inserts to issue in the experiment [def: 1]",
       {'i', "inserts"});
 
+  args::ValueFlag<int> enable_range_query_compaction_cmd(
+      group1, "enable_range_query_compaction",
+      "Enable range query comapaction [def: 0]",
+      {"rq", "range_query_compaction"});
+
   try {
     parser.ParseCLI(argc, argv);
   } catch (args::Help &) {
@@ -1026,6 +1035,12 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
   _env->target_file_size_base = _env->buffer_size;  // !YBS-sep07-XX!
   _env->max_bytes_for_level_base =
       _env->buffer_size * _env->size_ratio;  // !YBS-sep07-XX!
+
+  // range query compaction
+  _env->enable_range_query_compaction =
+      enable_range_query_compaction_cmd
+          ? args::get(enable_range_query_compaction_cmd)
+          : 0;  // default to false
 
   return 0;
 }

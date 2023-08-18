@@ -1563,7 +1563,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     // sst_dump.DumpTable(
     //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
     //     ") FileNumber: [" +
-    //     std::to_string(file_meta_->fd.GetNumber()) + "old_file" );
+    //     std::to_string(file_meta_->fd.GetNumber()) + "]_old_file" );
 
     // ############## dump old file to human readable format #############
 
@@ -1709,7 +1709,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     // sst_dump.DumpTable(
     //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
     //     ") FileNumber: [" +
-    //     std::to_string(meta_.fd.GetNumber()) + "new_file" );
+    //     std::to_string(meta_.fd.GetNumber()) + "]_new_file" );
 
     // ############## dump new file to human readable format #############
 

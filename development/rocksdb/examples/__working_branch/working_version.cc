@@ -423,7 +423,6 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   f_op->allow_write_stall = _env->allow_write_stall;
 
   // verbostity
-  std::cout << "verbosity: " << _env->verbosity << std::endl;
   op->verbosity = _env->verbosity;
 
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
@@ -593,7 +592,7 @@ int runWorkload(EmuEnv *_env) {
             << std::endl;  // !YBS-sep07-XX!
   std::cout << "Maximum #ThreadsUsedToOpenFiles = "
             << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
-  std::cout << "verbosity before opening db: " << options.verbosity
+  std::cout << "Verbosity = " << options.verbosity
             << std::endl;
   Status s = DB::Open(options, kDBPath, &db);
   if (!s.ok()) std::cerr << s.ToString() << std::endl;

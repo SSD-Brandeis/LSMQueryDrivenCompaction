@@ -1311,10 +1311,10 @@ void LevelIterator::Seek(const Slice& target) {
   if (read_options_.range_query_compaction_enabled &&
       file_index_ < flevel_->num_files && db_impl_ != nullptr &&
       icomparator_.user_comparator()->Compare(
-          flevel_->files[file_index_].largest_key,
+          flevel_->files[file_index_].file_metadata->largest.user_key(),
           Slice(read_options_.range_end_key)) <= 0 &&
       icomparator_.user_comparator()->Compare(
-          flevel_->files[file_index_].smallest_key,
+          flevel_->files[file_index_].file_metadata->smallest.user_key(),
           Slice(read_options_.range_start_key)) >= 0) {
     flevel_->files[file_index_].file_metadata->being_compacted = true;
     FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
@@ -1326,16 +1326,16 @@ void LevelIterator::Seek(const Slice& target) {
              read_options_.range_query_compaction_enabled &&
              ((icomparator_.user_comparator()->Compare(
                    Slice(read_options_.range_start_key),
-                   flevel_->files[file_index_].largest_key) < 0 &&
+                   flevel_->files[file_index_].file_metadata->largest.user_key()) < 0 &&
                icomparator_.user_comparator()->Compare(
                    Slice(read_options_.range_start_key),
-                   flevel_->files[file_index_].smallest_key) >= 0) ||
+                   flevel_->files[file_index_].file_metadata->smallest.user_key()) >= 0) ||
               (icomparator_.user_comparator()->Compare(
                    Slice(read_options_.range_end_key),
-                   flevel_->files[file_index_].smallest_key) > 0 &&
+                   flevel_->files[file_index_].file_metadata->smallest.user_key()) > 0 &&
                icomparator_.user_comparator()->Compare(
                    Slice(read_options_.range_end_key),
-                   flevel_->files[file_index_].largest_key) <= 0))) {
+                   flevel_->files[file_index_].file_metadata->largest.user_key()) <= 0))) {
     flevel_->files[file_index_].file_metadata->being_compacted = true;
     db_impl_->range_query_last_level_ =
         std::max(level_, db_impl_->range_query_last_level_);
@@ -1518,10 +1518,10 @@ bool LevelIterator::SkipEmptyFileForward() {
       if (db_impl_ != nullptr && file_index_ < flevel_->num_files &&
           read_options_.range_query_compaction_enabled &&
           icomparator_.user_comparator()->Compare(
-              flevel_->files[file_index_].largest_key,
+              flevel_->files[file_index_].file_metadata->largest.user_key(),
               Slice(read_options_.range_end_key)) <= 0 &&
           icomparator_.user_comparator()->Compare(
-              flevel_->files[file_index_].smallest_key,
+              flevel_->files[file_index_].file_metadata->smallest.user_key(),
               Slice(read_options_.range_start_key)) >= 0) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
         FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
@@ -1534,16 +1534,16 @@ bool LevelIterator::SkipEmptyFileForward() {
                  read_options_.range_query_compaction_enabled &&
                  ((icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_start_key),
-                       flevel_->files[file_index_].largest_key) < 0 &&
+                       flevel_->files[file_index_].file_metadata->largest.user_key()) < 0 &&
                    icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_start_key),
-                       flevel_->files[file_index_].smallest_key) >= 0) ||
+                       flevel_->files[file_index_].file_metadata->smallest.user_key()) >= 0) ||
                   (icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_end_key),
-                       flevel_->files[file_index_].smallest_key) > 0 &&
+                       flevel_->files[file_index_].file_metadata->smallest.user_key()) > 0 &&
                    icomparator_.user_comparator()->Compare(
                        Slice(read_options_.range_end_key),
-                       flevel_->files[file_index_].largest_key) <= 0))) {
+                       flevel_->files[file_index_].file_metadata->largest.user_key()) <= 0))) {
         flevel_->files[file_index_].file_metadata->being_compacted = true;
         db_impl_->range_query_last_level_ =
             std::max(level_, db_impl_->range_query_last_level_);

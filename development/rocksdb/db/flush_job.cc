@@ -1529,9 +1529,9 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   // NOTE: SequenceNumber mapping with time
   bool tail_part = false;
 
-  if (cfd_->internal_comparator().user_comparator()->Compare(
+  if (cfd_->internal_comparator().user_comparator()->CompareWithoutTimestamp(
           file_meta_->smallest.user_key(), read_options_.range_start_key) < 0 &&
-      cfd_->internal_comparator().user_comparator()->Compare(
+      cfd_->internal_comparator().user_comparator()->CompareWithoutTimestamp(
           file_meta_->largest.user_key(), read_options_.range_end_key) > 0) {
     tail_meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
     tail_meta_.epoch_number = cfd_->NewEpochNumber();

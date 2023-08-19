@@ -604,6 +604,7 @@ int runWorkload(EmuEnv *_env) {
   int current_level = fade_stats->levels_in_tree;
 
   // opening workload file for the first time
+  bool lexico_valid = false;
   ifstream workload_file;
   workload_file.open("workload.txt");
   assert(workload_file);
@@ -739,14 +740,17 @@ int runWorkload(EmuEnv *_env) {
 
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
+        lexico_valid = to_string(start_key).compare(to_string(end_key)) < 0;
 
         // it->Refresh();
         if (_env->verbosity > 0) {
-          std::cout << "[Verbosity]: range query starting " << __FILE__ ":"
+          std::cout << "\n[Verbosity]: range query starting " << __FILE__ ":"
                     << __LINE__ << " " << __FUNCTION__ << std::endl;
+          std::cout << "\n[Verbosity]: lexico_validity: "
+                    << (lexico_valid ? " True " : " False ") << std::endl;
         }
 
-        if (_env->enable_range_query_compaction) {
+        if (_env->enable_range_query_compaction && lexico_valid) {
           it->Refresh(to_string(start_key), to_string(end_key));
         } else {
           it->Refresh();
@@ -765,11 +769,11 @@ int runWorkload(EmuEnv *_env) {
           std::cerr << it->status().ToString() << std::endl;
         }
 
-        if (_env->enable_range_query_compaction) {
+        if (_env->enable_range_query_compaction && lexico_valid) {
           it->Reset();
         }
         if (_env->verbosity > 0) {
-          std::cout << "[Verbosity]: range query completed " << __FILE__ ":"
+          std::cout << "\n[Verbosity]: range query completed " << __FILE__ ":"
                     << __LINE__ << " " << __FUNCTION__ << std::endl;
         }
 

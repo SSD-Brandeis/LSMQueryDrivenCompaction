@@ -18,3 +18,6 @@ working_version_debug
 
 # db files
 db_working_home
+
+# custom increasing workload generator
+workloadGen*

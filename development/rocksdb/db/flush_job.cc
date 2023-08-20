@@ -1529,10 +1529,18 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   // NOTE: SequenceNumber mapping with time
   bool tail_part = false;
 
+  /*
+    6. Range fits inside file overlap -- (Partial Partial Flush)
+
+                 |---|
+               ---------
+               |       |
+               ---------
+  */
   if (cfd_->internal_comparator().user_comparator()->CompareWithoutTimestamp(
-          file_meta_->smallest.user_key(), read_options_.range_start_key) < 0 &&
+          read_options_.range_start_key, file_meta_->smallest.user_key()) > 0 &&
       cfd_->internal_comparator().user_comparator()->CompareWithoutTimestamp(
-          file_meta_->largest.user_key(), read_options_.range_end_key) > 0) {
+          read_options_.range_end_key, file_meta_->largest.user_key()) < 0) {
     tail_meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
     tail_meta_.epoch_number = cfd_->NewEpochNumber();
     tail_part = true;
@@ -1579,13 +1587,48 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     range_options.iterate_upper_bound =
         new Slice(read_options_.range_start_key);
 
-    if (cfd_->internal_comparator().user_comparator()->Compare(
-            file_meta_->largest.user_key(), read_options_.range_end_key) > 0 &&
-        !tail_part) {
-      range_options.iterate_upper_bound = nullptr;
-      range_options.range_query_partial_block_read = true;
-      range_options.range_start_key = read_options_.range_start_key;
-      range_options.range_end_key = read_options_.range_end_key;
+    /*
+      2. Smallest key overlap  -- (Partial Flush)
+
+             |--|
+                ----
+                |  |
+                ----
+
+      3. Head overlap  -- (Partial Flush)
+
+              |----|
+                -----
+                |   |
+                -----
+
+                |-|
+                -----
+                |   |
+                -----
+    */
+
+    if (!tail_part) {
+      if ((cfd_->internal_comparator().user_comparator()->Compare(
+               read_options_.range_start_key, file_meta_->smallest.user_key()) <
+               0 &&
+           cfd_->internal_comparator().user_comparator()->Compare(
+               read_options_.range_end_key, file_meta_->smallest.user_key()) ==
+               0) ||
+          (cfd_->internal_comparator().user_comparator()->Compare(
+               read_options_.range_start_key,
+               file_meta_->smallest.user_key()) <= 0 &&
+           cfd_->internal_comparator().user_comparator()->Compare(
+               read_options_.range_end_key, file_meta_->largest.user_key()) <
+               0 &&
+           cfd_->internal_comparator().user_comparator()->Compare(
+               read_options_.range_end_key, file_meta_->smallest.user_key()) >
+               0)) {
+        range_options.iterate_upper_bound = nullptr;
+        range_options.range_query_partial_block_read = true;
+        range_options.range_start_key = read_options_.range_start_key;
+        range_options.range_end_key = read_options_.range_end_key;
+      }
     }
 
     assert(job_context_);

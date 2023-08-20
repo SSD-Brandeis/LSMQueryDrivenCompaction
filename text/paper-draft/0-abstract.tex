@@ -1,1 +1,9 @@
-Making range deletes better in LSM-based storage engines. 
+In modern data systems, particulary for write-intensive workloads, log-structured merge (LSM) trees have become a most 
+widely used technique. However, current LSM-tree designs do not capitalize on the sort-merge operations performed for 
+the range queries, which leads to carry out almost same amount of work for each range query, even though they are same 
+or overlapping. LSM-trees excel in write-heavy workloads due to their concept of out-of-place updates, which also leave 
+invalid keys across multiple levels.
+
+In this paper, we have presented a query-driven compaction strategy which removes the invalid (logically deleted)
+keys from the LSM-tree and flush back the valid keys which are filtered by sort-merge performed during range query.
+Performance experments with the help of custom implementation in one of the popular LSM-based data store, Rocksdb. 

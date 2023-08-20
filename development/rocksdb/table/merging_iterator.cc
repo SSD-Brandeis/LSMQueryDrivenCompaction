@@ -570,9 +570,6 @@ class MergingIterator : public InternalIterator {
   void FindNextVisibleKey();
   void FindPrevVisibleKey();
 
-  // Flush partial sst files during range queries
-  // Status FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target);
-
   // FileMetaData vector to hold newly added files during range query
   std::vector<FileMetaData*> range_query_compaction_files;
 
@@ -688,10 +685,6 @@ class MergingIterator : public InternalIterator {
     return !maxHeap_->empty() ? &maxHeap_->top()->iter : nullptr;
   }
 };
-
-// Status MergingIterator::FlushPartialSSTFile(IteratorWrapper iter, size_t level, const Slice &target) {
-//     return db_impl_->FlushPartialSSTFile(iter, level, target, comparator_);
-// }
 
 // Pre-condition:
 // - Invariants (3) and (4) hold for i < starting_level

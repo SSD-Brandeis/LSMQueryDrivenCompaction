@@ -1305,43 +1305,144 @@ void LevelIterator::Seek(const Slice& target) {
   SkipEmptyFileForward();
   CheckMayBeOutOfLowerBound();
 
-  // TODO:[Shubham] Add New file to this level before Seek -- This would be
-  // partial file If everything is okay after seek write partial file and update
-  // status
+  /*
+    NOTE: how partial file flush works for level file
+    We can 6 scenario's
+
+    1.  No overlapping  -- (No action)
+
+        |--|                          |--|
+               ----             ----
+               |  |             |  |
+               ----             ----
+
+    2. Smallest or Largest key overlap  -- (Partial Flush)
+
+            |--|                   |--|
+               ----             ----
+               |  |             |  |
+               ----             ----
+
+    3. Head or Tail overlap  -- (Partial Flush)
+
+            |----|                 |----|
+               -----             -----
+               |   |             |   |
+               -----             -----
+
+               |-|                 |-|
+               -----             -----
+               |   |             |   |
+               -----             -----
+
+    4. End with largest or Start with smallest overlap  -- (Just Delete)
+       looks similar to 5
+
+            |------|             |------|
+               -----             -----
+               |   |             |   |
+               -----             -----
+
+    5. Start with smallest and End with largest or
+       Start <= smallest and End >= largest  -- (Just Delete)
+
+            |---------|          |---|
+               -----             -----
+               |   |             |   |
+               -----             -----
+
+    6. Range fits inside file overlap -- (Partial Partial Flush)
+
+                 |---|
+               ---------
+               |       |
+               ---------
+  */
+
   if (read_options_.range_query_compaction_enabled &&
-      file_index_ < flevel_->num_files && db_impl_ != nullptr &&
-      icomparator_.user_comparator()->Compare(
-          flevel_->files[file_index_].file_metadata->largest.user_key(),
-          Slice(read_options_.range_end_key)) <= 0 &&
-      icomparator_.user_comparator()->Compare(
-          flevel_->files[file_index_].file_metadata->smallest.user_key(),
-          Slice(read_options_.range_start_key)) >= 0) {
-    flevel_->files[file_index_].file_metadata->being_compacted = true;
-    FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-    db_impl_->AddPartialOrRangeFileFlushRequest(
-        FlushReason::kPartialFlush, nullptr, nullptr, level_, true, file_meta);
-    // TODO: (shubham) why column family is nullptr?
-  } else if (Valid() && db_impl_ != nullptr &&
-             file_index_ < flevel_->num_files &&
-             read_options_.range_query_compaction_enabled &&
-             ((icomparator_.user_comparator()->Compare(
-                   Slice(read_options_.range_start_key),
-                   flevel_->files[file_index_].file_metadata->largest.user_key()) < 0 &&
-               icomparator_.user_comparator()->Compare(
-                   Slice(read_options_.range_start_key),
-                   flevel_->files[file_index_].file_metadata->smallest.user_key()) >= 0) ||
-              (icomparator_.user_comparator()->Compare(
-                   Slice(read_options_.range_end_key),
-                   flevel_->files[file_index_].file_metadata->smallest.user_key()) > 0 &&
-               icomparator_.user_comparator()->Compare(
-                   Slice(read_options_.range_end_key),
-                   flevel_->files[file_index_].file_metadata->largest.user_key()) <= 0))) {
-    flevel_->files[file_index_].file_metadata->being_compacted = true;
-    db_impl_->range_query_last_level_ =
-        std::max(level_, db_impl_->range_query_last_level_);
-    FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-    db_impl_->AddPartialOrRangeFileFlushRequest(
-        FlushReason::kPartialFlush, nullptr, nullptr, level_, false, file_meta);
+      file_index_ < flevel_->num_files && db_impl_ != nullptr) {
+    // 4 & 5. start <= smallest and end >= largest  -- (Just Delete)
+    if (icomparator_.user_comparator()->Compare(
+            Slice(read_options_.range_start_key),
+            flevel_->files[file_index_].file_metadata->smallest.user_key()) <=
+            0 &&
+        icomparator_.user_comparator()->Compare(
+            Slice(read_options_.range_end_key),
+            flevel_->files[file_index_].file_metadata->largest.user_key()) >=
+            0) {
+      flevel_->files[file_index_].file_metadata->being_compacted = true;
+      FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
+                                                  nullptr, nullptr, level_,
+                                                  true, file_meta);
+    }
+    // 2 & 3. head or tail of a file overlap -- (Partial Flush)
+    else if (  // 3. starts here
+        (icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_start_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) <=
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_end_key),
+             flevel_->files[file_index_].file_metadata->largest.user_key()) <
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_end_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) >
+             0) ||  // OR
+        (icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_start_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) >
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_start_key),
+             flevel_->files[file_index_].file_metadata->largest.user_key()) <
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_end_key),
+             flevel_->files[file_index_].file_metadata->largest.user_key()) >=
+             0) ||  // OR 2. starts here
+        (icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_start_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) <
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_end_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) ==
+             0) ||  // OR
+        (icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_start_key),
+             flevel_->files[file_index_].file_metadata->largest.user_key()) ==
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_end_key),
+             flevel_->files[file_index_].file_metadata->largest.user_key()) >
+             0)) {
+      flevel_->files[file_index_].file_metadata->being_compacted = true;
+      db_impl_->range_query_last_level_ =
+          std::max(level_, db_impl_->range_query_last_level_);
+      FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
+                                                  nullptr, nullptr, level_,
+                                                  false, file_meta);
+    }
+    // 6. Range fits inside file overlap -- (Partial Partial Flush)
+    else if (icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) > 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->largest.user_key()) < 0) {
+      flevel_->files[file_index_].file_metadata->being_compacted = true;
+      db_impl_->range_query_last_level_ =
+          std::max(level_, db_impl_->range_query_last_level_);
+      FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
+                                                  nullptr, nullptr, level_,
+                                                  false, file_meta);
+    }
   }
 }
 
@@ -1515,42 +1616,92 @@ bool LevelIterator::SkipEmptyFileForward() {
       // write a new partial
       //    file to the same level
 
-      if (db_impl_ != nullptr && file_index_ < flevel_->num_files &&
-          read_options_.range_query_compaction_enabled &&
-          icomparator_.user_comparator()->Compare(
-              flevel_->files[file_index_].file_metadata->largest.user_key(),
-              Slice(read_options_.range_end_key)) <= 0 &&
-          icomparator_.user_comparator()->Compare(
-              flevel_->files[file_index_].file_metadata->smallest.user_key(),
-              Slice(read_options_.range_start_key)) >= 0) {
-        flevel_->files[file_index_].file_metadata->being_compacted = true;
-        FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
-                                                    nullptr, nullptr, level_,
-                                                    true, file_meta);
-        // TODO: (shubham) why column family is nullptr?
-      } else if (Valid() && db_impl_ != nullptr &&
-                 file_index_ < flevel_->num_files &&
-                 read_options_.range_query_compaction_enabled &&
-                 ((icomparator_.user_comparator()->Compare(
-                       Slice(read_options_.range_start_key),
-                       flevel_->files[file_index_].file_metadata->largest.user_key()) < 0 &&
-                   icomparator_.user_comparator()->Compare(
-                       Slice(read_options_.range_start_key),
-                       flevel_->files[file_index_].file_metadata->smallest.user_key()) >= 0) ||
-                  (icomparator_.user_comparator()->Compare(
-                       Slice(read_options_.range_end_key),
-                       flevel_->files[file_index_].file_metadata->smallest.user_key()) > 0 &&
-                   icomparator_.user_comparator()->Compare(
-                       Slice(read_options_.range_end_key),
-                       flevel_->files[file_index_].file_metadata->largest.user_key()) <= 0))) {
-        flevel_->files[file_index_].file_metadata->being_compacted = true;
-        db_impl_->range_query_last_level_ =
-            std::max(level_, db_impl_->range_query_last_level_);
-        FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-        db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
-                                                    nullptr, nullptr, level_,
-                                                    false, file_meta);
+      // refer to NOTE in Seek function
+      if (read_options_.range_query_compaction_enabled &&
+          file_index_ < flevel_->num_files && db_impl_ != nullptr) {
+        // 4 & 5. start <= smallest and end >= largest  -- (Just Delete)
+        if (icomparator_.user_comparator()->Compare(
+                Slice(read_options_.range_start_key),
+                flevel_->files[file_index_]
+                    .file_metadata->smallest.user_key()) <= 0 &&
+            icomparator_.user_comparator()->Compare(
+                Slice(read_options_.range_end_key),
+                flevel_->files[file_index_]
+                    .file_metadata->largest.user_key()) >= 0) {
+          flevel_->files[file_index_].file_metadata->being_compacted = true;
+          FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+          db_impl_->AddPartialOrRangeFileFlushRequest(
+              FlushReason::kPartialFlush, nullptr, nullptr, level_, true,
+              file_meta);
+        }
+        // 2 & 3. head or tail of a file overlap -- (Partial Flush)
+        else if (  // 3. starts here
+            (icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) <= 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->largest.user_key()) < 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) > 0) ||  // OR
+            (icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) > 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->largest.user_key()) < 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->largest.user_key()) >=
+                 0) ||  // OR 2. starts here
+            (icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) < 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) == 0) ||  // OR
+            (icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->largest.user_key()) == 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->largest.user_key()) > 0)) {
+          flevel_->files[file_index_].file_metadata->being_compacted = true;
+          db_impl_->range_query_last_level_ =
+              std::max(level_, db_impl_->range_query_last_level_);
+          FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+          db_impl_->AddPartialOrRangeFileFlushRequest(
+              FlushReason::kPartialFlush, nullptr, nullptr, level_, false,
+              file_meta);
+        }
+        // 6. Range fits inside file overlap -- (Partial Partial Flush)
+        else if (icomparator_.user_comparator()->Compare(
+                     Slice(read_options_.range_start_key),
+                     flevel_->files[file_index_]
+                         .file_metadata->smallest.user_key()) > 0 &&
+                 icomparator_.user_comparator()->Compare(
+                     Slice(read_options_.range_end_key),
+                     flevel_->files[file_index_]
+                         .file_metadata->largest.user_key()) < 0) {
+          flevel_->files[file_index_].file_metadata->being_compacted = true;
+          db_impl_->range_query_last_level_ =
+              std::max(level_, db_impl_->range_query_last_level_);
+          FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+          db_impl_->AddPartialOrRangeFileFlushRequest(
+              FlushReason::kPartialFlush, nullptr, nullptr, level_, false,
+              file_meta);
+        }
       }
     }
   }

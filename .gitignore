@@ -23,3 +23,5 @@ venv/*
 **.log
 **.synctex.gz
 **.out
+**.bbl
+**.blg

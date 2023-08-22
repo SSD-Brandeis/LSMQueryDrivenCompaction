@@ -512,6 +512,18 @@ void DBImpl::SchedulePartialOrRangeFileFlush() {
 
     env_->Schedule(&DBImpl::BGWorkPartialOrRangeFlush, fta, Env::Priority::HIGH,
                    this, &DBImpl::UnschedulePartialOrRangeFlushCallback);
+
+    if (immutable_db_options().verbosity > 0) {
+      std::cout << "\n[Verbosity]: scheduling more, now - scheduled: "
+                << bg_partial_or_range_flush_scheduled_
+                << " running: " << bg_partial_or_range_flush_running_
+                << " unscheduled: " << unscheduled_partial_or_range_flushes_
+                << " max_bg_job_limit: " << bg_job_limits.max_flushes << " "
+                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    }
+
+    env_->Schedule(&DBImpl::BGWorkPartialOrRangeFlush, fta, Env::Priority::HIGH,
+                   this, &DBImpl::UnschedulePartialOrRangeFlushCallback);
     --unscheduled_partial_or_range_flushes_;
   }
 }

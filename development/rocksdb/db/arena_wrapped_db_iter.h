@@ -12,8 +12,6 @@
 
 #include <iostream>
 #include <string>
-#include <iostream>
-#include <string>
 
 #include "db/db_impl/db_impl.h"
 #include "db/db_iter.h"

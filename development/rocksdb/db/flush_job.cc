@@ -1312,6 +1312,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     uint64_t total_num_entries = 0, total_num_deletes = 0;
     uint64_t total_data_size = 0;
     size_t total_memory_usage = 0;
+
     assert(job_context_);
     memtables.push_back(memtable_->NewIterator(ro, &arena));
     total_num_entries = memtable_->num_entries();
@@ -1436,38 +1437,11 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     TEST_SYNC_POINT_CALLBACK("FlushJob::WriteLevel0Table", &mems_);
     db_mutex_->Lock();
   }
+
   base_->Unref();
   const bool has_output = meta_.fd.GetFileSize() > 0;
 
   if (s.ok() && has_output) {
-    TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
-
-    // ############## dump new file to human readable format #############
-
-    // Options op;
-    // Temperature tmpperature = meta_.temperature;
-    // SstFileDumper sst_dump(
-    //     op,
-    //     TableFileName(db_options_.db_paths,
-    //                   meta_.fd.GetNumber(), 0),
-    //     tmpperature, cfd_->GetLatestCFOptions().target_file_size_base, false,
-    //     false, false);
-    // sst_dump.DumpTable(
-    //     "db_working_home/DumpOf(Level: " + std::to_string(level_) +
-    //     ") FileNumber: [" +
-    //     std::to_string(meta_.fd.GetNumber()) + "new_range_file" );
-
-    // ############## dump new file to human readable format #############
-
-    if (db_options_.verbosity > 0) {
-      std::cout << "\n[Verbosity]: adding range new file: "
-                << meta_.fd.GetNumber() << " at level: " << level_
-                << " smallest: " << meta_.smallest.user_key().data()
-                << " largest: " << meta_.largest.user_key().data()
-                << " against memtable: " << memtable_->GetID() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
-
     TEST_SYNC_POINT("DBImpl::FlushJob:SSTFileCreated");
 
     // ############## dump new file to human readable format #############

@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <iomanip>
 
 #include "rocksdb/db.h"
 // #include "rocksdb/slice.h"
@@ -803,14 +804,22 @@ int runWorkload(EmuEnv *_env) {
   // Status CloseDB(DB *&db, const FlushOptions &flush_op);
 
   workload_file.close();
+  db->WaitForCompact(WaitForCompactOptions());
   // CompactionMayAllComplete(db);
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
       db_impl_->DefaultColumnFamily());
   ColumnFamilyData *cfd = cfh->cfd();
 
+  std::vector<std::tuple<std::string /*level number*/, int /*number of files*/,
+                         int /*number of entries*/>>
+      levels_info;
+  int total_files = 0;
+  int total_entries = 0;
+
   std::string levels_state_before = "Workload done, waiting for compaction...";
   auto storage_info_before = cfd->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    int num_entries = 0;
     levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
     for (size_t file_index = 0; file_index < num_files; file_index++) {
@@ -819,13 +828,34 @@ int runWorkload(EmuEnv *_env) {
           "[" + std::to_string(fd.fd.GetNumber()) + "(" +
           fd.file_metadata->smallest.user_key().ToString() + ", " +
           fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+      storage_info_before->LevelFilesBrief(l)
+          .files[file_index]
+          .file_metadata->num_entries;
+      num_entries += storage_info_before->LevelFilesBrief(l)
+                         .files[file_index]
+                         .file_metadata->num_entries;
+    }
+    total_files += num_files;
+    total_entries += num_entries;
+    levels_info.push_back(std::make_tuple("Level-"+to_string(l), num_files, num_entries));
+  }
+  levels_info.push_back(std::make_tuple("Total: ", total_files, total_entries));
+
+  if (_env->verbosity > 0) {
+    std::cout << "\n\n" << std::setw(20) << "Level" 
+                        << std::setw(20) << "Num Files" 
+                        << std::setw(20) <<  "Num Entries" << std::endl;
+
+    for (auto level_info : levels_info) {
+      std::cout << std::setw(20) << std::get<0>(level_info)
+                << std::setw(20) << std::get<1>(level_info)
+                << std::setw(20) << std::get<2>(level_info) << std::endl;
     }
   }
 
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
 
-  db->WaitForCompact(WaitForCompactOptions());
   s = db->Close();
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());

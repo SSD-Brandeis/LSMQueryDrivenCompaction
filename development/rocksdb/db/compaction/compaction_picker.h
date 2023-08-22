@@ -222,14 +222,8 @@ class CompactionPicker {
 
   const InternalKeyComparator* icmp() const { return icmp_; }
 
-  bool IsCompactionInProgress() const { return compactions_in_progress_.size() > 0; }
-  void SetRangeQueryRunning(bool value) { is_range_query_running = value; }
-  bool IsRangeQueryRunning() const { return is_range_query_running; }
-
  protected:
   const ImmutableOptions& ioptions_;
-
-  bool is_range_query_running = false;
 
 // A helper function to SanitizeCompactionInputFiles() that
 // sanitizes "input_files" by adding necessary files.

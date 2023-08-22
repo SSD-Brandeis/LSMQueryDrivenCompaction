@@ -470,15 +470,6 @@ class ColumnFamilyData {
   bool queued_for_flush() { return queued_for_flush_; }
   bool queued_for_compaction() { return queued_for_compaction_; }
 
-  // wait for range query until cfd is queued or compaction is in progress
-  bool IsQueuedOrCompactionInProgress();
-  
-  // set range query running to true to stall future compactions
-  void SetRangeQueryRunningToTrue();
-
-  // once range query is complete let the automatic compaction trigger
-  void SetRangeQueryRunningToFalse();
-
   static std::pair<WriteStallCondition, WriteStallCause>
   GetWriteStallConditionAndCause(
       int num_unflushed_memtables, int num_l0_files,

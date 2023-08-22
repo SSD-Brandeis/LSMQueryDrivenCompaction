@@ -870,19 +870,6 @@ int GetL0ThresholdSpeedupCompaction(int level0_file_num_compaction_trigger,
 }
 }  // anonymous namespace
 
-// TODO: (shubham) Remove this kind of blocking .. do Pause and Continue background work
-bool ColumnFamilyData::IsQueuedOrCompactionInProgress() {
-  return queued_for_compaction() || compaction_picker()->IsCompactionInProgress(); 
-}
-
-void ColumnFamilyData::SetRangeQueryRunningToTrue() {
-  compaction_picker()->SetRangeQueryRunning(true);
-}
-
-void ColumnFamilyData::SetRangeQueryRunningToFalse() {
-  compaction_picker()->SetRangeQueryRunning(false);
-}
-
 std::pair<WriteStallCondition, WriteStallCause>
 ColumnFamilyData::GetWriteStallConditionAndCause(
     int num_unflushed_memtables, int num_l0_files,

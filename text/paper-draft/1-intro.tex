@@ -31,15 +31,15 @@ gains efficiency, subsequently leading to less number of I/O operations and a mo
 
 % Problem Statement
 \subsection{Problem Statement}
-The more appropriate approach to tuning a database for a specific workload can lead to significant savings in terms of 
-both space and time resources. State-of-the-art LSM-based data stores perform range queries by retrieving multiple files
-from various levels and filtering out invalid keys. Once the range query is complete, the work done during the 
-sort-merge operation is discarded. This work is neither cached nor flushed back to the LSM tree. This approach can give
-rise to two problems: (1) \textit{Redundant Work}: when the same range query or an overlapping one is executed again, 
-and (2) \textit{Increased Write Amplification}: when a compaction is triggered for the files containing keys 
-within the range of a previous range query. During this process, the system re-reads the invalid keys and subsequently 
-either drops them or replaces them with new values. As a result, the same data bytes are read and written during both 
-the range query and compaction processes, leading to higher read, write, and space amplification.
+The state-of-the-art LSM-based data stores performs range queries by retrieving multiple files from various levels and 
+filter out invalid keys. Once the range query is complete, the work done via the sort-merge operation for query is 
+discarded. The results are neither cached nor flushed back to the LSM tree except returning it to the application. This 
+approach can give rise to two problems: (1) \textit{Redundant Work}: when the same range query or 
+an overlapping one is executed again, and (2) \textit{Increased Write Amplification}: when a compaction is triggered 
+for the files containing keys within the range of a previous range query. During these process, the system re-reads the 
+invalid keys and subsequently either drops them or replaces them with new values. As a result, the same data bytes are 
+read and written during both the range query and compaction processes, leading to higher read, write, and space 
+amplification.
 
 
 % Contributions
@@ -47,4 +47,5 @@ the range query and compaction processes, leading to higher read, write, and spa
 In this paper, we present a query-driven compaction strategy that involves writing the valid keys back to the higher 
 levels of the LSM tree. While this approach may slightly increase the flush write bytes during a range query, it 
 substantially reduces the presence of invalid keys in the LSM tree. As a result, there is a notable reduction in read, 
-write, and space amplification during both compaction processes and future range queries.
+write, and space amplification during both compaction processes and future range queries. We have also implemented our
+approach in RocksDB, a popular LSM-based data store and conducted a series of experiments to evaluate its performance.

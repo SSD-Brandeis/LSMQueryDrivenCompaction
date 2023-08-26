@@ -15,8 +15,9 @@ Key::Key(string key)
 
 Key::Key(uint32_t key)
 {
+  key_str_ = to_string(key);
   key_int32_ = key;
-  string_enabled_ = false;
+  string_enabled_ = true;
 }
 
 bool Key::operator<(const Key &t) const

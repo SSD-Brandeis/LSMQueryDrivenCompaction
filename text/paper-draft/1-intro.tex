@@ -15,25 +15,37 @@ logically invalided. This process is also called \textbf{sort-merge}, which is s
 \textbf{Problem.} When executing a range query, the sort-merge operation is performed on sorted runs from multiple 
 levels, leading to the retrieval of both valid and invalid keys from higher levels. Consequently, more data is read than 
 actually required. This situation is acceptable when performing a single range query for a specific range. However, when 
-the same query or an overlapping one is executed repeatedly, a nearly identical amount of work is duplicated 
-unnecessarily. Furthermore, when a compaction is triggered within that specific range, some of the invalid keys that 
-were previously read and sorted during the range query are revisited. This results in redundant CPU cycles and I/O 
-operations, where the same data bytes are read repetitively until reaching the last level.
+the same query or an overlapping one is executed repeatedly, a nearly identical amount of work is executed. Furthermore, 
+when a compaction is triggered within that specific range, some of the invalid keys that were previously read, sorted 
+and filtered during the range query are revisited. This results in redundant CPU cycles and I/O operations, where the 
+same data bytes are read repetitively until reaching the last level.
 
 
 % Motivation
 \subsection{Motivation}
 The repetition of work involving invalid keys can be effectively mitigated by redirecting valid keys, filtered through 
-the sort-merge operation during a range query, back to the lower levels. This approach can be termed as 
+the sort-merge operation during a range query, back to the higher levels. This approach can be termed as 
 \textbf{query-driven compaction}. By minimizing the presence of invalid keys within the LSM tree, the compaction process 
 gains efficiency, subsequently leading to less number of I/O operations and a more optimal utilization of CPU cycles.
 
 
 % Problem Statement
 \subsection{Problem Statement}
-...
+The state-of-the-art LSM-based data stores performs range queries by retrieving multiple files from various levels and 
+filter out invalid keys. Once the range query is complete, the work done via the sort-merge operation for query is 
+discarded. The results are neither cached nor flushed back to the LSM tree except returning it to the application. This 
+approach can give rise to two problems: (1) \textit{Redundant Work}: when the same range query or 
+an overlapping one is executed again, and (2) \textit{Increased Write Amplification}: when a compaction is triggered 
+for the files containing keys within the range of a previous range query. During these process, the system re-reads the 
+invalid keys and subsequently either drops them or replaces them with new values. As a result, the same data bytes are 
+read and written during both the range query and compaction processes, leading to higher read, write, and space 
+amplification.
 
 
 % Contributions
 \subsection{Contributions}
-...
+In this paper, we present a query-driven compaction strategy that involves writing the valid keys back to the higher 
+levels of the LSM tree. While this approach may slightly increase the flush write bytes during a range query, it 
+substantially reduces the presence of invalid keys in the LSM tree. As a result, there is a notable reduction in read, 
+write, and space amplification during both compaction processes and future range queries. We have also implemented our
+approach in RocksDB, a popular LSM-based data store and conducted a series of experiments to evaluate its performance.

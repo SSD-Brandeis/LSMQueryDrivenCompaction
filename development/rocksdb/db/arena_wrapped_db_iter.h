@@ -78,6 +78,13 @@ class ArenaWrappedDBIter : public Iterator {
   Slice timestamp() const override { return db_iter_->timestamp(); }
   bool IsBlob() const { return db_iter_->IsBlob(); }
 
+  // Algorithm to decide if range query compaction can be performed
+  bool CanPerformRangeQueryCompaction();
+  long long GuessTheDifference(const std::string smaller_key,
+                               const std::string larger_key,
+                               const std::string given_key,
+                               const uint64_t total_keys, bool head);
+
   Status GetProperty(std::string prop_name, std::string* prop) override;
 
   Status Refresh() override;

@@ -57,6 +57,133 @@ void ArenaWrappedDBIter::Init(
   }
 }
 
+long long ArenaWrappedDBIter::GuessTheDifference(
+    const std::string /*smaller_key*/, const std::string /*larger_key*/,
+    const std::string /*given_key*/, const uint64_t /*total_keys*/,
+    bool /*head*/) {
+  // Let's guess the lexicographic difference between two strings
+  // TODO: (shubham) Implement this algorithm and think about
+  // the abstract class to make this configurable from application
+  return 0;
+}
+
+bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
+  // Let's see how many levels > 1 have data
+  // for the requested range query and then
+  // see how many files in each level contains
+  // data from each level and lastly compute
+  // the % age of data on each level
+
+  auto storage_info_before = cfd_->current()->storage_info();
+  auto user_comparator_ = cfd_->internal_comparator().user_comparator();
+  int num_levels_are_overlapping =
+      0;  // if num_files > 1 are overlapping on a level, increase this
+
+  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    int num_files_are_overlapping = 0;
+    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    // long long total_overlapping_entries_in_level = 0;
+    // long long total_entries_in_level = 0;
+    size_t file_index_ = FindFile(cfd_->internal_comparator(),
+                               storage_info_before->LevelFilesBrief(l),
+                               Slice(read_options_.range_start_key));
+
+    for (; file_index_ < num_files; file_index_++) {
+      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index_];
+
+      // refer to NOTE in LevelIterator::Seek function
+      //  4 & 5. start <= smallest and end >= largest
+      if (user_comparator_->Compare(Slice(read_options_.range_start_key),
+                                    fd.file_metadata->smallest.user_key()) <=
+              0 &&
+          user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                    fd.file_metadata->largest.user_key()) >=
+              0) {
+        // 100 % overlap
+        num_files_are_overlapping += 1;
+        // total_entries_in_level += fd.file_metadata->num_entries;
+        // total_overlapping_entries_in_level += fd.file_metadata->num_entries;
+      }
+      // 2 & 3. head of a file overlap
+      else if (  // 3. starts here
+          (user_comparator_->Compare(Slice(read_options_.range_start_key),
+                                     fd.file_metadata->smallest.user_key()) <=
+               0 &&
+           user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                     fd.file_metadata->largest.user_key()) <
+               0 &&
+           user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                     fd.file_metadata->smallest.user_key()) >
+               0) ||
+          (user_comparator_->Compare(Slice(read_options_.range_start_key),
+                                     fd.file_metadata->smallest.user_key()) <
+               0 &&
+           user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                     fd.file_metadata->smallest.user_key()) ==
+               0)) {
+        // head overlap
+        num_files_are_overlapping += 1;
+        // total_entries_in_level += fd.file_metadata->num_entries;
+        // total_overlapping_entries_in_level += GuessTheDifference(
+        //     fd.file_metadata->smallest.user_key().data(),
+        //     fd.file_metadata->largest.user_key().data(),
+        //     read_options_.range_end_key, fd.file_metadata->num_entries, true);
+      }
+      // 2 & 3. tail of a file overlap
+      else if ((user_comparator_->Compare(
+                    Slice(read_options_.range_start_key),
+                    fd.file_metadata->smallest.user_key()) > 0 &&
+                user_comparator_->Compare(
+                    Slice(read_options_.range_start_key),
+                    fd.file_metadata->largest.user_key()) < 0 &&
+                user_comparator_->Compare(
+                    Slice(read_options_.range_end_key),
+                    fd.file_metadata->largest.user_key()) >= 0) ||
+               (user_comparator_->Compare(
+                    Slice(read_options_.range_start_key),
+                    fd.file_metadata->largest.user_key()) == 0 &&
+                user_comparator_->Compare(
+                    Slice(read_options_.range_end_key),
+                    fd.file_metadata->largest.user_key()) > 0)) {
+        // tail overlap
+        num_files_are_overlapping += 1;
+        // total_entries_in_level += fd.file_metadata->num_entries;
+        // total_overlapping_entries_in_level +=
+        //     GuessTheDifference(fd.file_metadata->smallest.user_key().data(),
+        //                        fd.file_metadata->largest.user_key().data(),
+        //                        read_options_.range_start_key,
+        //                        fd.file_metadata->num_entries, false);
+      }
+      // 6. Range fits inside file overlap
+      else if (user_comparator_->Compare(
+                   Slice(read_options_.range_start_key),
+                   fd.file_metadata->smallest.user_key()) > 0 &&
+               user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                         fd.file_metadata->largest.user_key()) <
+                   0) {
+        // single file
+        num_files_are_overlapping += 1;
+        // total_entries_in_level += fd.file_metadata->num_entries;
+        // total_overlapping_entries_in_level += GuessTheDifference(
+        //     fd.file_metadata->smallest.user_key().data(),
+        //     fd.file_metadata->largest.user_key().data(),
+        //     read_options_.range_end_key, fd.file_metadata->num_entries, true);
+        // total_overlapping_entries_in_level +=
+        //     GuessTheDifference(fd.file_metadata->smallest.user_key().data(),
+        //                        fd.file_metadata->largest.user_key().data(),
+        //                        read_options_.range_start_key,
+        //                        fd.file_metadata->num_entries, false);
+      }
+    }
+
+    if (num_files_are_overlapping > 1) {
+      num_levels_are_overlapping += 1;
+    }
+  }
+
+  return num_levels_are_overlapping > 1;
+}
+
 Status ArenaWrappedDBIter::Refresh(const std::string start_key,
                                    const std::string end_key) {
   if (db_impl_->immutable_db_options().verbosity > 0) {
@@ -81,11 +208,29 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
   }
 
   db_impl_->PauseBackgroundWork();
+
+  if (!CanPerformRangeQueryCompaction()) {
+    if (db_impl_->immutable_db_options().verbosity > 0) {
+      std::cout << "\n[Verbosity]: skipping this time "
+                   "num_levels_are_overlapping <= 1 "
+                << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+                << std::endl;
+      std::cout << "\n[Verbosity]: continuing background work " << __FILE__ ":"
+                << __LINE__ << " " << __FUNCTION__ << std::endl;
+      db_impl_->ContinueBackgroundWork();
+      db_impl_->read_options_ = read_options_;
+      read_options_.range_query_compaction_enabled = false;
+      read_options_.range_start_key = "";
+      read_options_.range_end_key = "";
+    }
+  }
+
   return Refresh();
 }
 
 Status ArenaWrappedDBIter::Reset() {
   // db_impl_->WaitForCompact(WaitForCompactOptions());
+  bool background_work_continued = false;
   while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
          db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
          db_impl_->bg_partial_or_range_flush_running_ > 0) {
@@ -97,6 +242,15 @@ Status ArenaWrappedDBIter::Reset() {
                 << " running: " << db_impl_->bg_partial_or_range_flush_running_
                 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
                 << std::endl;
+    }
+    if (db_impl_->unscheduled_partial_or_range_flushes_ == 0) {
+      background_work_continued = true;
+      if (db_impl_->immutable_db_options().verbosity > 0) {
+        std::cout << "\n[Verbosity]: continuing background work "
+                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
+                  << std::endl;
+      }
+      db_impl_->ContinueBackgroundWork();
     }
     db_impl_->SchedulePartialOrRangeFileFlush();
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -118,17 +272,24 @@ Status ArenaWrappedDBIter::Reset() {
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
 
-  read_options_.range_end_key = "";
-  read_options_.range_start_key = "";
-  read_options_.range_query_compaction_enabled = false;
-  db_impl_->read_options_ = read_options_;
+  // check if range query compaction was enabled, set to true
+  // otherwise background compaction is already running
+  if (db_impl_->read_options_.range_query_compaction_enabled) {
+    read_options_.range_end_key = "";
+    read_options_.range_start_key = "";
+    read_options_.range_query_compaction_enabled = false;
+    db_impl_->read_options_ = read_options_;
 
-  if (db_impl_->immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: continuing background work " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl;
+    if (!background_work_continued) {
+      if (db_impl_->immutable_db_options().verbosity > 0) {
+        std::cout << "\n[Verbosity]: continuing background work "
+                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
+                  << std::endl;
+      }
+
+      db_impl_->ContinueBackgroundWork();
+    }
   }
-
-  db_impl_->ContinueBackgroundWork();
   return Status::OK();
 }
 

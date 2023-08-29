@@ -1642,6 +1642,31 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
         /*allow_unprepared_value=*/true,
         cfd_->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
         /*range_del_iter=*/nullptr));
+
+    // pull table properties if file_meta_ is overriden
+    if (file_meta_->num_entries == 0) {
+      std::shared_ptr<const TableProperties> tp;
+      cfd_->current()->GetTableProperties(read_options_, &tp, file_meta_);
+      file_meta_->init_stats_from_file = true;
+      if (!s.ok()) {
+        ROCKS_LOG_ERROR(db_options_.info_log,
+                        "Unable to load table properties for file %" PRIu64
+                        " --- %s\n",
+                        file_meta_->fd.GetNumber(), s.ToString().c_str());
+      }
+      if (tp.get() == nullptr) {
+        ROCKS_LOG_ERROR(db_options_.info_log,
+                        "Unable to load table properties for file %" PRIu64
+                        " --- %s\n",
+                        file_meta_->fd.GetNumber(), s.ToString().c_str());
+      }
+      file_meta_->num_entries = tp->num_entries;
+      file_meta_->num_deletions = tp->num_deletions;
+      file_meta_->raw_value_size = tp->raw_value_size;
+      file_meta_->raw_key_size = tp->raw_key_size;
+      file_meta_->num_range_deletions = tp->num_range_deletions;
+    }
+
     total_num_entries = file_meta_->num_entries;
     total_num_deletes = file_meta_->num_deletions;
     total_data_size = file_meta_->fd.GetFileSize();

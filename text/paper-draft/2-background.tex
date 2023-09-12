@@ -1,3 +1,8 @@
+\begin{figure}
+    \includegraphics[scale=0.10]{Figures/Vanilla Range Query vanilla.png}
+    \caption{Vanilla range query flow in LSM}\label{fig:vanilla_range_query}
+\end{figure}
+
 LSM-based data stores are designed to efficiently manage write-heavy workloads. The data is ingested through 
 a memtable, an in-memory data structure that stores keys and their corresponding values. Once the memtable reaches its 
 capacity, it is flushed to disk in the form of a sorted run. These sorted runs are stored across multiple levels in 

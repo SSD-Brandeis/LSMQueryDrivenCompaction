@@ -470,10 +470,14 @@ class DBImpl : public DB {
                                          int level = -1,
                                          bool just_delete = false,
                                          FileMetaData* file_meta = nullptr);
+  long long GetRoughOverlappingEntries(const std::string given_start_key,
+                                       const std::string given_end_key, int level,
+                                       FileMetaData* file_meta, ColumnFamilyData* cfd);
 
   int unscheduled_partial_or_range_flushes_ = 0;
   int bg_partial_or_range_flush_scheduled_ = 0;
   int bg_partial_or_range_flush_running_ = 0;
+  bool added_last_table = false;
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;

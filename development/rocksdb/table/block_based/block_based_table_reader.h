@@ -135,6 +135,24 @@ class BlockBasedTable : public TableReader {
                                 size_t compaction_readahead_size = 0,
                                 bool allow_unprepared_value = false) override;
 
+  // Returns a new iterator over the index of table contents. If supported
+  uint64_t NewZoneMapIterator(
+      const ReadOptions& read_options, Slice& target) override {
+    
+    std::cout << "[Creating new zone map iterator]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+    auto skip_count =
+        NewIndexIterator(read_options, /*need_upper_bound_check=*/false,
+                         /*input_iter=*/nullptr, /*get_context=*/nullptr,
+                         /*lookup_contex=*/nullptr)->SeekAndReturnSkipCount(target);
+
+    // TODO (shubham): Remove this after testing !!!
+    // std::ofstream outputFile("zone_map.txt");
+    // DumpIndexBlock(outputFile);
+    // outputFile.close();
+    // std::cout << "Dumped index block" << std::endl;
+    return skip_count;
+  }
+
   FragmentedRangeTombstoneIterator* NewRangeTombstoneIterator(
       const ReadOptions& read_options) override;
 

@@ -912,6 +912,9 @@ class IndexBlockIter final : public BlockIter<IndexValue> {
     value_.clear();
   }
 
+  // Return number of keys skipped while seek in a block
+  uint64_t SeekAndReturnSkipCount(const Slice& target) override;
+
   void PrevImpl() override;
   void NextImpl() override;
   void SeekToFirstImpl() override;

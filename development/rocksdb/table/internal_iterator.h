@@ -65,6 +65,11 @@ class InternalIteratorBase : public Cleanable {
   // 'target' contains user timestamp if timestamp is enabled.
   virtual void Seek(const Slice& target) = 0;
 
+  // Return number of keys skipped while seek in a block
+  virtual uint64_t SeekAndReturnSkipCount(const Slice&) {
+    return 0;
+  }
+
   // Position at the first key in the source that at or before target
   // The iterator is Valid() after this call iff the source contains
   // an entry that comes at or before target.

@@ -80,10 +80,7 @@ class ArenaWrappedDBIter : public Iterator {
 
   // Algorithm to decide if range query compaction can be performed
   bool CanPerformRangeQueryCompaction();
-  long long GuessTheDifference(const std::string smaller_key,
-                               const std::string larger_key,
-                               const std::string given_key,
-                               const uint64_t total_keys, bool head);
+  long long GuessTheDifference(const std::string given_start_key, const std::string given_end_key, int level, FileMetaData* file_meta);
 
   Status GetProperty(std::string prop_name, std::string* prop) override;
 

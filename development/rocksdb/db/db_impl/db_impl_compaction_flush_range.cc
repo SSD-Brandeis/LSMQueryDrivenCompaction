@@ -16,6 +16,92 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+// Find the rough index of the target to find the overlap percentage
+long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
+                                             const std::string given_end_key,
+                                             int level, FileMetaData* file_meta,
+                                             ColumnFamilyData* cfd) {
+  std::cout << "[Optimization]: trying to get the rough overlapped entries "
+            << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+
+  using TypedHandle = TableCache::TypedHandle;
+  long long overlapping_count = 0;
+
+  Status s;
+  TableReader* table_reader = nullptr;
+  TypedHandle* handle = nullptr;
+  auto& fd = file_meta->fd;
+  table_reader = fd.table_reader;
+
+  if (table_reader == nullptr) {
+    auto mutable_cf_options_ = cfd->GetLatestMutableCFOptions();
+    auto file_read_hist = cfd->internal_stats()->GetFileReadHist(0);
+    auto max_file_size_for_l0_meta_pin_ =
+        MaxFileSizeForL0MetaPin(*mutable_cf_options_);
+    s = cfd->table_cache()->FindTable(
+        read_options_, file_options_, cfd->internal_comparator(), *file_meta,
+        &(handle), mutable_cf_options_->block_protection_bytes_per_key,
+        mutable_cf_options_->prefix_extractor,
+        read_options_.read_tier == kBlockCacheTier /* no_io */, file_read_hist,
+        false, level, true, max_file_size_for_l0_meta_pin_,
+        file_meta->temperature);
+
+    if (s.ok()) {
+      table_reader = cfd->table_cache()->get_cache().Value(handle);
+    }
+  }
+
+  if (s.ok()) {
+    const ReadOptions read_options;
+    if (given_start_key != "" && given_end_key == "") {
+      // start key comes when tail is overlapping
+      //
+      //          |-----|
+      //    |----------|
+      //    |          |
+      //    |          |
+      //    |----------|
+
+      Slice target = Slice(given_start_key);
+      overlapping_count =
+          file_meta->num_entries -
+          table_reader->NewZoneMapIterator(read_options, target);
+    } else if (given_end_key != "" && given_start_key == "") {
+      // end key comes when head is overlapping
+      //
+      //    |-----|
+      //     |----------|
+      //     |          |
+      //     |          |
+      //     |----------|
+
+      Slice target = Slice(given_end_key);
+      overlapping_count =
+          table_reader->NewZoneMapIterator(read_options, target);
+    } else if (given_start_key != "" && given_end_key != "") {
+      // both start and end key comes when file middle portion is overlapping
+      //
+      //            |-----|
+      //          |----------|
+      //          |          |
+      //          |          |
+      //          |----------|
+
+      Slice start = Slice(given_start_key);
+      Slice end = Slice(given_end_key);
+      auto start_overlapping =
+          table_reader->NewZoneMapIterator(read_options, start);
+      auto end_overlapping =
+          table_reader->NewZoneMapIterator(read_options, end);
+      overlapping_count =
+          (file_meta->num_entries - start_overlapping) - end_overlapping;
+    }
+  }
+
+  assert(overlapping_count >= 0);
+  return overlapping_count;
+}
+
 Status DBImpl::FlushPartialOrRangeFile(
     ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
     bool* made_progress, JobContext* job_context, FlushReason flush_reason,

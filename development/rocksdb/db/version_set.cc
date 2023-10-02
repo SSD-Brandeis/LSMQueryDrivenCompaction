@@ -1160,7 +1160,6 @@ class LevelIterator final : public InternalIterator {
 
   // keeping track of edits while range query
   DBImpl* db_impl_;
-  Status partial_file_status_ = Status().Aborted();
 
   // To be propagated to RangeDelAggregator in order to safely truncate range
   // tombstones.

@@ -58,13 +58,15 @@ void ArenaWrappedDBIter::Init(
 }
 
 long long ArenaWrappedDBIter::GuessTheDifference(
-    const std::string /*smaller_key*/, const std::string /*larger_key*/,
-    const std::string /*given_key*/, const uint64_t /*total_keys*/,
-    bool /*head*/) {
+    const std::string given_start_key, const std::string given_end_key,
+    int level, FileMetaData* file_meta) {
   // Let's guess the lexicographic difference between two strings
   // TODO: (shubham) Implement this algorithm and think about
   // the abstract class to make this configurable from application
-  return 0;
+  std::cout << "[Optimization]: trying to gess the difference " << __FILE__
+            << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  return db_impl_->GetRoughOverlappingEntries(given_start_key, given_end_key,
+                                              level, file_meta, cfd_);
 }
 
 bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
@@ -79,14 +81,14 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
   int num_levels_are_overlapping =
       0;  // if num_files > 1 are overlapping on a level, increase this
 
-  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+  for (int l = 1; l < storage_info_before->num_non_empty_levels(); l++) {
     int num_files_are_overlapping = 0;
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-    // long long total_overlapping_entries_in_level = 0;
-    // long long total_entries_in_level = 0;
+    long long total_overlapping_entries_in_level = 0;
+    long long total_entries_in_level = 0;
     size_t file_index_ = FindFile(cfd_->internal_comparator(),
-                               storage_info_before->LevelFilesBrief(l),
-                               Slice(read_options_.range_start_key));
+                                  storage_info_before->LevelFilesBrief(l),
+                                  Slice(read_options_.range_start_key));
 
     for (; file_index_ < num_files; file_index_++) {
       auto fd = storage_info_before->LevelFilesBrief(l).files[file_index_];
@@ -100,9 +102,11 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                     fd.file_metadata->largest.user_key()) >=
               0) {
         // 100 % overlap
+        std::cout << "[Optimization]: Found 100 percent overlap " << __FILE__
+                  << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        // total_entries_in_level += fd.file_metadata->num_entries;
-        // total_overlapping_entries_in_level += fd.file_metadata->num_entries;
+        total_entries_in_level += fd.file_metadata->num_entries;
+        total_overlapping_entries_in_level += fd.file_metadata->num_entries;
       }
       // 2 & 3. head of a file overlap
       else if (  // 3. starts here
@@ -122,12 +126,12 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                      fd.file_metadata->smallest.user_key()) ==
                0)) {
         // head overlap
+        std::cout << "[Optimization]: Found head overlap " << __FILE__ << ":"
+                  << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        // total_entries_in_level += fd.file_metadata->num_entries;
-        // total_overlapping_entries_in_level += GuessTheDifference(
-        //     fd.file_metadata->smallest.user_key().data(),
-        //     fd.file_metadata->largest.user_key().data(),
-        //     read_options_.range_end_key, fd.file_metadata->num_entries, true);
+        total_entries_in_level += fd.file_metadata->num_entries;
+        total_overlapping_entries_in_level += GuessTheDifference(
+            "", read_options_.range_end_key, l, fd.file_metadata);
       }
       // 2 & 3. tail of a file overlap
       else if ((user_comparator_->Compare(
@@ -146,13 +150,12 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                     Slice(read_options_.range_end_key),
                     fd.file_metadata->largest.user_key()) > 0)) {
         // tail overlap
+        std::cout << "[Optimization]: Found tail overlap " << __FILE__ << ":"
+                  << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        // total_entries_in_level += fd.file_metadata->num_entries;
-        // total_overlapping_entries_in_level +=
-        //     GuessTheDifference(fd.file_metadata->smallest.user_key().data(),
-        //                        fd.file_metadata->largest.user_key().data(),
-        //                        read_options_.range_start_key,
-        //                        fd.file_metadata->num_entries, false);
+        total_entries_in_level += fd.file_metadata->num_entries;
+        total_overlapping_entries_in_level += GuessTheDifference(
+            read_options_.range_start_key, "", l, fd.file_metadata);
       }
       // 6. Range fits inside file overlap
       else if (user_comparator_->Compare(
@@ -162,21 +165,30 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                          fd.file_metadata->largest.user_key()) <
                    0) {
         // single file
+        std::cout << "[Optimization]: Found single file overlap " << __FILE__
+                  << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        // total_entries_in_level += fd.file_metadata->num_entries;
-        // total_overlapping_entries_in_level += GuessTheDifference(
-        //     fd.file_metadata->smallest.user_key().data(),
-        //     fd.file_metadata->largest.user_key().data(),
-        //     read_options_.range_end_key, fd.file_metadata->num_entries, true);
-        // total_overlapping_entries_in_level +=
-        //     GuessTheDifference(fd.file_metadata->smallest.user_key().data(),
-        //                        fd.file_metadata->largest.user_key().data(),
-        //                        read_options_.range_start_key,
-        //                        fd.file_metadata->num_entries, false);
+        total_entries_in_level += fd.file_metadata->num_entries;
+        total_overlapping_entries_in_level += GuessTheDifference(
+            read_options_.range_start_key, read_options_.range_end_key, l,
+            fd.file_metadata);
       }
     }
 
+    // TODO (shubham): Remove this after testing !!!
+    // print total overlapping entries in level and total entries in level which
+    // fall in range query
+    std::cout << "[Optimization]: Total overlapping entries in level: "
+              << total_overlapping_entries_in_level << " " << __FILE__ << ":"
+              << __LINE__ << " " << __FUNCTION__ << std::endl;
+    std::cout << "[Optimization]: Total entries in level: "
+              << total_entries_in_level << " " << __FILE__ << ":" << __LINE__
+              << " " << __FUNCTION__ << std::endl;
+
     if (num_files_are_overlapping > 1) {
+      std::cout << "[NUM FILES ARE OVERLAPPING] : " << num_files_are_overlapping
+                << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+                << std::endl;
       num_levels_are_overlapping += 1;
     }
   }
@@ -223,6 +235,8 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       read_options_.range_start_key = "";
       read_options_.range_end_key = "";
     }
+  } else {
+    db_impl_->added_last_table = false;
   }
 
   return Refresh();
@@ -230,6 +244,13 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
 
 Status ArenaWrappedDBIter::Reset() {
   // db_impl_->WaitForCompact(WaitForCompactOptions());
+  // Check if the last table is added to the queue
+  if (!db_impl_->added_last_table) {
+    MemTable* imm_range = cfd_->mem_range();
+    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
+                                                imm_range);
+    db_impl_->added_last_table = true;
+  }
   bool background_work_continued = false;
   while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
          db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||

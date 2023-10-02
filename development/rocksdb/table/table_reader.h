@@ -60,6 +60,12 @@ class TableReader {
       size_t compaction_readahead_size = 0,
       bool allow_unprepared_value = false) = 0;
 
+  // Returns a new iterator over the index of table contents. If supported
+  virtual uint64_t NewZoneMapIterator(
+      const ReadOptions& /*read_options*/, Slice& /*target*/) {
+    return 0;
+  }
+
   virtual FragmentedRangeTombstoneIterator* NewRangeTombstoneIterator(
       const ReadOptions& /*read_options*/) {
     return nullptr;

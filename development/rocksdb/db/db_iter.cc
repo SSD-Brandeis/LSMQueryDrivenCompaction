@@ -217,6 +217,7 @@ void DBIter::Next() {
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 imm_range);
+    db_impl_->added_last_table = true;
   } else if (user_comparator_.Compare(
                  key(), Slice(read_options_.range_end_key)) >= 0 &&
              read_options_.range_query_compaction_enabled &&
@@ -224,6 +225,7 @@ void DBIter::Next() {
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 imm_range);
+    db_impl_->added_last_table = true;
   }
 }
 

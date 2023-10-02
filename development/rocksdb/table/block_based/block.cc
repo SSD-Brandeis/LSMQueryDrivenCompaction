@@ -12,10 +12,10 @@
 #include "table/block_based/block.h"
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
 
 #include "monitoring/perf_context_imp.h"
 #include "port/port.h"
@@ -443,6 +443,38 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
 
   // Result found, and the iter is correctly set.
   return true;
+}
+
+// Seek till the given start/end key of the range and 
+// return the number of keys we have skipped.
+uint64_t IndexBlockIter::SeekAndReturnSkipCount(
+    const Slice& target) {
+  if (data_ == nullptr) {  // Not init yet
+    return 0;
+  }
+  this->SeekToFirst();
+
+  if (this->status().ok()) {
+    SeekImpl(target);
+    Slice akey = this->key();
+    Slice auser_key;
+    InternalKey aikey;
+
+    aikey.DecodeFrom(akey);
+    auser_key = aikey.user_key();
+    auto aoffset = this->value().handle.offset();
+
+    while (this->Valid() && CompareCurrentKey(target) <= 0) {
+      this->Next();
+      InternalKey next_ikey;
+      next_ikey.DecodeFrom(this->key());
+      aoffset = this->value().handle.offset();
+    }
+
+    auto askip_count = aoffset / 1024;
+    return askip_count;
+  }
+  return 0;
 }
 
 void IndexBlockIter::SeekImpl(const Slice& target) {

@@ -88,6 +88,35 @@ amplification for any compaction that has overlapping keys with the previous que
 Keys from Level-0 are not pushed to the last level and there would be no partial flush for the same to 
 keep the hot data in lower levels.
 
+\subsection{Informative Compaction}
+
+When the write buffer\(s\) is full and more ingestion request hits the database, it will keep stalling the new writes 
+till the buffer is not flused on disk. The query-driven compaction is fruitful for future queries but it may stall the 
+writes for the compactions happening during the range query. This needs a better decision making
+strategy to make more informative decision for performing the comaction during range query.
+
+The range query could be anything and it can read one or more files or entries from each level. Lets say, the query reads 
+50\% data from each level where the data between adjacent levels also overlaps (50\%). The successful run of it
+removes almost 50\% of range query data from the tree (assuming we have updates). This may also leads to write stalls if the  selectivity of the 
+range query is very large. Once a query-driven compaction is done for the above query, it will write all data for 
+this range into one level. Now, if new range query is triggered after some ingestion (assuming the new
+entries intersection with previous range query is not null) and new query has 90\% overlap with previous range query and the 
+remaining 10\% new entries are uniformly distributed across whole range query. It will end up with a scenario as showing 
+in Figure-\ref{fig:query-driven_compaction_with_increased_writes}.
+
+\subsubsection{Solution For Write Stalls}
+A small amount of work before starting a range query can help in making more informative decision for the above 
+scenarios. Lets understand this with an example.
+
+Consider we have an LSM with \textit{size ratio} T = 2, number of pages P = 512, number of entries B = 4, 
+and entry size E = 1024 B. Now, assume we have 4 levels.
+
+\begin{itemize}
+    \item Page size $\colon B * E \approx 4 KB$
+    \item File size $\colon P * B * E \approx 2 MB$
+    \item Total entries in file $\colon P * E \approx 2 K$
+\end{itemize}
+
 
 % \begin{figure}
 %     \includegraphics[scale=0.10]{Figures/No Overlap.png}

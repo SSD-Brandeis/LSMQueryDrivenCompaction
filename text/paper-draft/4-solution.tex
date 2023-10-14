@@ -91,31 +91,174 @@ keep the hot data in lower levels.
 \subsection{Informative Compaction}
 
 When the write buffer\(s\) is full and more ingestion request hits the database, it will keep stalling the new writes 
-till the buffer is not flused on disk. The query-driven compaction is fruitful for future queries but it may stall the 
-writes for the compactions happening during the range query. This needs a better decision making
-strategy to make more informative decision for performing the comaction during range query.
+till the buffer is not flused on the disk. The query-driven compaction is fruitful for future queries but it may stall the 
+newer writes for the compactions happening during the range query. This needs a better decision making
+strategy to decide whether we should go for compaction or just do the vanilla approach while the execution of range query.
 
-The range query could be anything and it can read one or more files or entries from each level. Lets say, the query reads 
-50\% data from each level where the data between adjacent levels also overlaps (50\%). The successful run of it
-removes almost 50\% of range query data from the tree (assuming we have updates). This may also leads to write stalls if the  selectivity of the 
-range query is very large. Once a query-driven compaction is done for the above query, it will write all data for 
-this range into one level. Now, if new range query is triggered after some ingestion (assuming the new
-entries intersection with previous range query is not null) and new query has 90\% overlap with previous range query and the 
-remaining 10\% new entries are uniformly distributed across whole range query. It will end up with a scenario as showing 
-in Figure-\ref{fig:query-driven_compaction_with_increased_writes}.
+The range query could be anything and it can read one or more files or entries from each level. If the query reads highly
+overlapping data across multiple levels then the query-driven compaction would remove more invalid keys but if the query only 
+has fewer keys that are overlapping it may add an overhead of writing valid keys. 
+%This may also leads to write stalls if the  selectivity of the range query is very large. 
+Once a query-driven compaction is done, it writes all data for the range into one level. Now, if a new range query is 
+triggered after some ingestion (assuming the intersection of previous range query with new entries is not 
+null) and it overlaps 90\% with previous range query with remaining 10\% that is uniformly 
+distributed across whole range query. It will end up with a scenario like shown in Figure-\ref{fig:query-driven_compaction_with_increased_writes}.
 
-\subsubsection{Solution For Write Stalls}
-A small amount of work before starting a range query can help in making more informative decision for the above 
-scenarios. Lets understand this with an example.
+% #TODO (shubham): Update the figure to make it uniformly distribute on full range
 
-Consider we have an LSM with \textit{size ratio} T = 2, number of pages P = 512, number of entries B = 4, 
-and entry size E = 1024 B. Now, assume we have 4 levels.
+\subsubsection{Solution}
+A small amount of work before starting a range query can help in making more informative decisions for the above 
+scenarios. Lets say for every range query we have few useful and unuseful entries that will be read from each level. 
+\textit{Useful entries ($E_{useful}$)} are those which are read from the level to server a range query and can be moved down to 
+remove logically invalid entries from lower levels. \textit{Unuseful entries ($E_{unuseful}$)} are those that are read 
+from the level and will be written on the same level within a smaller (partial) file. The \textit{useful} entries will also 
+have \textit{min\_key} (\textit{$x_i$}), \textit{max\_key} (\textit{$y_i$})%, and \textit{Total \# of entries} (\textit{$z_i$}) 
+as shown in Table-\ref{table:decision-making-meta-data}. Once we have this decision making data for each level we can 
+form our decision matrix as shown in Table-\ref{table:decision-matrix}. Each cell of decision matrix will represent the 
+boolean value $L_{[start\ end]}$. $L_{[start\ end]}$ is the NOT of XOR for the ratio of \textit{useful} to \textit{unuseful} 
+entries ($R_{utu}$) and ratio of \textit{number of useful entries in i} to \textit{number of useful entries in $i+1$} ($R_{ete}$).
+\hfill
+\begin{center}
+\begin{math}
+    L_{[start\ end]}=\left\{
+      \begin{array}{ll}
+        R_{utu} = \frac{\sum_{i=start}^{end} E_{\text{useful }i}}{\sum_{i=start}^{end} {E_{\text{useful }i}\ +\ E_{\text{unuseful }i}}}\\
+        R_{utu} > WC_{threshold}\\\\
+        R_{ete} = \frac{useful_{i}}{useful_{i+1}} \forall\ i=start\ to\ i<=end\\
+        R_{ete} >= UTL_{overlap}\ \&\ R_{ete} <= LTU_{overlap}
+      \end{array}
+    \right.
+  \end{math}
+\end{center}
+\hfill \break
+where \textit{$WC_{threshold}$} is the configurable write cost threshold and \textit{$UTL_{overlap}$} is the threshold for 
+overlapping entries from upper to lower level, \textit{$LTU_{overlap}$} is the threshold of overlapping entries from 
+lower to upper level. When $start == end$, the \textit{$R_{utu}$} will represent the ratio for number of $useful$ to 
+number of $useful + unuseful$ entries for same level (assuming \textit{$R_{ete}$} true for $start == end$). The same level ratio will help query-driven compaction to not pick 
+a level in which fewer entries are useful and it has to write lot of unuseful at same level.
+
+
+% % decision making meta data table %
+
+\begin{table}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{|c|c|c|c|c|} %c|}
+        \hline
+        \textbf{Level} & \textbf{\# of $E_{useful}$} & \textbf{\# of $E_{unuseful}$} & \textbf{min key} & \textbf{max key} \\ % & \textbf{\# of Entries} \\
+        \hline
+        L-0 & \-- & \-- & \-- & \-- \\ %\-- \\
+        \hline
+        L-1 & \textit{$E_{useful\ 1}$} & \textit{$E_{unuseful\ 1}$} & $x_{1}$ & $y_{1}$ \\ %& $z_{1}$ \\
+        \hline
+        L-2 & \textit{$E_{useful\ 2}$} & \textit{$E_{unuseful\ 2}$} & $x_{2}$ & $y_{2}$ \\ %$z_{2}$ \\
+        \hline
+        L-3 & \textit{$E_{useful\ 3}$} & \textit{$E_{unuseful\ 3}$} & $x_{3}$ & $y_{3}$ \\ %$z_{3}$ \\
+        \hline
+        $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\ %\vdots$ \\
+        \hline
+    \end{tabular}}
+    \caption{Decision Making Data}
+    \label{table:decision-making-meta-data}
+\end{table}
+
+% Decision matrix %
+\begin{table}
+    \begin{tabular}{ |c|c|c|c|c| }
+        \hline
+        \textbf{Level} & \textbf{L-1} & \textbf{L-2} & \textbf{L-3} & $\cdots$ \\
+        \hline
+        \textbf{L-1} & $L_{11}$ & $L_{12}$ & $L_{13}$ & $\cdots$ \\
+        \hline
+        \textbf{L-2} & $\times$ & $L_{22}$ & $L_{23}$ & $\cdots$ \\
+        \hline
+        \textbf{L-3} &  $\times$ &  $\times$ & $L_{33}$ & $\cdots$ \\
+        \hline
+        $\vdots$ &  $\vdots$ &  $\vdots$ & $\vdots$ & $\ddots$ \\
+        \hline
+    \end{tabular}
+    \caption{Decision Matrix }
+    \label{table:decision-matrix}
+\end{table}
+
+\begin{figure}
+    \includegraphics[scale=0.08]{Figures/first-state-lsm.jpg}
+    \caption{First LSM State}\label{fig:first-state-lsm}
+\end{figure}
+
+Let's take an example where we have an LSM with \textit{size ratio} 2 (T), number of pages 512 (P), 
+number of entries per page 4 (B), and entry size 1024 B (E). Now, assume we have 4 levels in current LSM state 
+(see Figure-\ref{fig:first-state-lsm}).
 
 \begin{itemize}
     \item Page size $\colon B * E \approx 4 KB$
     \item File size $\colon P * B * E \approx 2 MB$
-    \item Total entries in file $\colon P * E \approx 2 K$
+    \item Total entries in file $\colon P * B \approx 2 K$
+    \item $WC_{threshold} \colon 0.5$
+    \item $UTL_{threshold} \colon 0.4 \& LTU_{threshold} \colon 0.6$ 
 \end{itemize}
+
+All the levels upto L2 are full and L3 has 6 files. This means we have approx 4K entries in L1 (2 SSTs), 8K in 
+L2 (4 SSTs) and 12K in L3 (6 SSTs) as shown in Figure-\ref{fig:first-state-lsm}.
+
+Now, consider a range query (shaded portion in Figure-\ref{fig:first-state-lsm}) that will read entries from L1, L2, and L3.
+The $E_{useful}$ and $E_{unuseful}$ will be as shown in Table-\ref{table:ex-decision-making-meta-data}. 
+The \textit{min\_key} \& \textit{max\_key} are the minimum and maximum keys of the range query from each level. The 
+query-driven compaction will pick the first true entry from top of the decision matrix from the last column which in this 
+case would be $L_{13}$.
+
+\begin{table}
+    \resizebox{\linewidth}{!}{%
+    \begin{tabular}{|c|c|c|c|c|} %c|}
+        \hline
+        \textbf{Level} & \textbf{\# of $E_{useful}$} & \textbf{\# of $E_{unuseful}$} & \textbf{min key} & \textbf{max key} \\ %\textbf{\# of Entries} \\
+        \hline
+        L-0 & \-- & \-- & \-- & \-- \\ %\--\\
+        \hline
+        L-1 & 2K & 2K & $x_{1}$ & $y_{1}$ \\ %$z_{1}$ \\
+        \hline
+        L-2 & 5K & 3K & $x_{2}$ & $y_{2}$ \\ %$z_{2}$ \\
+        \hline
+        L-3 & 6.5K & 1.5K & $x_{3}$ & $y_{3}$ \\ %$z_{3}$ \\
+        \hline
+    \end{tabular}}
+    \caption{Decision Making Data }
+    \label{table:ex-decision-making-meta-data}
+\end{table}
+
+\begin{table}
+    \captionsetup{justification=centering,margin=2cm}
+    \begin{tabular}{ |c|c|c|c| }
+        \hline
+        \textbf{Level} & \textbf{L-1} & \textbf{L-2} & \textbf{L-3} \\
+        \hline
+        \textbf{L-1} & $true$ & $true$ & $true$ \\
+        \hline
+        \textbf{L-2} & $\times$ & $true$ & $true$ \\
+        \hline
+        \textbf{L-3} &  $\times$ &  $\times$ & $true$ \\
+        \hline
+    \end{tabular}
+    \caption{Decision Matrix (assuming that each level is completely overlapping with next level range data)}
+    \label{table:ex-decision-matrix}
+\end{table}
+
+The decision matrix can be formed based on Table-\ref{table:ex-decision-making-meta-data} (as shown in 
+Table-\ref{table:ex-decision-matrix}). For this example we assume that the range of keys from every level is completely
+overlapping the next level range keys in a uniform manner.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 % \begin{figure}
@@ -152,3 +295,22 @@ and entry size E = 1024 B. Now, assume we have 4 levels.
 %     \includegraphics[scale=0.10]{Figures/Complete Overlap.png}
 %     \caption{Complete file overlap}\label{fig:complete_overlap}
 % \end{figure}
+
+
+
+% \begin{table}
+%     \captionsetup{justification=centering,margin=2cm}
+%     \begin{tabular}{ |c|c|c|c| }
+%         \hline
+%         \textbf{Level} & \textbf{L-1} & \textbf{L-2} & \textbf{L-3} \\
+%         \hline
+%         \textbf{L-1} & $0.5$ & $0.5$ & $0.5$ \\
+%         \hline
+%         \textbf{L-2} & $\times$ & $0.625$ & $0.59$ \\
+%         \hline
+%         \textbf{L-3} &  $\times$ &  $\times$ & $0.812$ \\
+%         \hline
+%     \end{tabular}
+%     \caption{Decision Matrix (assuming that each level is completely overlapping with next level range data)}
+%     \label{table:ex-decision-matrix}
+% \end{table}

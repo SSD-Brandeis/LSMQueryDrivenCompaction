@@ -112,8 +112,9 @@ scenarios. Lets say for every range query we have few useful and unuseful entrie
 \textit{Useful entries ($E_{useful}$)} are those which are read from the level to server a range query and can be moved down to 
 remove logically invalid entries from lower levels. \textit{Unuseful entries ($E_{unuseful}$)} are those that are read 
 from the level and will be written on the same level within a smaller (partial) file. The \textit{useful} entries will also 
-have \textit{min\_key} (\textit{$x_i$}), \textit{max\_key} (\textit{$y_i$})%, and \textit{Total \# of entries} (\textit{$z_i$}) 
-as shown in Table-\ref{table:decision-making-meta-data}. Once we have this decision making data for each level we can 
+have \textit{min\_key} (\textit{$x_i$}), \textit{max\_key} (\textit{$y_i$}), and \textit{Total \# of entries} (\textit{$z_{ij}$}) 
+as shown in Table-\ref{table:decision-making-meta-data}. The \textit{$z_{ij}$} is the \# of overlapping entries between 
+two adjacent levels $i$ and $j$ from the range of entries. Once we have this decision making data for each level we can 
 form our decision matrix as shown in Table-\ref{table:decision-matrix}. Each cell of decision matrix will represent the 
 boolean value $L_{[start\ end]}$. $L_{[start\ end]}$ is the NOT of XOR for the ratio of \textit{useful} to \textit{unuseful} 
 entries ($R_{utu}$) and ratio of \textit{number of useful entries in i} to \textit{number of useful entries in $i+1$} ($R_{ete}$).
@@ -124,7 +125,7 @@ entries ($R_{utu}$) and ratio of \textit{number of useful entries in i} to \text
       \begin{array}{ll}
         R_{utu} = \frac{\sum_{i=start}^{end} E_{\text{useful }i}}{\sum_{i=start}^{end} {E_{\text{useful }i}\ +\ E_{\text{unuseful }i}}}\\
         R_{utu} > WC_{threshold}\\\\
-        R_{ete} = \frac{useful_{i}}{useful_{i+1}} \forall\ i=start\ to\ i<=end\\
+        R_{ete} = \frac{z_{i}}{z_{i+1}} \forall\ i=start\ to\ end\\
         R_{ete} >= UTL_{overlap}\ \&\ R_{ete} <= LTU_{overlap}
       \end{array}
     \right.
@@ -142,19 +143,19 @@ a level in which fewer entries are useful and it has to write lot of unuseful at
 
 \begin{table}
 \resizebox{\linewidth}{!}{%
-\begin{tabular}{|c|c|c|c|c|} %c|}
+\begin{tabular}{|c|c|c|c|c|c|}
         \hline
-        \textbf{Level} & \textbf{\# of $E_{useful}$} & \textbf{\# of $E_{unuseful}$} & \textbf{min key} & \textbf{max key} \\ % & \textbf{\# of Entries} \\
+        \textbf{Level} & \textbf{\# of $E_{useful}$} & \textbf{\# of $E_{unuseful}$} & \textbf{min key} & \textbf{max key} & \textbf{\# of Entries} \\
         \hline
-        L-0 & \-- & \-- & \-- & \-- \\ %\-- \\
+        L-0 & \-- & \-- & \-- & \-- & \-- \\
         \hline
-        L-1 & \textit{$E_{useful\ 1}$} & \textit{$E_{unuseful\ 1}$} & $x_{1}$ & $y_{1}$ \\ %& $z_{1}$ \\
+        L-1 & \textit{$E_{useful\ 1}$} & \textit{$E_{unuseful\ 1}$} & $x_{1}$ & $y_{1}$ & $z_{01}$ \\
         \hline
-        L-2 & \textit{$E_{useful\ 2}$} & \textit{$E_{unuseful\ 2}$} & $x_{2}$ & $y_{2}$ \\ %$z_{2}$ \\
+        L-2 & \textit{$E_{useful\ 2}$} & \textit{$E_{unuseful\ 2}$} & $x_{2}$ & $y_{2}$ & $z_{12}$ \\
         \hline
-        L-3 & \textit{$E_{useful\ 3}$} & \textit{$E_{unuseful\ 3}$} & $x_{3}$ & $y_{3}$ \\ %$z_{3}$ \\
+        L-3 & \textit{$E_{useful\ 3}$} & \textit{$E_{unuseful\ 3}$} & $x_{3}$ & $y_{3}$ & $z_{23}$ \\
         \hline
-        $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\ %\vdots$ \\
+        $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\
         \hline
     \end{tabular}}
     \caption{Decision Making Data}
@@ -194,7 +195,7 @@ number of entries per page 4 (B), and entry size 1024 B (E). Now, assume we have
     \item File size $\colon P * B * E \approx 2 MB$
     \item Total entries in file $\colon P * B \approx 2 K$
     \item $WC_{threshold} \colon 0.5$
-    \item $UTL_{threshold} \colon 0.4 \& LTU_{threshold} \colon 0.6$ 
+    \item $UTL_{threshold} \colon 0.4\ \&\ LTU_{threshold} \colon 0.6$ 
 \end{itemize}
 
 All the levels upto L2 are full and L3 has 6 files. This means we have approx 4K entries in L1 (2 SSTs), 8K in 
@@ -203,22 +204,22 @@ L2 (4 SSTs) and 12K in L3 (6 SSTs) as shown in Figure-\ref{fig:first-state-lsm}.
 Now, consider a range query (shaded portion in Figure-\ref{fig:first-state-lsm}) that will read entries from L1, L2, and L3.
 The $E_{useful}$ and $E_{unuseful}$ will be as shown in Table-\ref{table:ex-decision-making-meta-data}. 
 The \textit{min\_key} \& \textit{max\_key} are the minimum and maximum keys of the range query from each level. The 
-query-driven compaction will pick the first true entry from top of the decision matrix from the last column which in this 
-case would be $L_{13}$.
+query-driven compaction will pick the first true entry from top of the decision matrix from the last column which in the 
+above example it would be $L_{13}$.
 
 \begin{table}
     \resizebox{\linewidth}{!}{%
-    \begin{tabular}{|c|c|c|c|c|} %c|}
+    \begin{tabular}{|c|c|c|c|c|c|}
         \hline
-        \textbf{Level} & \textbf{\# of $E_{useful}$} & \textbf{\# of $E_{unuseful}$} & \textbf{min key} & \textbf{max key} \\ %\textbf{\# of Entries} \\
+        \textbf{Level} & \textbf{\# of $E_{useful}$} & \textbf{\# of $E_{unuseful}$} & \textbf{min key} & \textbf{max key} & \textbf{\# of Entries} \\
         \hline
-        L-0 & \-- & \-- & \-- & \-- \\ %\--\\
+        L-0 & \-- & \-- & \-- & \-- & \--\\
         \hline
-        L-1 & 2K & 2K & $x_{1}$ & $y_{1}$ \\ %$z_{1}$ \\
+        L-1 & 2K & 2K & $x_{1}$ & $y_{1}$ & $z_{01}$ \\
         \hline
-        L-2 & 5K & 3K & $x_{2}$ & $y_{2}$ \\ %$z_{2}$ \\
+        L-2 & 5K & 3K & $x_{2}$ & $y_{2}$ & $z_{12}$ \\
         \hline
-        L-3 & 6.5K & 1.5K & $x_{3}$ & $y_{3}$ \\ %$z_{3}$ \\
+        L-3 & 6.5K & 1.5K & $x_{3}$ & $y_{3}$ & $z_{23}$ \\
         \hline
     \end{tabular}}
     \caption{Decision Making Data }

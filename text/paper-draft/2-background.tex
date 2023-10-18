@@ -9,14 +9,14 @@ capacity, it is flushed to disk in the form of a sorted run. These sorted runs a
 files that are sorted by key. The compactions are also triggered in the background when the size of a level exceeds a 
 specific threshold.
 
-\textbf{Updates in LSM.} Updates are executed in an out-of-place fashion, where new values are written to lower levels 
+\Paragraph{Updates in LSM} Updates are executed in an out-of-place fashion, where new values are written to lower levels 
 while retaining old values in higher levels.
 
-\textbf{Deletes in LSM.} Deletions are performed by adding a special marker called a \textit{tombstone}. Tombstones are 
+\Paragraph{Deletes in LSM} Deletions are performed by adding a special marker called a \textit{tombstone}. Tombstones are 
 utilized to filter out logically deleted keys during range queries or compactions. They also serve as a form of soft 
 deletion for point queries. Tombstones are removed when they reach the lowest level of the LSM structure.
 
-\textbf{Range queries in LSM.} LSM supports range queries by merging keys from multiple levels and filtering out 
+\Paragraph{Range queries in LSM} LSM supports range queries by merging keys from multiple levels and filtering out 
 invalid keys.
 
 In the context of range queries, LSM-based data stores typically employ a straightforward approach: they create an 
@@ -24,7 +24,7 @@ iterator for each level and perform a K-way merge. This merge process involves p
 asynchronously from each level into memory and executing a sort-merge operation. The K-way merge eliminates the need 
 to load all files from each level into memory simultaneously, thus reducing memory footprint.
 
-\textbf{Leveled Compaction.} Leveled compaction uses ``merge with'' strategy, where each level is merged with 
+\Paragraph{Leveled Compaction} Leveled compaction uses ``merge with'' strategy, where each level is merged with 
 next level, which is usually much larger as per the configured size ratio.
 
 The compactions are triggered to move data from lower levels to higher levels. The process involves selecting a file 

@@ -46,7 +46,8 @@ start\_key and end\_key. We can have three scenarios for the partial file flush,
     \caption{Query-driven compaction with increased writes problem due to less overlap}\label{fig:query-driven_compaction_with_increased_writes}
 \end{figure*}
 
-\begin{enumerate}
+\subhadeep{For enumerate, always use the following options.}
+\begin{enumerate}[leftmargin=*,labelindent=0mm, itemsep=0.2\baselineskip]
     \item \textbf{No overlap} In this scenario, the partial file flush will not happen as the file does not overlap. 
     Fig-\ref{fig:file_range_overlaps} (e)
     \item \textbf{Smallest or Largest key overlap \textit{(Partial Flush)}} In this, the smallest or largest key of the 
@@ -102,7 +103,7 @@ has fewer keys that are overlapping, it may add more overhead of writing valid k
 Once a query-driven compaction is done, it writes all the data for the range into one level. Now, if a new range query is 
 triggered after some ingestion (assuming the intersection of previous range query with new entries is not 
 null) and it overlaps 90\% with previous range query with remaining 10\% that is uniformly 
-distributed across whole range query. It will end up with a scenario like shown in Fig-\ref{fig:query-driven_compaction_with_increased_writes}.
+distributed across whole range query. It will end up with a scenario like shown in Figure~\ref{fig:query-driven_compaction_with_increased_writes}. \subhadeep{sample Figure caption.}
 
 % #TODO (shubham): Update the figure to make it uniformly distribute on full range
 

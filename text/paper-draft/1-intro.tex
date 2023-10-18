@@ -13,7 +13,7 @@ making room for new data in lower levels.
 
 \textbf{Range queries.} The LSM design is optimized for write-heavy workloads, but it also supports range queries. The
 range queries are performed by merging the sorted runs from multiple levels and filtering out the keys that have been
-logically invalided. This process is also called \textbf{sort-merge}, which is similar to the compaction.
+logically invalided. This process is also called \textbf{sort-merge}, which is similar to the compaction~\cite{Sarkar2021}.
 
 \textbf{Problem.} When executing a range query, the sort-merge operation is performed on sorted runs from multiple 
 levels, leading to the retrieval of both valid and invalid keys from higher levels. Consequently, more data is read than 

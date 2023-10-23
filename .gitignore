@@ -25,3 +25,9 @@ venv/*
 **.out
 **.bbl
 **.blg
+
+# paper pdf [generated at user side]
+**.pdf
+
+# bibliography biblio.tex [generated at user side]
+**biblio.tex

@@ -61,9 +61,9 @@ class TableReader {
       bool allow_unprepared_value = false) = 0;
 
   // Returns a new iterator over the index of table contents. If supported
-  virtual uint64_t NewZoneMapIterator(
+  virtual std::tuple<uint64_t, Slice> GetOverlappingEntriesForFile(
       const ReadOptions& /*read_options*/, Slice& /*target*/) {
-    return 0;
+    return std::make_tuple(0, Slice());
   }
 
   virtual FragmentedRangeTombstoneIterator* NewRangeTombstoneIterator(

@@ -136,11 +136,9 @@ class BlockBasedTable : public TableReader {
                                 bool allow_unprepared_value = false) override;
 
   // Returns a new iterator over the index of table contents. If supported
-  uint64_t NewZoneMapIterator(
+  std::tuple<uint64_t, Slice> GetOverlappingEntriesForFile(
       const ReadOptions& read_options, Slice& target) override {
-    
-    std::cout << "[Creating new zone map iterator]: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    auto skip_count =
+    auto skip_count_with_key =
         NewIndexIterator(read_options, /*need_upper_bound_check=*/false,
                          /*input_iter=*/nullptr, /*get_context=*/nullptr,
                          /*lookup_contex=*/nullptr)->SeekAndReturnSkipCount(target);
@@ -150,7 +148,7 @@ class BlockBasedTable : public TableReader {
     // DumpIndexBlock(outputFile);
     // outputFile.close();
     // std::cout << "Dumped index block" << std::endl;
-    return skip_count;
+    return skip_count_with_key;
   }
 
   FragmentedRangeTombstoneIterator* NewRangeTombstoneIterator(

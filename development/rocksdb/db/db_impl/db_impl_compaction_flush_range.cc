@@ -20,9 +20,9 @@ namespace ROCKSDB_NAMESPACE {
 long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
                                              const std::string given_end_key,
                                              int level, FileMetaData* file_meta,
-                                             ColumnFamilyData* cfd) {
-  std::cout << "[Optimization]: trying to get the rough overlapped entries "
-            << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+                                             ColumnFamilyData* cfd,
+                                             Slice& useful_min_key,
+                                             Slice& useful_max_key) {
 
   using TypedHandle = TableCache::TypedHandle;
   long long overlapping_count = 0;
@@ -63,9 +63,11 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       //    |----------|
 
       Slice target = Slice(given_start_key);
+      auto skip_count_with_key =
+          table_reader->GetOverlappingEntriesForFile(read_options, target);
       overlapping_count =
-          file_meta->num_entries -
-          table_reader->NewZoneMapIterator(read_options, target);
+          file_meta->num_entries - std::get<0>(skip_count_with_key);
+      useful_min_key = std::get<1>(skip_count_with_key);
     } else if (given_end_key != "" && given_start_key == "") {
       // end key comes when head is overlapping
       //
@@ -76,8 +78,10 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       //     |----------|
 
       Slice target = Slice(given_end_key);
-      overlapping_count =
-          table_reader->NewZoneMapIterator(read_options, target);
+      auto skip_count_with_key =
+          table_reader->GetOverlappingEntriesForFile(read_options, target);
+      overlapping_count = std::get<0>(skip_count_with_key);
+      useful_max_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key != "" && given_end_key != "") {
       // both start and end key comes when file middle portion is overlapping
       //
@@ -90,11 +94,15 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice start = Slice(given_start_key);
       Slice end = Slice(given_end_key);
       auto start_overlapping =
-          table_reader->NewZoneMapIterator(read_options, start);
+          table_reader->GetOverlappingEntriesForFile(read_options, start);
       auto end_overlapping =
-          table_reader->NewZoneMapIterator(read_options, end);
+          table_reader->GetOverlappingEntriesForFile(read_options, end);
       overlapping_count =
-          (file_meta->num_entries - start_overlapping) - end_overlapping;
+          std::get<0>(end_overlapping) - std::get<0>(start_overlapping);
+      // (file_meta->num_entries - std::get<0>(start_overlapping)) -
+      // std::get<0>(end_overlapping);  Looks like this is wrong
+      useful_min_key = std::get<1>(start_overlapping);
+      useful_max_key = std::get<1>(end_overlapping);
     }
   }
 

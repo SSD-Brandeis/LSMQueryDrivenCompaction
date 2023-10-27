@@ -913,7 +913,7 @@ class IndexBlockIter final : public BlockIter<IndexValue> {
   }
 
   // Return number of keys skipped while seek in a block
-  uint64_t SeekAndReturnSkipCount(const Slice& target) override;
+  std::tuple<uint64_t, Slice> SeekAndReturnSkipCount(const Slice& target) override;
 
   void PrevImpl() override;
   void NextImpl() override;

@@ -28,7 +28,7 @@ EmuEnv::EmuEnv() {
 
   // Options set through command line
   size_ratio = 2;               // 10; [Shubham]
-  buffer_size_in_pages = 2048;  // 4096; [Shubham]
+  buffer_size_in_pages = 512;  // 4096; [Shubham]
   entries_per_page = 4;
   entry_size = 1024;  // in Bytes
   buffer_size = buffer_size_in_pages * entries_per_page *

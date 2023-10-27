@@ -468,7 +468,7 @@ struct DBOptions {
   // bottlenecked by RocksDB.
   DBOptions* IncreaseParallelism(int total_threads = 16);
 
-  // verbosity to see print statements 
+  // verbosity to see print statements
   // default to 0 (means no prints)
   int verbosity = 0;
 
@@ -1608,6 +1608,7 @@ struct ReadOptions {
   // point to key without timestamp part.
   const Slice* iterate_upper_bound = nullptr;
 
+  // NOTE: (shubham)
   // Only used when `range_query_compaction_enabled is true
   // start_key represent the range start key and
   // end_key represent the end key of the range query
@@ -1617,6 +1618,14 @@ struct ReadOptions {
 
   // Used to check if the range query compaction is enabled
   bool range_query_compaction_enabled = false;
+
+  // Write cost (WC) threshold for range query compaction
+  float wc_threshold = 0.5f;  // default: [0.5f]
+  // number of entries overlap from upper to lower level
+  float utl_threshold = 0.4f;  // default: [0.4f]
+  // number of entries overlap from lower to upper level
+  float ltu_threshold = 0.8f;  // default: [0.8f]
+  // NOTE END
 
   // Specify to create a tailing iterator -- a special iterator that has a
   // view of the complete database (i.e. it can also be used to read newly

@@ -9,6 +9,7 @@
 
 #include "db/arena_wrapped_db_iter.h"
 
+#include <iomanip>
 #include <iostream>
 
 #include "logging/logging.h"
@@ -21,6 +22,68 @@
 #include "util/user_comparator_wrapper.h"
 
 namespace ROCKSDB_NAMESPACE {
+
+struct DecisionCell {
+  uint64_t _start_level;
+  uint64_t _end_level;
+  float _entries_useful_to_unuseful_ratio;
+  std::vector<float> _overlapping_entries_ratio;
+  ReadOptions _read_options;
+
+  DecisionCell(uint64_t start_level, uint64_t end_level,
+               float entries_useful_to_unuseful_ratio,
+               std::vector<float> overlapping_entries_ratio,
+               ReadOptions read_options)
+      : _start_level(start_level),
+        _end_level(end_level),
+        _entries_useful_to_unuseful_ratio(entries_useful_to_unuseful_ratio),
+        _overlapping_entries_ratio(overlapping_entries_ratio),
+        _read_options(read_options) {}
+
+  DecisionCell() {
+    _start_level = 0;
+    _end_level = 0;
+    _entries_useful_to_unuseful_ratio = -1;
+    _overlapping_entries_ratio = {};
+  }
+
+  uint64_t GetStartLevel() { return _start_level; }
+  uint64_t GetEndLevel() { return _end_level; }
+
+  // TODO: (shubham) remove this after testing
+  std::string getStringOfOverlappingEntriesRatio() const {
+    std::string str = "";
+    for (auto ratio : _overlapping_entries_ratio) {
+      str += std::to_string(ratio) + " ";
+    }
+    return str;
+  }
+
+  std::string GetDecision() {
+    bool decision = true;
+    for (auto ratio : _overlapping_entries_ratio) {
+      if (ratio < _read_options.utl_threshold ||
+          ratio > _read_options.ltu_threshold) {
+        decision = false;
+        break;
+      }
+    }
+    return (decision &&
+            _entries_useful_to_unuseful_ratio > _read_options.wc_threshold)
+               ? "True"
+               : "False";  // TODO: (shubham) you mght not need the string
+                           // values
+  }
+};
+
+// TODO: (shubham) remove this after testing
+std::ostream& operator<<(std::ostream& os, const DecisionCell& data) {
+  os << std::to_string(data._start_level) + ">" +
+            std::to_string(data._end_level) + "[" +
+            std::to_string(data._entries_useful_to_unuseful_ratio) + "(" +
+            data.getStringOfOverlappingEntriesRatio() + ")]";
+  return os;
+}
 
 Status ArenaWrappedDBIter::GetProperty(std::string prop_name,
                                        std::string* prop) {
@@ -57,20 +120,22 @@ void ArenaWrappedDBIter::Init(
   }
 }
 
-long long ArenaWrappedDBIter::GuessTheDifference(
+long long ArenaWrappedDBIter::GuessTheDifferenceWithMinMaxKey(
     const std::string given_start_key, const std::string given_end_key,
-    int level, FileMetaData* file_meta) {
+    int level, FileMetaData* file_meta, Slice& useful_min_key,
+    Slice& useful_max_key) {
   // Let's guess the lexicographic difference between two strings
   // TODO: (shubham) Implement this algorithm and think about
   // the abstract class to make this configurable from application
-  std::cout << "[Optimization]: trying to gess the difference " << __FILE__
-            << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  // std::cout << "[Optimization]: trying to gess the difference " << __FILE__
+  //           << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   return db_impl_->GetRoughOverlappingEntries(given_start_key, given_end_key,
-                                              level, file_meta, cfd_);
+                                              level, file_meta, cfd_,
+                                              useful_min_key, useful_max_key);
 }
 
 bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
-  // Let's see how many levels > 1 have data
+  // Let's see how many levels >= 1 have data
   // for the requested range query and then
   // see how many files in each level contains
   // data from each level and lastly compute
@@ -81,11 +146,26 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
   int num_levels_are_overlapping =
       0;  // if num_files > 1 are overlapping on a level, increase this
 
+  // `decision_matrix_meta_data` store the `level`, `E_useful`, `E_unuseful`,
+  // `Min_E_useful`, `Max_E_useful` and `Overlapping_Min_Max_E_useful`
+  // `total_entries` for each level.
+  std::vector<std::tuple<int, float, float, Slice, Slice, float, float,
+                         std::string>>  // TODO: (shubham) remove this
+                                        // after testing
+      decision_matrix_meta_data;
+
   for (int l = 1; l < storage_info_before->num_non_empty_levels(); l++) {
     int num_files_are_overlapping = 0;
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-    long long total_overlapping_entries_in_level = 0;
-    long long total_entries_in_level = 0;
+    long long total_entries_will_be_read =
+        0;  // total entries that will be read from this level
+
+    long long E_useful_entries_in_level = 0;
+    // long long E_unuseful_entries_in_level = 0;
+    std::string file_names = "";
+    Slice useful_min_key = "";
+    Slice useful_max_key = "";
+
     size_t file_index_ = FindFile(cfd_->internal_comparator(),
                                   storage_info_before->LevelFilesBrief(l),
                                   Slice(read_options_.range_start_key));
@@ -102,11 +182,21 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                     fd.file_metadata->largest.user_key()) >=
               0) {
         // 100 % overlap
-        std::cout << "[Optimization]: Found 100 percent overlap " << __FILE__
-                  << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+        // std::cout
+        //     << "[Optimization]: Found 100 percent overlap (Total Entries: "
+        //     << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
+        //     << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        total_entries_in_level += fd.file_metadata->num_entries;
-        total_overlapping_entries_in_level += fd.file_metadata->num_entries;
+        total_entries_will_be_read += fd.file_metadata->num_entries;
+        E_useful_entries_in_level += fd.file_metadata->num_entries;
+        file_names += std::to_string(fd.fd.GetNumber()) + " ";
+
+        if (useful_min_key.empty()) {
+          useful_min_key = fd.file_metadata->smallest.user_key();
+          useful_max_key = fd.file_metadata->largest.user_key();
+        } else {
+          useful_max_key = fd.file_metadata->largest.user_key();
+        }
       }
       // 2 & 3. head of a file overlap
       else if (  // 3. starts here
@@ -126,12 +216,17 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                      fd.file_metadata->smallest.user_key()) ==
                0)) {
         // head overlap
-        std::cout << "[Optimization]: Found head overlap " << __FILE__ << ":"
-                  << __LINE__ << " " << __FUNCTION__ << std::endl;
+        // std::cout << "[Optimization]: Found head overlap (Total Entries: "
+        //           << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
+        //           << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        total_entries_in_level += fd.file_metadata->num_entries;
-        total_overlapping_entries_in_level += GuessTheDifference(
-            "", read_options_.range_end_key, l, fd.file_metadata);
+        total_entries_will_be_read += fd.file_metadata->num_entries;
+        E_useful_entries_in_level += GuessTheDifferenceWithMinMaxKey(
+            "", read_options_.range_end_key, l, fd.file_metadata,
+            useful_min_key, useful_max_key);
+        file_names += std::to_string(fd.fd.GetNumber()) + " ";
+        // E_unuseful_entries_in_level +=
+        //     fd.file_metadata->num_entries - E_useful_entries_in_level;
       }
       // 2 & 3. tail of a file overlap
       else if ((user_comparator_->Compare(
@@ -150,12 +245,17 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                     Slice(read_options_.range_end_key),
                     fd.file_metadata->largest.user_key()) > 0)) {
         // tail overlap
-        std::cout << "[Optimization]: Found tail overlap " << __FILE__ << ":"
-                  << __LINE__ << " " << __FUNCTION__ << std::endl;
+        // std::cout << "[Optimization]: Found tail overlap (Total Entries: "
+        //           << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
+        //           << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        total_entries_in_level += fd.file_metadata->num_entries;
-        total_overlapping_entries_in_level += GuessTheDifference(
-            read_options_.range_start_key, "", l, fd.file_metadata);
+        total_entries_will_be_read += fd.file_metadata->num_entries;
+        E_useful_entries_in_level += GuessTheDifferenceWithMinMaxKey(
+            read_options_.range_start_key, "", l, fd.file_metadata,
+            useful_min_key, useful_max_key);
+        file_names += std::to_string(fd.fd.GetNumber()) + " ";
+        // E_unuseful_entries_in_level +=
+        //     fd.file_metadata->num_entries - E_useful_entries_in_level;
       }
       // 6. Range fits inside file overlap
       else if (user_comparator_->Compare(
@@ -165,32 +265,129 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                          fd.file_metadata->largest.user_key()) <
                    0) {
         // single file
-        std::cout << "[Optimization]: Found single file overlap " << __FILE__
-                  << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+        // std::cout
+        //     << "[Optimization]: Found single file overlap (Total Entries: "
+        //     << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
+        //     << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
-        total_entries_in_level += fd.file_metadata->num_entries;
-        total_overlapping_entries_in_level += GuessTheDifference(
+        total_entries_will_be_read += fd.file_metadata->num_entries;
+        E_useful_entries_in_level += GuessTheDifferenceWithMinMaxKey(
             read_options_.range_start_key, read_options_.range_end_key, l,
-            fd.file_metadata);
+            fd.file_metadata, useful_min_key, useful_max_key);
+        file_names += std::to_string(fd.fd.GetNumber()) + " ";
       }
     }
 
-    // TODO (shubham): Remove this after testing !!!
-    // print total overlapping entries in level and total entries in level which
-    // fall in range query
-    std::cout << "[Optimization]: Total overlapping entries in level: "
-              << total_overlapping_entries_in_level << " " << __FILE__ << ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "[Optimization]: Total entries in level: "
-              << total_entries_in_level << " " << __FILE__ << ":" << __LINE__
-              << " " << __FUNCTION__ << std::endl;
+    auto decision_meta = std::make_tuple(
+        l, E_useful_entries_in_level,
+        total_entries_will_be_read - E_useful_entries_in_level, useful_min_key,
+        useful_max_key, E_useful_entries_in_level, total_entries_will_be_read,
+        file_names);
+
+    decision_matrix_meta_data.push_back(decision_meta);
 
     if (num_files_are_overlapping > 1) {
-      std::cout << "[NUM FILES ARE OVERLAPPING] : " << num_files_are_overlapping
-                << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-                << std::endl;
+      // std::cout << "[NUM FILES ARE OVERLAPPING] : " <<
+      // num_files_are_overlapping
+      //           << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+      //           << std::endl;
       num_levels_are_overlapping += 1;
     }
+  }
+
+  std::vector<std::vector<DecisionCell>> decision_matrix(
+      decision_matrix_meta_data.size(),
+      std::vector<DecisionCell>(decision_matrix_meta_data.size()));
+
+  // NOTE: (shubham) doing it with worst complexity (change this later)
+
+  for (size_t i = 0; i < decision_matrix.size(); i++) {
+    for (size_t j = i; j < decision_matrix.size(); j++) {
+      if (i == j) {
+        decision_matrix[i][j] = DecisionCell(
+            i + 1, j + 1,
+            std::get<1>(decision_matrix_meta_data[i]) /
+                (std::get<1>(decision_matrix_meta_data[i]) +
+                 std::get<2>(decision_matrix_meta_data[i])),
+            std::vector<float>(j - i + 1, read_options_.ltu_threshold),
+            read_options_);
+      } else {
+        float useful = 0;
+        float unuseful = 0;
+
+        for (auto k = i; k <= j; k++) {
+          useful += std::get<1>(decision_matrix_meta_data[k]);
+          unuseful += std::get<2>(decision_matrix_meta_data[k]);
+        }
+
+        std::vector<float> overlapping_entries_ratio(j - i, 0.0f);
+
+        for (auto k = i; k < j && k < decision_matrix_meta_data.size() - 1;
+             k++) {
+          overlapping_entries_ratio[k - i] =
+              std::get<1>(decision_matrix_meta_data[k]) /
+              std::get<1>(decision_matrix_meta_data[k + 1]);
+        }
+        decision_matrix[i][j] =
+            DecisionCell(i + 1, j + 1, useful / (useful + unuseful),
+                         overlapping_entries_ratio, read_options_);
+      }
+    }
+  }
+
+  {
+    // This block is just for logging
+    std::string decision_matrix_meta_data_str =
+        "Range Query: " + read_options_.range_start_key + " ... " +
+        read_options_.range_end_key;
+    decision_matrix_meta_data_str += "\n\tDecision Meta Matrix:";
+    decision_matrix_meta_data_str +=
+        "\n\t\tLevel|E_useful|E_unuseful|Min_E_useful|Max_E_"
+        "useful|Overlapping_Min_Max_E_useful|Total Entries|File "
+        "Names";
+    for (size_t lvl = 0; lvl < decision_matrix_meta_data.size(); lvl++) {
+      auto row_tuple = decision_matrix_meta_data[lvl];
+      decision_matrix_meta_data_str +=
+          "\n\t\t" + std::to_string(std::get<0>(row_tuple)) + "|" +
+          std::to_string(std::get<1>(row_tuple)) + "|" +
+          std::to_string(std::get<2>(row_tuple)) + "|" +
+          std::get<3>(row_tuple).ToString() + "|" +
+          std::get<4>(row_tuple).ToString() + "|" +
+          std::to_string(std::get<5>(row_tuple)) + "|" +
+          std::to_string(std::get<6>(row_tuple)) + "|" + std::get<7>(row_tuple);
+    }
+
+    decision_matrix_meta_data_str += "\n\n\n\tDecision Matrix:";
+
+    decision_matrix_meta_data_str += "\n";
+    for (size_t lvl = 0; lvl < decision_matrix.size(); lvl++) {
+      decision_matrix_meta_data_str += "|Level-" + std::to_string(lvl + 1);
+    }
+
+    for (size_t i = 0; i < decision_matrix.size(); i++) {
+      decision_matrix_meta_data_str += "\n\t\tLevel-" + std::to_string(i + 1);
+      for (size_t j = 0; j < decision_matrix.size(); j++) {
+        decision_matrix_meta_data_str += "|";
+        std::stringstream ss;
+        ss << decision_matrix[i][j];
+        decision_matrix_meta_data_str += ss.str();
+      }
+    }
+
+    decision_matrix_meta_data_str += "\n\n       ";
+    for (size_t lvl = 0; lvl < decision_matrix.size(); lvl++) {
+      decision_matrix_meta_data_str += "|Level-" + std::to_string(lvl + 1);
+    }
+    for (size_t i = 0; i < decision_matrix.size(); i++) {
+      decision_matrix_meta_data_str += "\nLevel-" + std::to_string(i + 1);
+      for (size_t j = 0; j < decision_matrix.size(); j++) {
+        decision_matrix_meta_data_str +=
+            "|" + decision_matrix[i][j].GetDecision();
+      }
+    }
+
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
+                   decision_matrix_meta_data_str.c_str());
   }
 
   return num_levels_are_overlapping > 1;
@@ -280,6 +477,7 @@ Status ArenaWrappedDBIter::Reset() {
   std::string levels_state_before = "Range Query Complete:";
   auto storage_info_before = cfd_->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    uint64_t total_entries = 0;
     levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
     for (size_t file_index = 0; file_index < num_files; file_index++) {
@@ -287,8 +485,11 @@ Status ArenaWrappedDBIter::Reset() {
       levels_state_before +=
           "[" + std::to_string(fd.fd.GetNumber()) + "(" +
           fd.file_metadata->smallest.user_key().ToString() + ", " +
-          fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+          fd.file_metadata->largest.user_key().ToString() + ")" +
+          std::to_string(fd.file_metadata->num_entries) + "] ";
+      total_entries += fd.file_metadata->num_entries;
     }
+    levels_state_before += " = " + std::to_string(total_entries);
   }
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
@@ -351,6 +552,7 @@ Status ArenaWrappedDBIter::Refresh() {
     std::string levels_state_after = "Range Query Started:";
     auto storage_info_after = cfd_->current()->storage_info();
     for (int l = 0; l < storage_info_after->num_non_empty_levels(); l++) {
+      uint64_t total_entries = 0;
       levels_state_after += "\n\tLevel-" + std::to_string(l) + ": ";
       auto num_files = storage_info_after->LevelFilesBrief(l).num_files;
       for (size_t file_index = 0; file_index < num_files; file_index++) {
@@ -358,8 +560,11 @@ Status ArenaWrappedDBIter::Refresh() {
         levels_state_after +=
             "[" + std::to_string(fd.fd.GetNumber()) + "(" +
             fd.file_metadata->smallest.user_key().ToString() + ", " +
-            fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+            fd.file_metadata->largest.user_key().ToString() + ")" +
+            std::to_string(fd.file_metadata->num_entries) + "] ";
+        total_entries += fd.file_metadata->num_entries;
       }
+      levels_state_after += " = " + std::to_string(total_entries);
     }
 
     ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",

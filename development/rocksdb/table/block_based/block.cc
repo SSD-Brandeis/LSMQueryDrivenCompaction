@@ -447,34 +447,36 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
 
 // Seek till the given start/end key of the range and 
 // return the number of keys we have skipped.
-uint64_t IndexBlockIter::SeekAndReturnSkipCount(
+std::tuple<uint64_t, Slice> IndexBlockIter::SeekAndReturnSkipCount(
     const Slice& target) {
   if (data_ == nullptr) {  // Not init yet
-    return 0;
+    return std::make_tuple(0, Slice());
   }
   this->SeekToFirst();
 
   if (this->status().ok()) {
     SeekImpl(target);
-    Slice akey = this->key();
-    Slice auser_key;
-    InternalKey aikey;
+    Slice key = this->key();
+    Slice user_key;
+    InternalKey ikey;
 
-    aikey.DecodeFrom(akey);
-    auser_key = aikey.user_key();
-    auto aoffset = this->value().handle.offset();
+    ikey.DecodeFrom(key);
+    user_key = ikey.user_key();
+    auto offset = this->value().handle.offset();
+    Slice last_key;
 
     while (this->Valid() && CompareCurrentKey(target) <= 0) {
       this->Next();
       InternalKey next_ikey;
+      last_key = this->key();
       next_ikey.DecodeFrom(this->key());
-      aoffset = this->value().handle.offset();
+      offset = this->value().handle.offset();
     }
-
-    auto askip_count = aoffset / 1024;
-    return askip_count;
+    
+    auto skip_count = offset / 1024;  // TODO (shubham): 1024 is a magic number "change it to entry size"
+    return std::make_tuple(skip_count, last_key);
   }
-  return 0;
+  return std::make_tuple(0, Slice());
 }
 
 void IndexBlockIter::SeekImpl(const Slice& target) {

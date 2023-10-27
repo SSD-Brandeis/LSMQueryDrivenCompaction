@@ -66,8 +66,8 @@ class InternalIteratorBase : public Cleanable {
   virtual void Seek(const Slice& target) = 0;
 
   // Return number of keys skipped while seek in a block
-  virtual uint64_t SeekAndReturnSkipCount(const Slice&) {
-    return 0;
+  virtual std::tuple<uint64_t, Slice> SeekAndReturnSkipCount(const Slice&) {
+    return std::make_tuple(0, Slice());
   }
 
   // Position at the first key in the source that at or before target

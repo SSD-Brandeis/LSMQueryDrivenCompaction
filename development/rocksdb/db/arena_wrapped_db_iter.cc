@@ -23,68 +23,6 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-struct DecisionCell {
-  uint64_t _start_level;
-  uint64_t _end_level;
-  float _entries_useful_to_unuseful_ratio;
-  std::vector<float> _overlapping_entries_ratio;
-  ReadOptions _read_options;
-
-  DecisionCell(uint64_t start_level, uint64_t end_level,
-               float entries_useful_to_unuseful_ratio,
-               std::vector<float> overlapping_entries_ratio,
-               ReadOptions read_options)
-      : _start_level(start_level),
-        _end_level(end_level),
-        _entries_useful_to_unuseful_ratio(entries_useful_to_unuseful_ratio),
-        _overlapping_entries_ratio(overlapping_entries_ratio),
-        _read_options(read_options) {}
-
-  DecisionCell() {
-    _start_level = 0;
-    _end_level = 0;
-    _entries_useful_to_unuseful_ratio = -1;
-    _overlapping_entries_ratio = {};
-  }
-
-  uint64_t GetStartLevel() { return _start_level; }
-  uint64_t GetEndLevel() { return _end_level; }
-
-  // TODO: (shubham) remove this after testing
-  std::string getStringOfOverlappingEntriesRatio() const {
-    std::string str = "";
-    for (auto ratio : _overlapping_entries_ratio) {
-      str += std::to_string(ratio) + " ";
-    }
-    return str;
-  }
-
-  std::string GetDecision() {
-    bool decision = true;
-    for (auto ratio : _overlapping_entries_ratio) {
-      if (ratio < _read_options.utl_threshold ||
-          ratio > _read_options.ltu_threshold) {
-        decision = false;
-        break;
-      }
-    }
-    return (decision &&
-            _entries_useful_to_unuseful_ratio > _read_options.wc_threshold)
-               ? "True"
-               : "False";  // TODO: (shubham) you mght not need the string
-                           // values
-  }
-};
-
-// TODO: (shubham) remove this after testing
-std::ostream& operator<<(std::ostream& os, const DecisionCell& data) {
-  os << std::to_string(data._start_level) + ">" +
-            std::to_string(data._end_level) + "[" +
-            std::to_string(data._entries_useful_to_unuseful_ratio) + "(" +
-            data.getStringOfOverlappingEntriesRatio() + ")]";
-  return os;
-}
-
 Status ArenaWrappedDBIter::GetProperty(std::string prop_name,
                                        std::string* prop) {
   if (prop_name == "rocksdb.iterator.super-version-number") {
@@ -142,6 +80,11 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
   // the % age of data on each level
 
   auto storage_info_before = cfd_->current()->storage_info();
+
+  if (storage_info_before->num_non_empty_levels() <= 3) {
+    return false;
+  }
+
   auto user_comparator_ = cfd_->internal_comparator().user_comparator();
   int num_levels_are_overlapping =
       0;  // if num_files > 1 are overlapping on a level, increase this
@@ -335,8 +278,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     }
   }
 
+  // This block is just for logging
   {
-    // This block is just for logging
     std::string decision_matrix_meta_data_str =
         "Range Query: " + read_options_.range_start_key + " ... " +
         read_options_.range_end_key;
@@ -389,8 +332,26 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                    decision_matrix_meta_data_str.c_str());
   }
+  DecisionCell best_decision_cell;
 
-  return num_levels_are_overlapping > 1;
+  for (size_t cell = decision_matrix.size() - 1; cell > 0; cell--) {
+    for (size_t row = 0; row < cell; row++) {
+      if (decision_matrix[row][cell].GetDecision() == "True") {
+        best_decision_cell = decision_matrix[row][cell];
+        break;
+      }
+    }
+    if (best_decision_cell.GetStartLevel() != 0) {
+      db_impl_->decision_cell_ = best_decision_cell;
+      if (db_impl_->immutable_db_options().verbosity > 0) {
+        std::cout << "\n[Verbosity]: best decision cell: " << best_decision_cell
+                  << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+                  << std::endl;
+      }
+      break;
+    }
+  }
+  return best_decision_cell.GetStartLevel() != 0;
 }
 
 Status ArenaWrappedDBIter::Refresh(const std::string start_key,
@@ -427,10 +388,10 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       std::cout << "\n[Verbosity]: continuing background work " << __FILE__ ":"
                 << __LINE__ << " " << __FUNCTION__ << std::endl;
       db_impl_->ContinueBackgroundWork();
-      db_impl_->read_options_ = read_options_;
       read_options_.range_query_compaction_enabled = false;
       read_options_.range_start_key = "";
       read_options_.range_end_key = "";
+      db_impl_->read_options_ = read_options_;
     }
   } else {
     db_impl_->added_last_table = false;
@@ -512,6 +473,7 @@ Status ArenaWrappedDBIter::Reset() {
       db_impl_->ContinueBackgroundWork();
     }
   }
+  db_impl_->ContinueBackgroundWork();
   return Status::OK();
 }
 

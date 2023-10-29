@@ -90,6 +90,61 @@ struct TrackLevels {
   Slice end;
 };
 
+struct DecisionCell {
+  int start_level_;
+  int end_level_;
+  float entries_useful_to_unuseful_ratio_;
+  std::vector<float> overlapping_entries_ratio_;
+  ReadOptions read_options_;
+
+  DecisionCell(int start_level, int end_level,
+               float entries_useful_to_unuseful_ratio,
+               std::vector<float> overlapping_entries_ratio,
+               ReadOptions read_options)
+      : start_level_(start_level),
+        end_level_(end_level),
+        entries_useful_to_unuseful_ratio_(entries_useful_to_unuseful_ratio),
+        overlapping_entries_ratio_(overlapping_entries_ratio),
+        read_options_(read_options) {}
+
+  DecisionCell() {
+    start_level_ = 0;
+    end_level_ = 0;
+    entries_useful_to_unuseful_ratio_ = -1;
+    overlapping_entries_ratio_ = {};
+  }
+
+  int GetStartLevel() { return start_level_; }
+  int GetEndLevel() { return end_level_; }
+
+  // TODO: (shubham) remove this after testing
+  std::string getStringOfOverlappingEntriesRatio() const {
+    std::string str = "";
+    for (auto ratio : overlapping_entries_ratio_) {
+      str += std::to_string(ratio) + " ";
+    }
+    return str;
+  }
+
+  std::string GetDecision() {
+    bool decision = true;
+    for (auto ratio : overlapping_entries_ratio_) {
+      if (ratio < read_options_.utl_threshold ||
+          ratio > read_options_.ltu_threshold) {
+        decision = false;
+        break;
+      }
+    }
+    return (decision &&
+            entries_useful_to_unuseful_ratio_ > read_options_.wc_threshold)
+               ? "True"
+               : "False";  // TODO: (shubham) you mght not need the string
+                           // values
+  }
+};
+
+extern std::ostream& operator<<(std::ostream& os, const DecisionCell& data);
+
 // Class to maintain directories for all database paths other than main one.
 class Directories {
  public:
@@ -474,15 +529,18 @@ class DBImpl : public DB {
   std::tuple<long long, long long, long long> getLevelFilesEntriesCount(
       ColumnFamilyData* cfd = nullptr);
 
-  long long GetRoughOverlappingEntries(
-      const std::string given_start_key, const std::string given_end_key,
-      int level, FileMetaData* file_meta, ColumnFamilyData* cfd,
-      Slice& useful_min_key, Slice& useful_max_key);
+  long long GetRoughOverlappingEntries(const std::string given_start_key,
+                                       const std::string given_end_key,
+                                       int level, FileMetaData* file_meta,
+                                       ColumnFamilyData* cfd,
+                                       Slice& useful_min_key,
+                                       Slice& useful_max_key);
 
   int unscheduled_partial_or_range_flushes_ = 0;
   int bg_partial_or_range_flush_scheduled_ = 0;
   int bg_partial_or_range_flush_running_ = 0;
   bool added_last_table = false;
+  DecisionCell decision_cell_;
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;

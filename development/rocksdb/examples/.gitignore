@@ -21,3 +21,6 @@ db_working_home
 
 # custom increasing workload generator
 workloadGen*
+
+# TODO: remove below line
+**/experiments/**

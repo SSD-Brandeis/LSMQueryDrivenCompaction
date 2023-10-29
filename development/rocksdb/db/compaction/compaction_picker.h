@@ -214,6 +214,7 @@ class CompactionPicker {
   void UnregisterCompaction(Compaction* c);
 
   std::set<Compaction*>* level0_compactions_in_progress() {
+    printf("level0_compactions_in_progress_ %d\n", (int)level0_compactions_in_progress_.size());
     return &level0_compactions_in_progress_;
   }
   std::unordered_set<Compaction*>* compactions_in_progress() {

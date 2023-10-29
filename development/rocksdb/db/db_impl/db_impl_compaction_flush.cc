@@ -2641,28 +2641,40 @@ void DBImpl::EnableManualCompaction() {
 
 void DBImpl::MaybeScheduleFlushOrCompaction() {
   mutex_.AssertHeld();
+
+  std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction" << std::endl;
   if (!opened_successfully_) {
     // Compaction may introduce data race to DB open
+
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction !opened_successfully_" << std::endl;
     return;
   }
   if (bg_work_paused_ > 0) {
     // we paused the background work
+
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction bg_work_paused_ > 0" << std::endl;
     return;
   } else if (error_handler_.IsBGWorkStopped() &&
              !error_handler_.IsRecoveryInProgress()) {
     // There has been a hard error and this call is not part of the recovery
     // sequence. Bail out here so we don't get into an endless loop of
     // scheduling BG work which will again call this function
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction IsBGWorkStopped" << std::endl;
     return;
   } else if (shutting_down_.load(std::memory_order_acquire)) {
     // DB is being deleted; no more background compactions
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction shutting_down_" << std::endl;
     return;
   }
+
+  std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction 1" << std::endl;
   auto bg_job_limits = GetBGJobLimits();
   bool is_flush_pool_empty =
       env_->GetBackgroundThreads(Env::Priority::HIGH) == 0;
   while (!is_flush_pool_empty && unscheduled_flushes_ > 0 &&
          bg_flush_scheduled_ < bg_job_limits.max_flushes) {
+
+          std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction Scheduling Background Flush" << std::endl;
     TEST_SYNC_POINT_CALLBACK(
         "DBImpl::MaybeScheduleFlushOrCompaction:BeforeSchedule",
         &unscheduled_flushes_);
@@ -2684,6 +2696,7 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     while (unscheduled_flushes_ > 0 &&
            bg_flush_scheduled_ + bg_compaction_scheduled_ <
                bg_job_limits.max_flushes) {
+      std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction Scheduling Background Flush on Compaction Thread" << std::endl;
       bg_flush_scheduled_++;
       FlushThreadArg* fta = new FlushThreadArg;
       fta->db_ = this;
@@ -2696,25 +2709,35 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
 
   if (bg_compaction_paused_ > 0) {
     // we paused the background compaction
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction bg_compaction_paused_ > 0" << std::endl;
     return;
   } else if (error_handler_.IsBGWorkStopped()) {
     // Compaction is not part of the recovery sequence from a hard error. We
     // might get here because recovery might do a flush and install a new
     // super version, which will try to schedule pending compactions. Bail
     // out here and let the higher level recovery handle compactions
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction IsBGWorkStopped" << std::endl;
     return;
   }
 
   if (HasExclusiveManualCompaction()) {
     // only manual compactions are allowed to run. don't schedule automatic
     // compactions
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction HasExclusiveManualCompaction" << std::endl;
     TEST_SYNC_POINT("DBImpl::MaybeScheduleFlushOrCompaction:Conflict");
     return;
   }
 
+  std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction 9, " << " bg_job_limits: " << bg_job_limits.max_compactions 
+            << " is_flush_pool_empty: " << is_flush_pool_empty 
+            << " unscheduled_compactions_: " << unscheduled_compactions_
+            << " bg_compaction_scheduled_: " << bg_compaction_scheduled_
+            << " bg_bottom_compaction_scheduled_: " << bg_bottom_compaction_scheduled_
+            << std::endl;
   while (bg_compaction_scheduled_ + bg_bottom_compaction_scheduled_ <
              bg_job_limits.max_compactions &&
          unscheduled_compactions_ > 0) {
+    std::cout << __FILE__ ":" << __LINE__ << " MaybeScheduleFlushOrCompaction Scheduling Background Compaction" << std::endl;
     CompactionArg* ca = new CompactionArg;
     ca->db = this;
     ca->compaction_pri_ = Env::Priority::LOW;
@@ -2761,6 +2784,7 @@ void DBImpl::AddToCompactionQueue(ColumnFamilyData* cfd) {
   assert(!cfd->queued_for_compaction());
   cfd->Ref();
   compaction_queue_.push_back(cfd);
+  std::cout << __FILE__ << ":" << __LINE__ << " " << "Added a new compaction to the queue; SIZE NOW: " << compaction_queue_.size() << std::endl;
   cfd->set_queued_for_compaction(true);
 }
 
@@ -2849,6 +2873,7 @@ void DBImpl::SchedulePendingFlush(const FlushRequest& flush_req) {
 void DBImpl::SchedulePendingCompaction(ColumnFamilyData* cfd) {
   mutex_.AssertHeld();
   if (!cfd->queued_for_compaction() && cfd->NeedsCompaction()) {
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "Added a new compaction to the queue; SIZE NOW: " << compaction_queue_.size() << std::endl;
     AddToCompactionQueue(cfd);
     ++unscheduled_compactions_;
   }
@@ -3121,6 +3146,8 @@ void DBImpl::BackgroundCallFlush(Env::Priority thread_pri) {
 
 void DBImpl::BackgroundCallCompaction(PrepickedCompaction* prepicked_compaction,
                                       Env::Priority bg_thread_pri) {
+  
+  std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCallCompaction" << std::endl;
   bool made_progress = false;
   JobContext job_context(next_job_id_.fetch_add(1), true);
   TEST_SYNC_POINT("BackgroundCallCompaction:0");
@@ -3251,6 +3278,8 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       prepicked_compaction == nullptr
           ? nullptr
           : prepicked_compaction->manual_compaction_state;
+  
+  std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction ... " << std::endl;
   *made_progress = false;
   mutex_.AssertHeld();
   TEST_SYNC_POINT("DBImpl::BackgroundCompaction:Start");
@@ -3261,6 +3290,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   std::unique_ptr<Compaction> c;
   if (prepicked_compaction != nullptr &&
       prepicked_compaction->compaction != nullptr) {
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: prepicked_compaction->compaction != nullptr" << std::endl;
     c.reset(prepicked_compaction->compaction);
   }
   bool is_prepicked = is_manual || c;
@@ -3298,6 +3328,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       c->ReleaseCompactionFiles(status);
       c.reset();
     }
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: status not ok" << std::endl;
     return status;
   }
 
@@ -3362,10 +3393,12 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       return Status::OK();
     }
 
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: !is_prepicked && !compaction_queue_.empty()\n Picking Compaction from queue" << std::endl;
     auto cfd = PickCompactionFromQueue(&task_token, log_buffer);
     if (cfd == nullptr) {
       // Can't find any executable task from the compaction queue.
       // All tasks have been throttled by compaction thread limiter.
+      std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: Can't find any executable task from the compaction queue" << std::endl;
       ++unscheduled_compactions_;
       return Status::Busy();
     }
@@ -3378,6 +3411,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     if (cfd->UnrefAndTryDelete()) {
       // This was the last reference of the column family, so no need to
       // compact.
+      std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: This was the last reference of the column family, so no need to compact." << std::endl;
       return Status::OK();
     }
 
@@ -3391,12 +3425,14 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       // NOTE: try to avoid unnecessary copy of MutableCFOptions if
       // compaction is not necessary. Need to make sure mutex is held
       // until we make a copy in the following code
+      std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: !mutable_cf_options->disable_auto_compactions && !cfd->IsDropped()" << std::endl;
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():BeforePickCompaction");
       c.reset(cfd->PickCompaction(*mutable_cf_options, mutable_db_options_,
                                   log_buffer));
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():AfterPickCompaction");
 
       if (c != nullptr) {
+        std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: c != nullptr" << std::endl;
         bool enough_room = EnoughRoomForCompaction(
             cfd, *(c->inputs()), &sfm_reserved_compact_space, log_buffer);
 
@@ -3448,9 +3484,11 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
 
   IOStatus io_s;
   if (!c) {
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: !c" << std::endl;
     // Nothing to do
     ROCKS_LOG_BUFFER(log_buffer, "Compaction nothing to do");
   } else if (c->deletion_compaction()) {
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: c->deletion_compaction()" << std::endl;
     // TODO(icanadi) Do we want to honor snapshots here? i.e. not delete old
     // file if there is alive snapshot pointing to it
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
@@ -3484,6 +3522,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     TEST_SYNC_POINT("DBImpl::BackgroundCompaction:TrivialMove");
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
                              c->column_family_data());
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: !trivial_move_disallowed && c->IsTrivialMove()" << std::endl;
     // Instrument for event update
     // TODO(yhchiang): add op details for showing trivial-move.
     ThreadStatusUtil::SetColumnFamily(c->column_family_data());
@@ -3572,6 +3611,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                      ->MaxOutputLevel(
                          immutable_db_options_.allow_ingest_behind) &&
              env_->GetBackgroundThreads(Env::Priority::BOTTOM) > 0) {
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: !is_prepicked && c->output_level() > 0 && c->output_level() == c->column_family_data()->current()->storage_info()->MaxOutputLevel(immutable_db_options_.allow_ingest_behind) && env_->GetBackgroundThreads(Env::Priority::BOTTOM) > 0" << std::endl;
     // Forward compactions involving last level to the bottom pool if it exists,
     // such that compactions unlikely to contribute to write stalls can be
     // delayed or deprioritized.
@@ -3588,6 +3628,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     env_->Schedule(&DBImpl::BGWorkBottomCompaction, ca, Env::Priority::BOTTOM,
                    this, &DBImpl::UnscheduleCompactionCallback);
   } else {
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "BackgroundCompaction: else" << std::endl;
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
                              c->column_family_data());
     int output_level __attribute__((__unused__));
@@ -3617,7 +3658,9 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         db_id_, db_session_id_, c->column_family_data()->GetFullHistoryTsLow(),
         c->trim_ts(), &blob_callback_, &bg_compaction_scheduled_,
         &bg_bottom_compaction_scheduled_);
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "Compaction Job Created" << std::endl;
     compaction_job.Prepare();
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "Compaction Job Prepared" << std::endl;
 
     NotifyOnCompactionBegin(c->column_family_data(), c.get(), status,
                             compaction_job_stats, job_context->job_id);
@@ -3626,16 +3669,19 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         "DBImpl::BackgroundCompaction:NonTrivial:BeforeRun", nullptr);
     // Should handle error?
     compaction_job.Run().PermitUncheckedError();
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "Compaction Job Run" << std::endl;
     TEST_SYNC_POINT("DBImpl::BackgroundCompaction:NonTrivial:AfterRun");
     mutex_.Lock();
 
     status = compaction_job.Install(*c->mutable_cf_options());
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "Compaction Job Installed" << std::endl;
     io_s = compaction_job.io_status();
     if (status.ok()) {
       InstallSuperVersionAndScheduleWork(c->column_family_data(),
                                          &job_context->superversion_contexts[0],
                                          *c->mutable_cf_options());
     }
+    std::cout << __FILE__ << ":" << __LINE__ << " " << "Compaction Job Super Version Installed" << std::endl;
     *made_progress = true;
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:AfterCompaction",
                              c->column_family_data());

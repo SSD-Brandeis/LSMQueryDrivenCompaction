@@ -1,0 +1,58 @@
+{
+    "workloads": [       
+        {
+            "inserts": 1000000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.2
+        },
+        {
+            "inserts": 1000000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.4
+        },
+        {
+            "inserts": 1000000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.8
+        },
+        {
+            "inserts": 1000000,
+            "updates": 1000000,
+            "range_queries": 100,
+            "selectivity": 0.2
+        },
+        {
+            "inserts": 1000000,
+            "updates": 1000000,
+            "range_queries": 100,
+            "selectivity": 0.4
+        },
+        {
+            "inserts": 1000000,
+            "updates": 1000000,
+            "range_queries": 100,
+            "selectivity": 0.8
+        },
+        {
+            "inserts": 1000000,
+            "updates": 1250000,
+            "range_queries": 100,
+            "selectivity": 0.2
+        },
+        {
+            "inserts": 1000000,
+            "updates": 1250000,
+            "range_queries": 100,
+            "selectivity": 0.4
+        },
+        {
+            "inserts": 1000000,
+            "updates": 1250000,
+            "range_queries": 100,
+            "selectivity": 0.8
+        }
+    ]
+}

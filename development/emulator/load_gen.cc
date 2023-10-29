@@ -353,6 +353,19 @@ void generate_workload(int argc, char *argv[])
             }
             global_insert_pool_set.insert(key);
             // std::cout << "I " << key << " " << value << std::endl;
+
+            // NOTE (shubham)
+            // Rocksdb don't care about the integers in the workload file
+            // below will make sure the size of key + value is equal
+            // to the entry_size in characters
+            size_t len_of_key = std::to_string(key.key_int32_).size();
+            size_t len_of_value = value.key_str_.size();
+
+            if (len_of_key + len_of_value > entry_size)
+            {
+                value = value.key_str_.substr(0, entry_size - len_of_key);
+            }
+
             fp << "I " << key << " " << value << std::endl;
             _insert_count++;
             _effective_ingestion_count++;
@@ -394,6 +407,19 @@ void generate_workload(int argc, char *argv[])
             Key value = get_value(entry_size - key_size);
             // std::cout << value << std::endl;
             // std::cout << "U " << key << " " << value << std::endl;
+
+            // NOTE (shubham)
+            // Rocksdb don't care about the integers in the workload file
+            // below will make sure the size of key + value is equal
+            // to the entry_size in characters
+            size_t len_of_key = std::to_string(key.key_int32_).size();
+            size_t len_of_value = value.key_str_.size();
+
+            if (len_of_key + len_of_value > entry_size)
+            {
+                value = value.key_str_.substr(0, entry_size - len_of_key);
+            }
+
             fp << "U " << key << " " << value << std::endl;
             _update_count++;
             _total_operation_count++;

@@ -3841,6 +3841,22 @@ void VersionStorageInfo::ComputeCompactionScore(
         mutable_cf_options.blob_garbage_collection_force_threshold);
   }
 
+  // print compute_score for each level
+  if (immutable_options.info_log != nullptr &&
+      immutable_options.info_log->GetInfoLogLevel() >=
+          InfoLogLevel::INFO_LEVEL) {
+    std::string log_str;
+    for (int level = 0; level < num_levels(); level++) {
+      log_str += "[";
+      log_str += std::to_string(level);
+      log_str += ":";
+      log_str += std::to_string(compaction_score_[level]);
+      log_str += "] ";
+    }
+    ROCKS_LOG_INFO(immutable_options.info_log,
+                   "Compute compaction score: %s", log_str.c_str());
+  }
+
   EstimateCompactionBytesNeeded(mutable_cf_options);
 }
 

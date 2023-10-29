@@ -185,6 +185,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
     start_level_score_ = vstorage_->CompactionScore(i);
     start_level_ = vstorage_->CompactionScoreLevel(i);
     assert(i == 0 || start_level_score_ <= vstorage_->CompactionScore(i - 1));
+    printf("i: %d, start_level_score: %f, start_level: %d\n", i, start_level_score_, start_level_);
     if (start_level_score_ >= 1) {
       if (skipped_l0_to_base && start_level_ == vstorage_->base_level()) {
         // If L0->base_level compaction is pending, don't schedule further
@@ -197,6 +198,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
       bool picked_file_to_compact = PickFileToCompact();
       TEST_SYNC_POINT_CALLBACK("PostPickFileToCompact",
                                &picked_file_to_compact);
+      printf("output_level: %d, picked_file_to_compact: %d\n", output_level_, picked_file_to_compact);
       if (picked_file_to_compact) {
         // found the compaction!
         if (start_level_ == 0) {
@@ -236,12 +238,12 @@ void LevelCompactionBuilder::SetupInitialFiles() {
     return;
   }
 
-  // if we didn't find a compaction, check if there are any files marked for
-  // compaction
+  // Check if there are any files marked for compaction
   parent_index_ = base_index_ = -1;
 
   compaction_picker_->PickFilesMarkedForCompaction(
       cf_name_, vstorage_, &start_level_, &output_level_, &start_level_inputs_);
+  printf("start_level_inputs size after PickFilesMarkedForCompaction: %zu\n", start_level_inputs_.size());
   if (!start_level_inputs_.empty()) {
     compaction_reason_ = CompactionReason::kFilesMarkedForCompaction;
     return;
@@ -249,6 +251,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
 
   // Bottommost Files Compaction on deleting tombstones
   PickFileToCompact(vstorage_->BottommostFilesMarkedForCompaction(), false);
+  printf("start_level_inputs size after BottommostFilesMarkedForCompaction: %zu\n", start_level_inputs_.size());
   if (!start_level_inputs_.empty()) {
     compaction_reason_ = CompactionReason::kBottommostFiles;
     return;
@@ -275,6 +278,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
   }
 
   PickFileToCompact(vstorage_->ExpiredTtlFiles(), true);
+  printf("start_level_inputs size after TTL Compaction: %zu\n", start_level_inputs_.size());
   if (!start_level_inputs_.empty()) {
     compaction_reason_ = CompactionReason::kTtl;
     return;
@@ -282,6 +286,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
 
   // Periodic Compaction
   PickFileToCompact(vstorage_->FilesMarkedForPeriodicCompaction(), false);
+  printf("start_level_inputs size after Periodic Compaction: %zu\n", start_level_inputs_.size());
   if (!start_level_inputs_.empty()) {
     compaction_reason_ = CompactionReason::kPeriodicCompaction;
     return;
@@ -289,6 +294,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
 
   // Forced blob garbage collection
   PickFileToCompact(vstorage_->FilesMarkedForForcedBlobGC(), false);
+  printf("start_level_inputs size after Forced Blob GC: %zu\n", start_level_inputs_.size());
   if (!start_level_inputs_.empty()) {
     compaction_reason_ = CompactionReason::kForcedBlobGC;
     return;
@@ -476,8 +482,11 @@ bool LevelCompactionBuilder::SetupOtherInputsIfNeeded() {
 Compaction* LevelCompactionBuilder::PickCompaction() {
   // Pick up the first file to start compaction. It may have been extended
   // to a clean cut.
+
+  std::cout << __FILE__ << ":" << __LINE__ << "LevelCompactionBuilder::PickCompaction()" << std::endl;
   SetupInitialFiles();
   if (start_level_inputs_.empty()) {
+    std::cout << __FILE__ << ":" << __LINE__ << "start_level_inputs_.empty()" << std::endl;
     return nullptr;
   }
   assert(start_level_ >= 0 && output_level_ >= 0);
@@ -485,12 +494,14 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
   // If it is a L0 -> base level compaction, we need to set up other L0
   // files if needed.
   if (!SetupOtherL0FilesIfNeeded()) {
+    std::cout << __FILE__ << ":" << __LINE__ << "SetupOtherL0FilesIfNeeded() failed" << std::endl;
     return nullptr;
   }
 
   // Pick files in the output level and expand more files in the start level
   // if needed.
   if (!SetupOtherInputsIfNeeded()) {
+    std::cout << __FILE__ << ":" << __LINE__ << "SetupOtherInputsIfNeeded() failed" << std::endl;
     return nullptr;
   }
 
@@ -509,10 +520,19 @@ Compaction* LevelCompactionBuilder::GetCompaction() {
   // does not overlap with other L0s. This happens when
   // compaction_inputs_[0].size() == 1 since SetupOtherL0FilesIfNeeded() did not
   // pull in more L0s.
+  std::cout << __FILE__ << ":" << __LINE__ << "GetCompaction: compaction_inputs_[0].size() = " << compaction_inputs_[0].size() << std::endl;
   assert(!compaction_inputs_.empty());
   bool l0_files_might_overlap =
       start_level_ == 0 && !is_l0_trivial_move_ &&
       (compaction_inputs_.size() > 1 || compaction_inputs_[0].size() > 1);
+  
+  // creating a new compaction
+  // print compaction_inputs_[0].size() and filenames
+  std::cout << __FILE__ << ":" << __LINE__ << "compaction_inputs_[0].size() = " << compaction_inputs_[0].size() << std::endl;
+  for (size_t i = 0; i < compaction_inputs_[0].size(); i++) {
+    std::cout << __FILE__ << ":" << __LINE__ << "compaction_inputs_[0][" << i << "].fd.GetNumber() = " << compaction_inputs_[0][i]->fd.GetNumber() << std::endl;
+  }
+
   auto c = new Compaction(
       vstorage_, ioptions_, mutable_cf_options_, mutable_db_options_,
       std::move(compaction_inputs_), output_level_,
@@ -756,6 +776,9 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   // than one concurrent compactions at this level. This
   // could be made better by looking at key-ranges that are
   // being compacted at level 0.
+  printf("--------------------> LevelCompactionBuilder::PickFileToCompact() <-------------------\n");
+  printf("start_level_ = %d\n", start_level_);
+  printf("level0 compaction is progress: %d\n", compaction_picker_->level0_compactions_in_progress()->empty());
   if (start_level_ == 0 &&
       !compaction_picker_->level0_compactions_in_progress()->empty()) {
     TEST_SYNC_POINT("LevelCompactionPicker::PickCompactionBySize:0");
@@ -764,6 +787,8 @@ bool LevelCompactionBuilder::PickFileToCompact() {
 
   start_level_inputs_.clear();
   start_level_inputs_.level = start_level_;
+
+  printf("start_level_inputs size before PickFilesMarkedForCompaction: %zu\n", start_level_inputs_.size());
 
   assert(start_level_ >= 0);
 
@@ -774,10 +799,22 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   const std::vector<FileMetaData*>& level_files =
       vstorage_->LevelFiles(start_level_);
 
+  // print level files numbers
+  printf("level_files size: %zu\n", level_files.size());
+  for (size_t i = 0; i < level_files.size(); i++) {
+    printf("level_files[%zu]->fd.GetNumber() = %ld\n", i, level_files[i]->fd.GetNumber());
+  }
+
   // Pick the file with the highest score in this level that is not already
   // being compacted.
   const std::vector<int>& file_scores =
       vstorage_->FilesByCompactionPri(start_level_);
+  
+  // print file scores
+  printf("file_scores size: %zu\n", file_scores.size());
+  for (size_t i = 0; i < file_scores.size(); i++) {
+    printf("file_scores[%zu] = %d\n", i, file_scores[i]);
+  }
 
   unsigned int cmp_idx;
   for (cmp_idx = vstorage_->NextCompactionIndex(start_level_);
@@ -785,9 +822,13 @@ bool LevelCompactionBuilder::PickFileToCompact() {
     int index = file_scores[cmp_idx];
     auto* f = level_files[index];
 
+    // print file number
+    printf("f->fd.GetNumber() = %ld\n", f->fd.GetNumber());
+
     // do not pick a file to compact if it is being compacted
     // from n-1 level.
     if (f->being_compacted) {
+      printf("f->being_compacted = true\n");
       if (ioptions_.compaction_pri == kRoundRobin) {
         // TODO(zichen): this file may be involved in one compaction from
         // an upper level, cannot advance the cursor for round-robin policy.
@@ -808,6 +849,8 @@ bool LevelCompactionBuilder::PickFileToCompact() {
                 vstorage_, ioptions_, start_level_, output_level_))) {
       // A locked (pending compaction) input-level file was pulled in due to
       // user-key overlap.
+
+      printf("A locked (pending compaction) input-level file was pulled in due to user-key overlap.\n");
       start_level_inputs_.clear();
 
       if (ioptions_.compaction_pri == kRoundRobin) {
@@ -849,6 +892,8 @@ bool LevelCompactionBuilder::PickFileToCompact() {
     base_index_ = index;
     break;
   }
+
+  printf("start_level_inputs size after PickFilesMarkedForCompaction: %zu\n", start_level_inputs_.size());
 
   // store where to start the iteration in the next call to PickCompaction
   if (ioptions_.compaction_pri != kRoundRobin) {

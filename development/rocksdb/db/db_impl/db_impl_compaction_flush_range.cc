@@ -16,6 +16,47 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+// TODO: (shubham) remove this after testing
+std::ostream& operator<<(std::ostream& os, const DecisionCell& data) {
+  os << std::to_string(data.start_level_) + ">" +
+            std::to_string(data.end_level_) + "[" +
+            std::to_string(data.entries_useful_to_unuseful_ratio_) + "(" +
+            data.getStringOfOverlappingEntriesRatio() + ")]";
+  return os;
+}
+
+std::tuple<long long /*levels*/, long long /*files*/, long long /*entries*/>
+DBImpl::getLevelFilesEntriesCount(ColumnFamilyData* cfd) {
+  ColumnFamilyData* cfd_ = cfd;
+  if (cfd_ == nullptr) {
+    auto cfh =
+        static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+    cfd_ = cfh->cfd();
+  }
+
+  long long total_levels = 0;
+  long long total_files = 0;
+  long long total_entries = 0;
+
+  std::string levels_state_before = "Workload done, waiting for compaction...";
+  auto storage_info_before = cfd_->GetSuperVersion()->current->storage_info();
+  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+    long long num_entries = 0;
+    levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
+    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+    for (size_t file_index = 0; file_index < num_files; file_index++) {
+      num_entries += storage_info_before->LevelFilesBrief(l)
+                         .files[file_index]
+                         .file_metadata->num_entries;
+    }
+    ++total_levels;
+    total_files += num_files;
+    total_entries += num_entries;
+  }
+
+  return std::make_tuple(total_levels, total_files, total_entries);
+}
+
 // Find the rough index of the target to find the overlap percentage
 long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
                                              const std::string given_end_key,
@@ -23,7 +64,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
                                              ColumnFamilyData* cfd,
                                              Slice& useful_min_key,
                                              Slice& useful_max_key) {
-
   using TypedHandle = TableCache::TypedHandle;
   long long overlapping_count = 0;
 
@@ -351,7 +391,8 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
     }
 
     if (flush_reason == FlushReason::kRangeFlush) {
-      level = range_query_last_level_;
+      // level = range_query_last_level_;
+      level = decision_cell_.GetEndLevel();
     }
 
     if (immutable_db_options().verbosity > 0) {
@@ -653,6 +694,11 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
                                                MemTable* mem_range, int level,
                                                bool just_delete,
                                                FileMetaData* file_meta) {
+  if (level != -1 && (level < decision_cell_.GetStartLevel() ||
+                      level > decision_cell_.GetEndLevel())) {
+    return;
+  }
+
   if (immutable_db_options().verbosity > 0) {
     std::cout << "\n[Verbosity]: creating new flush request reason: "
               << GetFlushReasonString(flush_reason) << " level: " << level

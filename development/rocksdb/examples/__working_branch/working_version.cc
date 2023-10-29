@@ -3,13 +3,14 @@
  *  Author: Subhadeep
  */
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
-#include <iomanip>
 
 #include "rocksdb/db.h"
 // #include "rocksdb/slice.h"
@@ -24,7 +25,7 @@
 #include "../util/string_util.h"
 #include "args.hxx"
 #include "aux_time.h"  // !YBS-sep09-XX!
-#include "chrono"      // !YBS-sep09-XX!
+// #include "chrono"      // !YBS-sep09-XX!
 #include "db/db_impl/db_impl.h"
 #include "emu_environment.h"
 #include "logging/logging.h"
@@ -36,6 +37,92 @@
 
 using namespace rocksdb;
 
+/*
+  Stats collector for each query
+*/
+enum QueryType { POINT, INSERT, UPDATE, DELETE, RANGE, INVALID };
+
+std::string getQueryType(QueryType qtype);
+
+class QueryStats {
+  friend std::ostream &operator<<(std::ostream &os, const QueryStats &qstats) {
+    os << qstats.query_number << ", " << getQueryType(qstats.query_type) << ", "
+       << qstats.key << ", " << qstats.num_levels_before << ", "
+       << qstats.num_levels_after << ", " << qstats.num_files_before << ", "
+       << qstats.num_files_after << ", " << qstats.num_entries_before << ", "
+       << qstats.num_entries_after << ", " << qstats.total_time_taken
+       << std::endl;
+    return os;
+  }
+
+ private:
+  static QueryStats *_instance;
+
+  QueryStats() = default;
+
+ public:
+  long long query_number;
+  QueryType query_type;
+  std::string key;
+
+  // number of files after query completion
+  long long num_files_before;
+  long long num_files_after;
+
+  // number of entries after query completion
+  long long num_entries_before;
+  long long num_entries_after;
+
+  // number of levels afte query completion
+  long long num_levels_before;
+  long long num_levels_after;
+
+  double total_time_taken;
+
+  static QueryStats *getQueryStats() {
+    if (QueryStats::_instance == nullptr) {
+      QueryStats::_instance = new QueryStats();
+    }
+    return QueryStats::_instance;
+  }
+  void reset() {
+    query_number = -1;
+    query_type = QueryType::INVALID;
+    key = "";
+    num_levels_before = 0;
+    num_levels_after = 0;
+    num_files_before = 0;
+    num_files_after = 0;
+    num_entries_before = 0;
+    num_entries_after = 0;
+    total_time_taken = 0;
+  }
+};
+
+std::string getQueryType(QueryType qtype) {
+  switch (qtype) {
+    case POINT:
+      return "Point";
+      break;
+    case RANGE:
+      return "Range";
+      break;
+    case INSERT:
+      return "Insert";
+      break;
+    case DELETE:
+      return "Delete";
+      break;
+    case UPDATE:
+      return "Update";
+      break;
+    default:
+      return "Invalid";
+      break;
+  }
+}
+
+QueryStats *QueryStats::_instance = nullptr;
 std::string kDBPath = "./db_working_home";
 struct operation_tracker {
   long _inserts_completed = 0;
@@ -588,6 +675,8 @@ int runWorkload(EmuEnv *_env) {
   }
 
   options.info_log_level = InfoLogLevel::DEBUG_LEVEL;
+  options.ignore_max_compaction_bytes_for_input = false;
+  options.max_compaction_bytes = _env->buffer_size;
   printExperimentalSetup(_env);  // !YBS-sep07-XX!
   std::cout << "Maximum #OpenFiles = " << options.max_open_files
             << std::endl;  // !YBS-sep07-XX!
@@ -673,7 +762,23 @@ int runWorkload(EmuEnv *_env) {
   }
   // !END
 
+  std::ofstream outputFile;
+  if (_env->enable_range_query_compaction) {
+    outputFile.open("rqc_on_stats.csv");
+  } else {
+    outputFile.open("rqc_off_stats.csv");
+  }
+
+  QueryStats *qstats = QueryStats::getQueryStats();
+  std::chrono::time_point<std::chrono::system_clock> starting_time, ending_time;
+  long long number = 0;
+
   while (!workload_file.eof()) {
+    // auto info = db_impl_->getLevelFilesEntriesCount();
+    qstats->query_number = ++number;
+    // qstats->num_levels_before = std::get<0>(info);
+    // qstats->num_files_before = std::get<1>(info);
+    // qstats->num_entries_before = std::get<2>(info);
     char instruction;
     long key, start_key, end_key;
     string value;
@@ -682,9 +787,14 @@ int runWorkload(EmuEnv *_env) {
     switch (instruction) {
       case 'I':  // insert
         workload_file >> key >> value;
+        qstats->query_type = QueryType::INSERT;
+        qstats->key = std::to_string(key);
         // if (_env->verbosity == 2) std::cout << instruction << " " << key << "
         // " << value << "" << std::endl; Put key-value
+
+        starting_time = std::chrono::system_clock::now();
         s = db->Put(w_options, to_string(key), value);
+        ending_time = std::chrono::system_clock::now();
         if (!s.ok()) std::cerr << s.ToString() << std::endl;
         assert(s.ok());
         op_track._inserts_completed++;
@@ -694,9 +804,13 @@ int runWorkload(EmuEnv *_env) {
 
       case 'U':  // update
         workload_file >> key >> value;
+        qstats->query_type = QueryType::UPDATE;
+        qstats->key = std::to_string(key);
         // if (_env->verbosity == 2) std::cout << instruction << " " << key << "
         // " << value << "" << std::endl; Put key-value
+        starting_time = std::chrono::system_clock::now();
         s = db->Put(w_options, to_string(key), value);
+        ending_time = std::chrono::system_clock::now();
         if (!s.ok()) std::cerr << s.ToString() << std::endl;
         assert(s.ok());
         op_track._updates_completed++;
@@ -706,9 +820,13 @@ int runWorkload(EmuEnv *_env) {
 
       case 'D':  // point delete
         workload_file >> key;
+        qstats->query_type = QueryType::DELETE;
+        qstats->key = std::to_string(key);
         // if (_env->verbosity == 2) std::cout << instruction << " " << key <<
         // "" << std::endl;
+        starting_time = std::chrono::system_clock::now();
         s = db->Delete(w_options, to_string(key));
+        ending_time = std::chrono::system_clock::now();
         assert(s.ok());
         op_track._point_deletes_completed++;
         counter++;
@@ -728,9 +846,13 @@ int runWorkload(EmuEnv *_env) {
 
       case 'Q':  // probe: point query
         workload_file >> key;
+        qstats->query_type = QueryType::POINT;
+        qstats->key = std::to_string(key);
         // if (_env->verbosity == 2) std::cout << instruction << " " << key <<
         // "" << std::endl;
+        starting_time = std::chrono::system_clock::now();
         s = db->Get(r_options, to_string(key), &value);
+        ending_time = std::chrono::system_clock::now();
         // if (!s.ok()) std::cerr << s.ToString() << "key = " << key <<
         // std::endl;
         //  assert(s.ok());
@@ -741,8 +863,12 @@ int runWorkload(EmuEnv *_env) {
 
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
+        qstats->query_type = QueryType::RANGE;
+        qstats->key =
+            std::to_string(start_key) + " -> " + std::to_string(end_key);
         lexico_valid = to_string(start_key).compare(to_string(end_key)) < 0;
 
+        starting_time = std::chrono::system_clock::now();
         // it->Refresh();
         if (_env->verbosity > 0) {
           std::cout << "\n[Verbosity]: range query starting " << __FILE__ ":"
@@ -777,6 +903,7 @@ int runWorkload(EmuEnv *_env) {
           std::cout << "\n[Verbosity]: range query completed " << __FILE__ ":"
                     << __LINE__ << " " << __FUNCTION__ << std::endl;
         }
+        ending_time = std::chrono::system_clock::now();
 
         op_track._range_queries_completed++;
         counter++;
@@ -787,6 +914,17 @@ int runWorkload(EmuEnv *_env) {
         std::cerr << "ERROR: Case match NOT found !!" << std::endl;
         break;
     }
+
+    qstats->total_time_taken =
+        (std::chrono::duration_cast<std::chrono::duration<double>>(
+             ending_time - starting_time))
+            .count();
+    // auto info_after = db_impl_->getLevelFilesEntriesCount();
+    // qstats->num_levels_after = std::get<0>(info_after);
+    // qstats->num_files_after = std::get<1>(info_after);
+    // qstats->num_entries_after = std::get<2>(info_after);
+    outputFile << *qstats;
+    qstats->reset();
 
     if (workload_size < 100) workload_size = 100;
     if (counter % (workload_size / 100) == 0 && _env->show_progress) {
@@ -828,34 +966,43 @@ int runWorkload(EmuEnv *_env) {
           "[" + std::to_string(fd.fd.GetNumber()) + "(" +
           fd.file_metadata->smallest.user_key().ToString() + ", " +
           fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
-      storage_info_before->LevelFilesBrief(l)
-          .files[file_index]
-          .file_metadata->num_entries;
       num_entries += storage_info_before->LevelFilesBrief(l)
                          .files[file_index]
                          .file_metadata->num_entries;
     }
     total_files += num_files;
     total_entries += num_entries;
-    levels_info.push_back(std::make_tuple("Level-"+to_string(l), num_files, num_entries));
+    levels_info.push_back(
+        std::make_tuple("Level-" + to_string(l), num_files, num_entries));
   }
   levels_info.push_back(std::make_tuple("Total: ", total_files, total_entries));
 
+  std::ofstream stats_file;
+  if (_env->enable_range_query_compaction) {
+    stats_file.open("rqc_on_stats.txt");
+  } else {
+    stats_file.open("rqc_off_stats.txt");
+  }
+
   if (_env->verbosity > 0) {
-    std::cout << "\n\n" << std::setw(20) << "Level" 
-                        << std::setw(20) << "Num Files" 
-                        << std::setw(20) <<  "Num Entries" << std::endl;
+   stats_file << "\n\n"
+              << std::setw(20) << "Level" << std::setw(20) << "Num Files"
+              << std::setw(20) << "Num Entries" << std::endl;
 
     for (auto level_info : levels_info) {
-      std::cout << std::setw(20) << std::get<0>(level_info)
-                << std::setw(20) << std::get<1>(level_info)
-                << std::setw(20) << std::get<2>(level_info) << std::endl;
+      stats_file << std::setw(20) << std::get<0>(level_info) << std::setw(20)
+                << std::get<1>(level_info) << std::setw(20)
+                << std::get<2>(level_info) << std::endl;
     }
   }
 
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
 
+  auto total_info = levels_info.back();
+  outputFile << ++number << ", Total, , 0, " << levels_info.size() << ", 0, " << total_files << ", 0, " << total_entries << ", 0";
+
+  outputFile.close();
   s = db->Close();
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
@@ -899,6 +1046,10 @@ int runWorkload(EmuEnv *_env) {
     std::cout << rocksdb::get_iostats_context()->ToString() << std::endl;
     // END ROCKS PROFILE
     // Print Full RocksDB stats
+
+    stats_file << options.statistics->ToString();
+    stats_file.close();
+
     std::cout << "RocksDB Statistics : " << std::endl;
     std::cout << options.statistics->ToString() << std::endl;
     std::cout << "----------------------------------------" << std::endl;
@@ -942,7 +1093,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       {'T', "size_ratio"});
   args::ValueFlag<int> buffer_size_in_pages_cmd(
       group1, "P",
-      "The number of unique inserts to issue in the experiment [def: 4096]",
+      "The number of unique inserts to issue in the experiment [def: 512]",
       {'P', "buffer_size_in_pages"});
   args::ValueFlag<int> entries_per_page_cmd(
       group1, "B",
@@ -1033,7 +1184,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       size_ratio_cmd ? args::get(size_ratio_cmd) : 2;  // 10; [Shubham]
   _env->buffer_size_in_pages = buffer_size_in_pages_cmd
                                    ? args::get(buffer_size_in_pages_cmd)
-                                   : 2;  // 4096; [Shubham]
+                                   : 512;
   _env->entries_per_page =
       entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
   _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 1024;

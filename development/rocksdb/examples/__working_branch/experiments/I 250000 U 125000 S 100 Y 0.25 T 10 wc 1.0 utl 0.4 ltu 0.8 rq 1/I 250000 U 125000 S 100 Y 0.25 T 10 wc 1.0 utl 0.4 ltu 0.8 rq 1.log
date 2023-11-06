@@ -1,0 +1,2140 @@
+printing: max_bytes_for_level_base = 2097152 buffer_size = 2097152 size_ratio = 10
+Destroying database ...
+  cmpt_sty  cmpt_pri   T         P         B         E         M file_size   L1_size   blk_cch       BPK
+         1         1  10       512         4      1024   2097152   2097152   2097152         8        10
+Maximum #OpenFiles = 50
+Maximum #ThreadsUsedToOpenFiles = 80
+Verbosity = 1
+Clearing system cache ...
+Compaction Eagerness: Hybrid leveling (kCompactionStyleLeveling)
+Starting workload execution with env: EmuEnv Configuration:
+delete_persistence_latency: 0
+oldest_delete_file_timestamp: 1698979289
+flag: 0
+vec: 
+version_set_FEF: 0
+destroy_database: 1
+clear_system_cache: 1
+show_progress: 0
+current_op:  
+enable_rocksdb_perf_iostat: 1
+size_ratio: 10
+buffer_size_in_pages: 512
+entries_per_page: 4
+entry_size: 1024
+buffer_size: 2097152
+file_to_memtable_size_ratio: 1
+file_size: 2097152
+verbosity: 1
+compaction_pri: 1
+bits_per_key: 10
+max_write_buffer_number: 2
+memtable_factory: 3
+target_file_size_base: 2097152
+level_compaction_dynamic_level_bytes: 0
+compaction_style: 1
+disable_auto_compactions: 0
+compaction_filter: 0
+compaction_filter_factory: 0
+access_hint_on_compaction_start: 2
+level0_file_num_compaction_trigger: 1
+target_file_size_multiplier: 1
+max_background_jobs: 0
+max_compaction_bytes: 0
+max_bytes_for_level_base: 2097152
+merge_operator: 0
+soft_pending_compaction_bytes_limit: 0
+hard_pending_compaction_bytes_limit: 0
+periodic_compaction_seconds: 0
+use_direct_io_for_flush_and_compaction: 1
+live_levels: 0
+num_levels: 10
+no_block_cache: 0
+block_cache: 8
+block_cache_high_priority_ratio: 0.5
+cache_index_and_filter_blocks: 1
+cache_index_and_filter_blocks_with_high_priority: 1
+read_amp_bytes_per_bit: 4
+data_block_index_type: 1
+index_type: 1
+partition_filters: 0
+metadata_block_size: 4096
+pin_top_level_index_and_filter: 0
+index_shortening: 1
+block_size_deviation: 0
+enable_index_compression: 0
+compression: 1
+verify_checksums: 1
+fill_cache: 0
+iter_start_seqnum: 0
+ignore_range_deletions: 0
+read_tier: 1
+low_pri: 1
+sync: 0
+disableWAL: 0
+no_slowdown: 0
+ignore_missing_column_families: 0
+max_open_files: 50
+max_file_opening_threads: 80
+comparator: 1
+max_sequential_skip_in_iterations: 8
+memtable_prefix_bloom_size_ratio: 0
+level0_stop_writes_trigger: 2
+paranoid_file_checks: 0
+optimize_filters_for_hits: 0
+inplace_update_support: 0
+inplace_update_num_locks: 10000
+report_bg_io_stats: 1
+max_successive_merges: 0
+create_if_missing: 1
+delayed_write_rate: 0
+bytes_per_sync: 0
+stats_persist_period_sec: 600
+enable_thread_tracking: 0
+stats_history_buffer_size: 1048576
+allow_concurrent_memtable_write: 0
+dump_malloc_stats: 0
+use_direct_reads: 1
+avoid_flush_during_shutdown: 0
+advise_random_on_open: 1
+delete_obsolete_files_period_micros: 21600000000
+allow_mmap_reads: 0
+allow_mmap_writes: 0
+wait: 1
+allow_write_stall: 1
+enable_range_query_compaction: 1
+write_cost_threshold: 1
+upper_to_lower_ratio: 0.4
+lower_to_upper_ratio: 0.8
+num_inserts: 0
+path: 
+debugging: 0
+FPR_optimization_level: 1
+derived_num_levels: -1
+N: -1
+derived_N: -1
+K: 1
+Z: 1
+max_levels: 1000
+target_level_for_non_zero_result_point_lookups: 10
+use_block_based_filter: 0
+key_prefix_for_entries_to_target_in_queries: +
+experiment_name: 
+experiment_starting_time: 
+measure_IOs: 0
+print_IOs_per_file: 0
+total_IOs: 0
+clean_caches_for_experiments: 0
+file_system_page_size: 4096
+only_tune: 0
+num_read_query_sessions: 1
+
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3873400507 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999823681 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: creating new flush request reason: Range Flush level: -1 just_delete: False db/db_impl/db_impl_compaction_flush_range.cc:709 AddPartialOrRangeFileFlushRequest
+memtable_id: 2 num_entries: 0 db/db_impl/db_impl_compaction_flush_range.cc:719 AddPartialOrRangeFileFlushRequest
+
+[Verbosity]: switching in-range memtable prevId: 2 newId: 16 db/db_impl/db_impl_compaction_flush_range.cc:742 AddPartialOrRangeFileFlushRequest
+
+[Verbosity]: adding to flush queue, scheduled: 0 running: 0 unscheduled: 1 db/db_impl/db_impl_compaction_flush_range.cc:687 SchedulePendingPartialRangeFlush
+
+[Verbosity]: trying to schedule, current - scheduled: 0 running: 0 unscheduled: 1 max_bg_job_limit: 1 db/db_impl/db_impl_compaction_flush_range.cc:628 SchedulePartialOrRangeFileFlush
+
+[Verbosity]: scheduling more, now - scheduled: 1 running: 0 unscheduled: 1 max_bg_job_limit: 1 db/db_impl/db_impl_compaction_flush_range.cc:645 SchedulePartialOrRangeFileFlush
+
+[Verbosity] waiting for flush jobs, scheduled: 1 unscheduled: 0 running: 0 db/arena_wrapped_db_iter.cc:425 Reset
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:432 Reset
+
+[Verbosity]: trying to schedule, current - scheduled: 1 running: 0 unscheduled: 0 max_bg_job_limit: 1 db/db_impl/db_impl_compaction_flush_range.cc:628 SchedulePartialOrRangeFileFlush
+
+[Verbosity]: running job_id: 73 flush_reason: Range Flush level: 0 just_delete: False db/db_impl/db_impl_compaction_flush_range.cc:403 BackgroundPartialOrRangeFlush
+memtable_id: 2 num_entries: 0 db/db_impl/db_impl_compaction_flush_range.cc:413 BackgroundPartialOrRangeFlush
+
+[Verbosity]: creating partial_flush_job for job_id: 73 flush_reason: Range Flush level: 0 db/db_impl/db_impl_compaction_flush_range.cc:175 FlushPartialOrRangeFile
+memtable_id: 2 num_entries: 0 db/db_impl/db_impl_compaction_flush_range.cc:186 FlushPartialOrRangeFile
+
+[Verbosity]: ran partial_flush_job for job_id: 73 flush_reason: Range Flush level: 0 status: OK db/db_impl/db_impl_compaction_flush_range.cc:223 FlushPartialOrRangeFile
+
+[Verbosity]: logged and applied partial_flush_job for job_id: 73 flush_reason: Range Flush level: 0 status: OK db/db_impl/db_impl_compaction_flush_range.cc:238 FlushPartialOrRangeFile
+memtable_id: 2 num_entries: 0 db/db_impl/db_impl_compaction_flush_range.cc:248 FlushPartialOrRangeFile
+
+[Verbosity]: installed super version for job_id: 73 flush_reason: Range Flush level: 0 status: OK db/db_impl/db_impl_compaction_flush_range.cc:259 FlushPartialOrRangeFile
+
+[Verbosity]: trying to schedule, current - scheduled: 0 running: 0 unscheduled: 0 max_bg_job_limit: 1 db/db_impl/db_impl_compaction_flush_range.cc:628 SchedulePartialOrRangeFileFlush
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3873748413 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999823681 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1299159669 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2249535126 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 295512931 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3923256409 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3880273101 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999823681 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2733539420 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3701738896 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1394364458 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2348283881 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2077021845 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3038113110 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 387909818 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999823681 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1301121177 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2251056404 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 318062385 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4161374366 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 294120894 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3923256409 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2617781617 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3593025835 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3108916391 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4091354720 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3475354705 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 590078475 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3845741113 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 955205139 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2472589367 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3440414816 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3072852533 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4053691320 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3888951554 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 99984306 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3563650364 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 681506496 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3887765473 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 99984306 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3818547190 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 932214252 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 388551824 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 99984306 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1905313666 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2865567296 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 386124837 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 973547552 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3657729383 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 777546638 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3485858661 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 607882117 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3888457223 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 99984306 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3130842256 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4118527599 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 388839724 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 99984306 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3888270967 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 99984306 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2254896628 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3212716822 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2218312674 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3178043841 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 265114711 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3619697575 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3818547190 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 934074358 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 388550323 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999895335 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1725490257 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 267057623 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2694911602 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3666551788 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3885531876 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3555613973 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 6775737 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1736920518 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2684397013 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1159025278 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2103165257 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 388580608 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2000527230 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2963148085 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2731780598 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3703455213 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2180096474 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3144830677 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3617490787 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 738212565 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3868891296 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 982040498 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3028881115 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4009354860 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1675301731 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2621828258 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1895769367 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2852807632 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 23115270 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3275470479 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 388550323 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3885531876 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1436048542 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2388120217 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1203570497 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2151347140 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3224574581 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4208154151 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3885498358 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2127898112 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3088980495 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2487806714 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3457095277 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2122014165 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3083356109 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2496837080 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3466066479 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2463956065 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3433489368 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1113734161 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2061348343 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3884960610 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3885816100 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1390295880 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2339674024 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 155662044 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 250529759 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2687104693 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3659652742 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2722305279 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3692201501 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1366449232 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2318656031 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 233181186 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3298709331 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2985015749 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3961697848 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1020309280 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 1972470014 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3888417876 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 303515133 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4012289906 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3887405761 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3005336131 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3980813859 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2087856507 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3047669925 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3887094183 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3887154505 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3144674141 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4123038122 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 309562109 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4075041888 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 354102187 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 653629177 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3888282428 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2116575919 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3075452177 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1094225964 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2050283620 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3024579042 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4002385953 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 1045672521 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 2003021995 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3889718721 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3291129903 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4267659258 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2305632621 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3270095966 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2526285285 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3494229969 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2964794451 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 393636252 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3086310972 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4060624024 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3889701019 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 999934214 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3693768199 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 801457011 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 3339367729 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 447381039 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 307297428 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 4047003429 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: refreshing iterator db/arena_wrapped_db_iter.cc:361 Refresh
+setting range_start_key to: 2526464688 db/arena_wrapped_db_iter.cc:363 Refresh
+setting range_end_key to: 3495590872 db/arena_wrapped_db_iter.cc:365 Refresh
+enabling read compaction db/arena_wrapped_db_iter.cc:366 Refresh
+
+[Verbosity]: pausing background work db/arena_wrapped_db_iter.cc:377 Refresh
+
+[Verbosity]: skipping this time num_levels_are_overlapping <= 1 db/arena_wrapped_db_iter.cc:386 Refresh
+
+[Verbosity]: continuing background work db/arena_wrapped_db_iter.cc:389 Refresh
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+----------------------Closing DB----------------------- completion_status = 1
+Re-opening DB -- Re-setting compaction style to: 1
+End of experiment - TEST !!
+RocksDB Perf Context : 
+user_key_comparison_count = 18867912, block_cache_hit_count = 13853, block_read_count = 9209, block_read_byte = 37270867, block_read_time = 1518680455, block_read_cpu_time = 291603367, block_cache_index_hit_count = 9515, block_cache_standalone_handle_count = 0, block_cache_real_handle_count = 0, index_block_read_count = 0, block_cache_filter_hit_count = 4338, filter_block_read_count = 0, compression_dict_block_read_count = 0, secondary_cache_hit_count = 0, compressed_sec_cache_insert_real_count = 0, compressed_sec_cache_insert_dummy_count = 0, compressed_sec_cache_uncompressed_bytes = 0, compressed_sec_cache_compressed_bytes = 0, block_checksum_time = 422199933, block_decompress_time = 0, get_read_bytes = 0, multiget_read_bytes = 0, iter_read_bytes = 3146352640, blob_cache_hit_count = 0, blob_read_count = 0, blob_read_byte = 0, blob_read_time = 0, blob_checksum_time = 0, blob_decompress_time = 0, internal_key_skipped_count = 3310312, internal_delete_skipped_count = 0, internal_recent_skipped_count = 0, internal_merge_count = 0, internal_merge_point_lookup_count = 0, internal_range_del_reseek_count = 0, get_snapshot_time = 0, get_from_memtable_time = 0, get_from_memtable_count = 0, get_post_process_time = 0, get_from_output_files_time = 0, seek_on_memtable_time = 415600, seek_on_memtable_count = 100, next_on_memtable_count = 25693, prev_on_memtable_count = 0, seek_child_seek_time = 88472304, seek_child_seek_count = 414, seek_min_heap_time = 231442, seek_max_heap_time = 0, seek_internal_seek_time = 89295476, find_next_user_entry_time = 1993618440, write_wal_time = 3877224479, write_memtable_time = 989366303, write_delay_time = 352520983628, write_scheduling_flushes_compactions_time = 77774346, write_pre_and_post_process_time = 494442295, write_thread_wait_nanos = 0, db_mutex_lock_nanos = 0, db_condition_wait_nanos = 0, merge_operator_time_nanos = 0, read_index_block_nanos = 16850502, read_filter_block_nanos = 7186970, new_table_block_iter_nanos = 18119400838, new_table_iterator_nanos = 1215496938, block_seek_nanos = 14399477, find_table_nanos = 1312011937, bloom_memtable_hit_count = 0, bloom_memtable_miss_count = 0, bloom_sst_hit_count = 0, bloom_sst_miss_count = 0, key_lock_wait_time = 0, key_lock_wait_count = 0, env_new_sequential_file_nanos = 0, env_new_random_access_file_nanos = 0, env_new_writable_file_nanos = 0, env_reuse_writable_file_nanos = 0, env_new_random_rw_file_nanos = 0, env_new_directory_nanos = 0, env_file_exists_nanos = 0, env_get_children_nanos = 0, env_get_children_file_attributes_nanos = 0, env_delete_file_nanos = 0, env_create_dir_nanos = 0, env_create_dir_if_missing_nanos = 0, env_delete_dir_nanos = 0, env_get_file_size_nanos = 0, env_get_file_modification_time_nanos = 0, env_rename_file_nanos = 0, env_link_file_nanos = 0, env_lock_file_nanos = 0, env_unlock_file_nanos = 0, env_new_logger_nanos = 0, get_cpu_nanos = 0, iter_next_cpu_nanos = 13372191353, iter_prev_cpu_nanos = 0, iter_seek_cpu_nanos = 31820181, iter_next_count = 3135005, iter_prev_count = 0, iter_seek_count = 100, encrypt_data_nanos = 0, decrypt_data_nanos = 0, number_async_seek = 0, bloom_filter_useful = 0@level0, 0@level1, 0@level2, 0@level3, 0@level4, bloom_filter_full_positive = 0@level0, 0@level1, 0@level2, 0@level3, 0@level4, bloom_filter_full_true_positive = 0@level0, 0@level1, 0@level2, 0@level3, 0@level4, user_key_return_count = 0@level0, 0@level1, 0@level2, 0@level3, 0@level4, get_from_table_nanos = 0@level0, 0@level1, 0@level2, 0@level3, 0@level4, block_cache_hit_count = 5@level0, 953@level1, 5730@level2, 7155@level3, 10@level4, block_cache_miss_count = 239@level0, 12175@level1, 127814@level2, 682721@level3, 702@level4
+RocksDB Iostats Context : 
+thread_pool_id = 4, bytes_read = 3470222129, bytes_written = 393368170, open_nanos = 43506055, allocate_nanos = 6441781, write_nanos = 3195065786, read_nanos = 15527769940, range_sync_nanos = 0, fsync_nanos = 1266148, prepare_write_nanos = 67220200, logger_nanos = 88418823, cpu_write_nanos = 2613505902, cpu_read_nanos = 1598375585, file_io_stats_by_temperature.hot_file_bytes_read = 0, file_io_stats_by_temperature.warm_file_bytes_read = 0, file_io_stats_by_temperature.cold_file_bytes_read = 0, file_io_stats_by_temperature.hot_file_read_count = 0, file_io_stats_by_temperature.warm_file_read_count = 0, file_io_stats_by_temperature.cold_file_read_count = 0
+RocksDB Statistics : 
+rocksdb.block.cache.miss COUNT : 1724626
+rocksdb.block.cache.hit COUNT : 51623
+rocksdb.block.cache.add COUNT : 20335
+rocksdb.block.cache.add.failures COUNT : 0
+rocksdb.block.cache.index.miss COUNT : 10168
+rocksdb.block.cache.index.hit COUNT : 38362
+rocksdb.block.cache.index.add COUNT : 10168
+rocksdb.block.cache.index.bytes.insert COUNT : 20839760
+rocksdb.block.cache.filter.miss COUNT : 10167
+rocksdb.block.cache.filter.hit COUNT : 13261
+rocksdb.block.cache.filter.add COUNT : 10167
+rocksdb.block.cache.filter.bytes.insert COUNT : 5716176
+rocksdb.block.cache.data.miss COUNT : 1704291
+rocksdb.block.cache.data.hit COUNT : 0
+rocksdb.block.cache.data.add COUNT : 0
+rocksdb.block.cache.data.bytes.insert COUNT : 0
+rocksdb.block.cache.bytes.read COUNT : 102327424
+rocksdb.block.cache.bytes.write COUNT : 26555936
+rocksdb.bloom.filter.useful COUNT : 0
+rocksdb.bloom.filter.full.positive COUNT : 0
+rocksdb.bloom.filter.full.true.positive COUNT : 0
+rocksdb.persistent.cache.hit COUNT : 0
+rocksdb.persistent.cache.miss COUNT : 0
+rocksdb.sim.block.cache.hit COUNT : 0
+rocksdb.sim.block.cache.miss COUNT : 0
+rocksdb.memtable.hit COUNT : 0
+rocksdb.memtable.miss COUNT : 0
+rocksdb.l0.hit COUNT : 0
+rocksdb.l1.hit COUNT : 0
+rocksdb.l2andup.hit COUNT : 0
+rocksdb.compaction.key.drop.new COUNT : 113991
+rocksdb.compaction.key.drop.obsolete COUNT : 0
+rocksdb.compaction.key.drop.range_del COUNT : 0
+rocksdb.compaction.key.drop.user COUNT : 0
+rocksdb.compaction.range_del.drop.obsolete COUNT : 0
+rocksdb.compaction.optimized.del.drop.obsolete COUNT : 0
+rocksdb.compaction.cancelled COUNT : 0
+rocksdb.number.keys.written COUNT : 375001
+rocksdb.number.keys.read COUNT : 0
+rocksdb.number.keys.updated COUNT : 0
+rocksdb.bytes.written COUNT : 390000025
+rocksdb.bytes.read COUNT : 0
+rocksdb.number.db.seek COUNT : 100
+rocksdb.number.db.next COUNT : 3072510
+rocksdb.number.db.prev COUNT : 0
+rocksdb.number.db.seek.found COUNT : 100
+rocksdb.number.db.next.found COUNT : 3072510
+rocksdb.number.db.prev.found COUNT : 0
+rocksdb.db.iter.bytes.read COUNT : 3146352640
+rocksdb.no.file.opens COUNT : 23438
+rocksdb.no.file.errors COUNT : 0
+rocksdb.stall.micros COUNT : 0
+rocksdb.db.mutex.wait.micros COUNT : 0
+rocksdb.number.multiget.get COUNT : 0
+rocksdb.number.multiget.keys.read COUNT : 0
+rocksdb.number.multiget.bytes.read COUNT : 0
+rocksdb.number.merge.failures COUNT : 0
+rocksdb.bloom.filter.prefix.checked COUNT : 0
+rocksdb.bloom.filter.prefix.useful COUNT : 0
+rocksdb.bloom.filter.prefix.true.positive COUNT : 0
+rocksdb.number.reseeks.iteration COUNT : 0
+rocksdb.getupdatessince.calls COUNT : 0
+rocksdb.wal.synced COUNT : 0
+rocksdb.wal.bytes COUNT : 390000025
+rocksdb.write.self COUNT : 375001
+rocksdb.write.other COUNT : 0
+rocksdb.write.wal COUNT : 375001
+rocksdb.compact.read.bytes COUNT : 3736051358
+rocksdb.compact.write.bytes COUNT : 3552405003
+rocksdb.flush.write.bytes COUNT : 389783977
+rocksdb.compact.read.marked.bytes COUNT : 0
+rocksdb.compact.read.periodic.bytes COUNT : 0
+rocksdb.compact.read.ttl.bytes COUNT : 0
+rocksdb.compact.write.marked.bytes COUNT : 0
+rocksdb.compact.write.periodic.bytes COUNT : 0
+rocksdb.compact.write.ttl.bytes COUNT : 0
+rocksdb.number.direct.load.table.properties COUNT : 9355
+rocksdb.number.superversion_acquires COUNT : 90
+rocksdb.number.superversion_releases COUNT : 0
+rocksdb.number.superversion_cleanups COUNT : 0
+rocksdb.number.block.compressed COUNT : 0
+rocksdb.number.block.decompressed COUNT : 0
+rocksdb.number.block.not_compressed COUNT : 0
+rocksdb.merge.operation.time.nanos COUNT : 0
+rocksdb.filter.operation.time.nanos COUNT : 0
+rocksdb.row.cache.hit COUNT : 0
+rocksdb.row.cache.miss COUNT : 0
+rocksdb.read.amp.estimate.useful.bytes COUNT : 6834779420
+rocksdb.read.amp.total.read.bytes COUNT : 7016637483
+rocksdb.number.rate_limiter.drains COUNT : 0
+rocksdb.number.iter.skip COUNT : 172867
+rocksdb.blobdb.num.put COUNT : 0
+rocksdb.blobdb.num.write COUNT : 0
+rocksdb.blobdb.num.get COUNT : 0
+rocksdb.blobdb.num.multiget COUNT : 0
+rocksdb.blobdb.num.seek COUNT : 0
+rocksdb.blobdb.num.next COUNT : 0
+rocksdb.blobdb.num.prev COUNT : 0
+rocksdb.blobdb.num.keys.written COUNT : 0
+rocksdb.blobdb.num.keys.read COUNT : 0
+rocksdb.blobdb.bytes.written COUNT : 0
+rocksdb.blobdb.bytes.read COUNT : 0
+rocksdb.blobdb.write.inlined COUNT : 0
+rocksdb.blobdb.write.inlined.ttl COUNT : 0
+rocksdb.blobdb.write.blob COUNT : 0
+rocksdb.blobdb.write.blob.ttl COUNT : 0
+rocksdb.blobdb.blob.file.bytes.written COUNT : 0
+rocksdb.blobdb.blob.file.bytes.read COUNT : 0
+rocksdb.blobdb.blob.file.synced COUNT : 0
+rocksdb.blobdb.blob.index.expired.count COUNT : 0
+rocksdb.blobdb.blob.index.expired.size COUNT : 0
+rocksdb.blobdb.blob.index.evicted.count COUNT : 0
+rocksdb.blobdb.blob.index.evicted.size COUNT : 0
+rocksdb.blobdb.gc.num.files COUNT : 0
+rocksdb.blobdb.gc.num.new.files COUNT : 0
+rocksdb.blobdb.gc.failures COUNT : 0
+rocksdb.blobdb.gc.num.keys.relocated COUNT : 0
+rocksdb.blobdb.gc.bytes.relocated COUNT : 0
+rocksdb.blobdb.fifo.num.files.evicted COUNT : 0
+rocksdb.blobdb.fifo.num.keys.evicted COUNT : 0
+rocksdb.blobdb.fifo.bytes.evicted COUNT : 0
+rocksdb.txn.overhead.mutex.prepare COUNT : 0
+rocksdb.txn.overhead.mutex.old.commit.map COUNT : 0
+rocksdb.txn.overhead.duplicate.key COUNT : 0
+rocksdb.txn.overhead.mutex.snapshot COUNT : 0
+rocksdb.txn.get.tryagain COUNT : 0
+rocksdb.number.multiget.keys.found COUNT : 0
+rocksdb.num.iterator.created COUNT : 90
+rocksdb.num.iterator.deleted COUNT : 89
+rocksdb.block.cache.compression.dict.miss COUNT : 0
+rocksdb.block.cache.compression.dict.hit COUNT : 0
+rocksdb.block.cache.compression.dict.add COUNT : 0
+rocksdb.block.cache.compression.dict.bytes.insert COUNT : 0
+rocksdb.block.cache.add.redundant COUNT : 0
+rocksdb.block.cache.index.add.redundant COUNT : 0
+rocksdb.block.cache.filter.add.redundant COUNT : 0
+rocksdb.block.cache.data.add.redundant COUNT : 0
+rocksdb.block.cache.compression.dict.add.redundant COUNT : 0
+rocksdb.files.marked.trash COUNT : 0
+rocksdb.files.marked.trash.deleted COUNT : 0
+rocksdb.files.deleted.immediately COUNT : 9924
+rocksdb.error.handler.bg.error.count COUNT : 0
+rocksdb.error.handler.bg.errro.count COUNT : 0
+rocksdb.error.handler.bg.io.error.count COUNT : 0
+rocksdb.error.handler.bg.io.errro.count COUNT : 0
+rocksdb.error.handler.bg.retryable.io.error.count COUNT : 0
+rocksdb.error.handler.bg.retryable.io.errro.count COUNT : 0
+rocksdb.error.handler.autoresume.count COUNT : 0
+rocksdb.error.handler.autoresume.retry.total.count COUNT : 0
+rocksdb.error.handler.autoresume.success.count COUNT : 0
+rocksdb.memtable.payload.bytes.at.flush COUNT : 386394216
+rocksdb.memtable.garbage.bytes.at.flush COUNT : 1224984
+rocksdb.secondary.cache.hits COUNT : 0
+rocksdb.verify_checksum.read.bytes COUNT : 0
+rocksdb.backup.read.bytes COUNT : 0
+rocksdb.backup.write.bytes COUNT : 0
+rocksdb.remote.compact.read.bytes COUNT : 0
+rocksdb.remote.compact.write.bytes COUNT : 0
+rocksdb.hot.file.read.bytes COUNT : 0
+rocksdb.warm.file.read.bytes COUNT : 0
+rocksdb.cold.file.read.bytes COUNT : 0
+rocksdb.hot.file.read.count COUNT : 0
+rocksdb.warm.file.read.count COUNT : 0
+rocksdb.cold.file.read.count COUNT : 0
+rocksdb.last.level.read.bytes COUNT : 0
+rocksdb.last.level.read.count COUNT : 0
+rocksdb.non.last.level.read.bytes COUNT : 7217204017
+rocksdb.non.last.level.read.count COUNT : 101225
+rocksdb.last.level.seek.filtered COUNT : 0
+rocksdb.last.level.seek.filter.match COUNT : 0
+rocksdb.last.level.seek.data COUNT : 0
+rocksdb.last.level.seek.data.useful.no.filter COUNT : 0
+rocksdb.last.level.seek.data.useful.filter.match COUNT : 0
+rocksdb.non.last.level.seek.filtered COUNT : 0
+rocksdb.non.last.level.seek.filter.match COUNT : 0
+rocksdb.non.last.level.seek.data COUNT : 4743
+rocksdb.non.last.level.seek.data.useful.no.filter COUNT : 4701
+rocksdb.non.last.level.seek.data.useful.filter.match COUNT : 0
+rocksdb.block.checksum.compute.count COUNT : 1757419
+rocksdb.block.checksum.mismatch.count COUNT : 0
+rocksdb.multiget.coroutine.count COUNT : 0
+rocksdb.blobdb.cache.miss COUNT : 0
+rocksdb.blobdb.cache.hit COUNT : 0
+rocksdb.blobdb.cache.add COUNT : 0
+rocksdb.blobdb.cache.add.failures COUNT : 0
+rocksdb.blobdb.cache.bytes.read COUNT : 0
+rocksdb.blobdb.cache.bytes.write COUNT : 0
+rocksdb.read.async.micros COUNT : 0
+rocksdb.async.read.error.count COUNT : 0
+rocksdb.secondary.cache.filter.hits COUNT : 0
+rocksdb.secondary.cache.index.hits COUNT : 0
+rocksdb.secondary.cache.data.hits COUNT : 0
+rocksdb.table.open.prefetch.tail.miss COUNT : 0
+rocksdb.table.open.prefetch.tail.hit COUNT : 90649
+rocksdb.timestamp.filter.table.checked COUNT : 0
+rocksdb.timestamp.filter.table.filtered COUNT : 0
+rocksdb.bytes.compressed.from COUNT : 0
+rocksdb.bytes.compressed.to COUNT : 0
+rocksdb.bytes.compression_bypassed COUNT : 3899151195
+rocksdb.bytes.compression.rejected COUNT : 0
+rocksdb.number.block_compression_bypassed COUNT : 945788
+rocksdb.number.block_compression_rejected COUNT : 0
+rocksdb.bytes.decompressed.from COUNT : 0
+rocksdb.bytes.decompressed.to COUNT : 0
+rocksdb.db.get.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.write.micros P50 : 13.443776 P95 : 22.430968 P99 : 52.264665 P100 : 965.000000 COUNT : 375001 SUM : 5507597
+rocksdb.compaction.times.micros P50 : 25765.498652 P95 : 61105.769231 P99 : 69880.000000 P100 : 69880.000000 COUNT : 1734 SUM : 45493899
+rocksdb.compaction.times.cpu_micros P50 : 10818.296530 P95 : 25430.952381 P99 : 31486.190476 P100 : 31862.000000 COUNT : 1734 SUM : 19414131
+rocksdb.subcompaction.setup.times.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.table.sync.micros P50 : 2402.617801 P95 : 2864.397906 P99 : 4444.000000 P100 : 5712.000000 COUNT : 196 SUM : 391996
+rocksdb.compaction.outfile.sync.micros P50 : 537.400932 P95 : 1423.454545 P99 : 1951.634615 P100 : 3297.000000 COUNT : 9963 SUM : 6002222
+rocksdb.wal.file.sync.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.manifest.file.sync.micros P50 : 457.792916 P95 : 596.376471 P99 : 869.863529 P100 : 1592.000000 COUNT : 2004 SUM : 896592
+rocksdb.table.open.io.micros P50 : 219.521992 P95 : 463.317422 P99 : 847.145380 P100 : 6154.000000 COUNT : 23438 SUM : 5698101
+rocksdb.db.multiget.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.block.compaction.micros P50 : 1.441961 P95 : 2.793123 P99 : 247.608142 P100 : 8719.000000 COUNT : 880650 SUM : 14538476
+rocksdb.read.block.get.micros P50 : 1.585454 P95 : 7.889889 P99 : 641.083787 P100 : 7152.000000 COUNT : 843976 SUM : 16732991
+rocksdb.write.raw.block.micros P50 : 0.746822 P95 : 5.149827 P99 : 32.822141 P100 : 4035.000000 COUNT : 986424 SUM : 5284183
+rocksdb.numfiles.in.singlecompaction P50 : 3.252252 P95 : 13.351852 P99 : 17.485000 P100 : 21.000000 COUNT : 1806 SUM : 9867
+rocksdb.db.seek.micros P50 : 751.025641 P95 : 1814.285714 P99 : 2900.000000 P100 : 7644.000000 COUNT : 100 SUM : 89732
+rocksdb.db.write.stall P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.sst.read.micros P50 : 155.110240 P95 : 1125.729553 P99 : 2670.206767 P100 : 8676.000000 COUNT : 101225 SUM : 33215850
+rocksdb.file.read.flush.micros P50 : 100.250000 P95 : 240.884354 P99 : 345.178571 P100 : 543.000000 COUNT : 675 SUM : 78665
+rocksdb.file.read.compaction.micros P50 : 107.863822 P95 : 1269.689457 P99 : 4975.233227 P100 : 8676.000000 COUNT : 56516 SUM : 17594677
+rocksdb.file.read.db.open.micros P50 : 184.285714 P95 : 248.571429 P99 : 321.000000 P100 : 321.000000 COUNT : 50 SUM : 8826
+rocksdb.num.subcompactions.scheduled P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.per.read P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.per.write P50 : 1040.000000 P95 : 1040.000000 P99 : 1040.000000 P100 : 1040.000000 COUNT : 375001 SUM : 390000025
+rocksdb.bytes.per.multiget P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.compressed P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.decompressed P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.compression.times.nanos P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.decompression.times.nanos P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.num.merge_operands P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.key.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.value.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.write.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.get.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.multiget.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.seek.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.next.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.prev.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.write.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.read.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.sync.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.compression.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.decompression.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.flush.micros P50 : 9551.834862 P95 : 13577.941176 P99 : 13954.176471 P100 : 14162.000000 COUNT : 195 SUM : 1944880
+rocksdb.sst.batch.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.index.and.filter.blocks.read.per.level P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.sst.read.per.level P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.error.handler.autoresume.retry.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.async.read.bytes P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.poll.wait.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.prefetched.bytes.discarded P50 : 2528.911927 P95 : 12907.471476 P99 : 20058.252427 P100 : 608726.000000 COUNT : 37600 SUM : 149008387
+rocksdb.multiget.io.batch.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.level.read.per.multiget P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.async.prefetch.abort.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.table.open.prefetch.tail.read.bytes P50 : 3304.962779 P95 : 15774.767596 P99 : 20754.953519 P100 : 20992.000000 COUNT : 23438 SUM : 100733440
+
+----------------------------------------
+        #I        #U       #PD       #RD       #PQ       #RQ
+    250000    125001         0         0         0       100
+#p_ts_in_tree #kv_in_tree     #I_done   L_in_tree     #U_done    #PD_done       #cmpt  #cmpt_easy fls_rd_cmpt fls_wr_cmpt bts_rd_cmpt bts_wr_cmpt
+          -1          -1      249999          -1      125000          -1          -1          -1          -1          -1          -1          -1
+files in tree = -1
+%space_amp        dpth   exp_runtime (ms)
+       -0           0

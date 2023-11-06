@@ -696,6 +696,9 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
                                                FileMetaData* file_meta) {
   if (level != -1 && (level < decision_cell_.GetStartLevel() ||
                       level > decision_cell_.GetEndLevel())) {
+    if (flush_reason == FlushReason::kPartialFlush) {
+      file_meta->being_compacted = false;
+    }
     return;
   }
 

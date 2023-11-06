@@ -199,6 +199,10 @@ class EmuEnv {
   // enable range query compaction
   bool enable_range_query_compaction;
 
+  float write_cost_threshold;
+  float upper_to_lower_ratio;
+  float lower_to_upper_ratio;
+
   // options with default values
   // Memory allocation
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
@@ -333,6 +337,9 @@ class EmuEnv {
   long file_system_page_size;
   bool only_tune;
   int num_read_query_sessions;
+
+  // function for printing all the options using extraction operator
+  friend ostream& operator<<(ostream& os, const EmuEnv& env);
 };
 
 #endif /*EMU_ENVIRONMENT_H_*/

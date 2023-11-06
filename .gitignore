@@ -8,18 +8,6 @@ build
 ## venv
 venv/*
 
-## FLAT FILES
-*.txt
-*.csv
-
 # .DS_Store (Mac)
 **/.DS_Store
 **/Info.plist
-
-# test/paper-draft
-**.aux
-**.fdb_latexmk
-**.fls
-**.log
-**.synctex.gz
-**.out

@@ -252,7 +252,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
             std::get<1>(decision_matrix_meta_data[i]) /
                 (std::get<1>(decision_matrix_meta_data[i]) +
                  std::get<2>(decision_matrix_meta_data[i])),
-            std::vector<float>(j - i + 1, read_options_.ltu_threshold),
+            std::vector<float>(j - i + 1, read_options_.lower_to_upper_ratio),
             read_options_);
       } else {
         float useful = 0;
@@ -391,7 +391,10 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       read_options_.range_query_compaction_enabled = false;
       read_options_.range_start_key = "";
       read_options_.range_end_key = "";
-      db_impl_->read_options_ = read_options_;
+      db_impl_->read_options_.range_query_compaction_enabled = false;
+      db_impl_->read_options_.range_start_key = "";
+      db_impl_->read_options_.range_end_key = "";
+      // db_impl_->read_options_ = read_options_;
     }
   } else {
     db_impl_->added_last_table = false;

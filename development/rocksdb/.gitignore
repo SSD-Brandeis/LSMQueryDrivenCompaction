@@ -102,9 +102,5 @@ third-party/folly/
 .cache
 *.sublime-*
 
-# .log and .txt files
-*.log
-*.txt
-
 # simple_example exe
 simple_example

@@ -1,58 +1,424 @@
 {
-    "workloads": [       
+    "workloads": [
         {
-            "inserts": 1000000,
-            "updates": 500000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.2
+            "selectivity": 0.25,
+            "size_ratio": 2,
+            "range_query_enabled": 0
         },
         {
-            "inserts": 1000000,
-            "updates": 500000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.4
+            "selectivity": 0.25,
+            "size_ratio": 2,
+            "range_query_enabled": 1
         },
         {
-            "inserts": 1000000,
-            "updates": 500000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.8
+            "selectivity": 0.25,
+            "size_ratio": 2,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
         },
         {
-            "inserts": 1000000,
-            "updates": 1000000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.2
+            "selectivity": 0.25,
+            "size_ratio": 2,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
         },
         {
-            "inserts": 1000000,
-            "updates": 1000000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.4
+            "selectivity": 0.25,
+            "size_ratio": 2,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
         },
         {
-            "inserts": 1000000,
-            "updates": 1000000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.8
+            "selectivity": 0.25,
+            "size_ratio": 2,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
         },
         {
-            "inserts": 1000000,
-            "updates": 1250000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.2
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
         },
         {
-            "inserts": 1000000,
-            "updates": 1250000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.4
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
         },
         {
-            "inserts": 1000000,
-            "updates": 1250000,
+            "inserts": 250000,
+            "updates": 125000,
             "range_queries": 100,
-            "selectivity": 0.8
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 4,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 4,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 4,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 4,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 4,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 4,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 5,
+            "range_query_enabled": 0
+        },        
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 5,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 5,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 5,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 5,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 5,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 8,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 8,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 8,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 8,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 8,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 10,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 10,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 10,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 10,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 10,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 10,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 16,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 16,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 16,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 16,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 16,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 16,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
         }
     ]
 }

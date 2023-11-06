@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -279,7 +280,7 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   op->target_file_size_multiplier = _env->target_file_size_multiplier;
   op->max_background_jobs = _env->max_background_jobs;
   op->max_compaction_bytes = _env->max_compaction_bytes;
-  op->max_bytes_for_level_base = _env->buffer_size * _env->size_ratio;
+  op->max_bytes_for_level_base = _env->buffer_size;  // * _env->size_ratio;
   std::cout << "printing: max_bytes_for_level_base = "
             << op->max_bytes_for_level_base
             << " buffer_size = " << _env->buffer_size
@@ -512,6 +513,12 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
 
   // verbostity
   op->verbosity = _env->verbosity;
+
+  // range query compaction options
+  r_op->range_query_compaction_enabled = _env->enable_range_query_compaction;
+  r_op->write_cost_threshold = _env->write_cost_threshold;
+  r_op->upper_to_lower_ratio = _env->upper_to_lower_ratio;
+  r_op->lower_to_upper_ratio = _env->lower_to_upper_ratio;
 
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
   // flushed op->db_write_buffer_size = 0;   // disable op->arena_block_size =
@@ -773,6 +780,8 @@ int runWorkload(EmuEnv *_env) {
   std::chrono::time_point<std::chrono::system_clock> starting_time, ending_time;
   long long number = 0;
 
+  std::cout << "Starting workload execution with env: " << *_env << std::endl;
+
   while (!workload_file.eof()) {
     // auto info = db_impl_->getLevelFilesEntriesCount();
     qstats->query_number = ++number;
@@ -943,7 +952,7 @@ int runWorkload(EmuEnv *_env) {
 
   workload_file.close();
   db->WaitForCompact(WaitForCompactOptions());
-  // CompactionMayAllComplete(db);
+  CompactionMayAllComplete(db);
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
       db_impl_->DefaultColumnFamily());
   ColumnFamilyData *cfd = cfh->cfd();
@@ -965,7 +974,8 @@ int runWorkload(EmuEnv *_env) {
       levels_state_before +=
           "[" + std::to_string(fd.fd.GetNumber()) + "(" +
           fd.file_metadata->smallest.user_key().ToString() + ", " +
-          fd.file_metadata->largest.user_key().ToString() + ")" + "] ";
+          fd.file_metadata->largest.user_key().ToString() + ")" +
+          std::to_string(fd.file_metadata->num_entries) + "] ";
       num_entries += storage_info_before->LevelFilesBrief(l)
                          .files[file_index]
                          .file_metadata->num_entries;
@@ -985,14 +995,14 @@ int runWorkload(EmuEnv *_env) {
   }
 
   if (_env->verbosity > 0) {
-   stats_file << "\n\n"
-              << std::setw(20) << "Level" << std::setw(20) << "Num Files"
-              << std::setw(20) << "Num Entries" << std::endl;
+    stats_file << "\n\n"
+               << std::setw(20) << "Level" << std::setw(20) << "Num Files"
+               << std::setw(20) << "Num Entries" << std::endl;
 
     for (auto level_info : levels_info) {
       stats_file << std::setw(20) << std::get<0>(level_info) << std::setw(20)
-                << std::get<1>(level_info) << std::setw(20)
-                << std::get<2>(level_info) << std::endl;
+                 << std::get<1>(level_info) << std::setw(20)
+                 << std::get<2>(level_info) << std::endl;
     }
   }
 
@@ -1000,7 +1010,8 @@ int runWorkload(EmuEnv *_env) {
                  levels_state_before.c_str());
 
   auto total_info = levels_info.back();
-  outputFile << ++number << ", Total, , 0, " << levels_info.size() << ", 0, " << total_files << ", 0, " << total_entries << ", 0";
+  outputFile << ++number << ", Total, , 0, " << levels_info.size() << ", 0, "
+             << total_files << ", 0, " << total_entries << ", 0";
 
   outputFile.close();
   s = db->Close();
@@ -1158,6 +1169,19 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       "Enable range query comapaction [def: 0]",
       {"rq", "range_query_compaction"});
 
+  args::ValueFlag<float> wc_threshold_cmd(
+      group1, "write_cost_threshold",
+      "Write cost threshold for range query compaction [def: 0]",
+      {"wc", "write_cost_threshold"});
+  args::ValueFlag<float> utl_threshold_cmd(
+      group1, "upper_to_lower_ratio",
+      "Upper to Lower ratio for adjacent levels [def: 0]",
+      {"utl", "upper_to_lower_threshold"});
+  args::ValueFlag<float> ltu_threshold_cmd(
+      group1, "lower_to_upper_ratio",
+      "Lower to Upper ratio for adjacent levels [def: inf]",
+      {"ltu", "lower_to_upper_threshold"});
+      
   try {
     parser.ParseCLI(argc, argv);
   } catch (args::Help &) {
@@ -1182,9 +1206,8 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
 
   _env->size_ratio =
       size_ratio_cmd ? args::get(size_ratio_cmd) : 2;  // 10; [Shubham]
-  _env->buffer_size_in_pages = buffer_size_in_pages_cmd
-                                   ? args::get(buffer_size_in_pages_cmd)
-                                   : 512;
+  _env->buffer_size_in_pages =
+      buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 512;
   _env->entries_per_page =
       entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
   _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 1024;
@@ -1219,13 +1242,21 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
 
   _env->target_file_size_base = _env->buffer_size;  // !YBS-sep07-XX!
   _env->max_bytes_for_level_base =
-      _env->buffer_size * _env->size_ratio;  // !YBS-sep07-XX!
+      _env->buffer_size;  // * _env->size_ratio;  // !YBS-sep07-XX!
 
   // range query compaction
   _env->enable_range_query_compaction =
       enable_range_query_compaction_cmd
           ? args::get(enable_range_query_compaction_cmd)
           : 0;  // default to false
+  _env->write_cost_threshold =
+      wc_threshold_cmd ? args::get(wc_threshold_cmd) : 0;  // default to 0
+  _env->upper_to_lower_ratio =
+      utl_threshold_cmd ? args::get(utl_threshold_cmd) : 0;  // default to 0
+  _env->lower_to_upper_ratio =
+      ltu_threshold_cmd
+          ? args::get(ltu_threshold_cmd)
+          : std::numeric_limits<float>::infinity();  // default to inf
 
   return 0;
 }

@@ -129,14 +129,14 @@ struct DecisionCell {
   std::string GetDecision() {
     bool decision = true;
     for (auto ratio : overlapping_entries_ratio_) {
-      if (ratio < read_options_.utl_threshold ||
-          ratio > read_options_.ltu_threshold) {
+      if (ratio < read_options_.upper_to_lower_ratio ||
+          ratio > read_options_.lower_to_upper_ratio) {
         decision = false;
         break;
       }
     }
     return (decision &&
-            entries_useful_to_unuseful_ratio_ > read_options_.wc_threshold)
+            entries_useful_to_unuseful_ratio_ > read_options_.write_cost_threshold)
                ? "True"
                : "False";  // TODO: (shubham) you mght not need the string
                            // values

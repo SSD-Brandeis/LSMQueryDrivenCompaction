@@ -1,0 +1,1008 @@
+printing: max_bytes_for_level_base = 2097152 buffer_size = 2097152 size_ratio = 10
+Destroying database ...
+  cmpt_sty  cmpt_pri   T         P         B         E         M file_size   L1_size   blk_cch       BPK
+         1         1  10       512         4      1024   2097152   2097152   2097152         8        10
+Maximum #OpenFiles = 50
+Maximum #ThreadsUsedToOpenFiles = 80
+Verbosity = 1
+Clearing system cache ...
+Compaction Eagerness: Hybrid leveling (kCompactionStyleLeveling)
+Starting workload execution with env: EmuEnv Configuration:
+delete_persistence_latency: 0
+oldest_delete_file_timestamp: 1698976247
+flag: 0
+vec: 
+version_set_FEF: 0
+destroy_database: 1
+clear_system_cache: 1
+show_progress: 0
+current_op:  
+enable_rocksdb_perf_iostat: 1
+size_ratio: 10
+buffer_size_in_pages: 512
+entries_per_page: 4
+entry_size: 1024
+buffer_size: 2097152
+file_to_memtable_size_ratio: 1
+file_size: 2097152
+verbosity: 1
+compaction_pri: 1
+bits_per_key: 10
+max_write_buffer_number: 2
+memtable_factory: 3
+target_file_size_base: 2097152
+level_compaction_dynamic_level_bytes: 0
+compaction_style: 1
+disable_auto_compactions: 0
+compaction_filter: 0
+compaction_filter_factory: 0
+access_hint_on_compaction_start: 2
+level0_file_num_compaction_trigger: 1
+target_file_size_multiplier: 1
+max_background_jobs: 0
+max_compaction_bytes: 0
+max_bytes_for_level_base: 2097152
+merge_operator: 0
+soft_pending_compaction_bytes_limit: 0
+hard_pending_compaction_bytes_limit: 0
+periodic_compaction_seconds: 0
+use_direct_io_for_flush_and_compaction: 1
+live_levels: 0
+num_levels: 10
+no_block_cache: 0
+block_cache: 8
+block_cache_high_priority_ratio: 0.5
+cache_index_and_filter_blocks: 1
+cache_index_and_filter_blocks_with_high_priority: 1
+read_amp_bytes_per_bit: 4
+data_block_index_type: 1
+index_type: 1
+partition_filters: 0
+metadata_block_size: 4096
+pin_top_level_index_and_filter: 0
+index_shortening: 1
+block_size_deviation: 0
+enable_index_compression: 0
+compression: 1
+verify_checksums: 1
+fill_cache: 0
+iter_start_seqnum: 0
+ignore_range_deletions: 0
+read_tier: 1
+low_pri: 1
+sync: 0
+disableWAL: 0
+no_slowdown: 0
+ignore_missing_column_families: 0
+max_open_files: 50
+max_file_opening_threads: 80
+comparator: 1
+max_sequential_skip_in_iterations: 8
+memtable_prefix_bloom_size_ratio: 0
+level0_stop_writes_trigger: 2
+paranoid_file_checks: 0
+optimize_filters_for_hits: 0
+inplace_update_support: 0
+inplace_update_num_locks: 10000
+report_bg_io_stats: 1
+max_successive_merges: 0
+create_if_missing: 1
+delayed_write_rate: 0
+bytes_per_sync: 0
+stats_persist_period_sec: 600
+enable_thread_tracking: 0
+stats_history_buffer_size: 1048576
+allow_concurrent_memtable_write: 0
+dump_malloc_stats: 0
+use_direct_reads: 1
+avoid_flush_during_shutdown: 0
+advise_random_on_open: 1
+delete_obsolete_files_period_micros: 21600000000
+allow_mmap_reads: 0
+allow_mmap_writes: 0
+wait: 1
+allow_write_stall: 1
+enable_range_query_compaction: 0
+write_cost_threshold: 0
+upper_to_lower_ratio: 0
+lower_to_upper_ratio: inf
+num_inserts: 0
+path: 
+debugging: 0
+FPR_optimization_level: 1
+derived_num_levels: -1
+N: -1
+derived_N: -1
+K: 1
+Z: 1
+max_levels: 1000
+target_level_for_non_zero_result_point_lookups: 10
+use_block_based_filter: 0
+key_prefix_for_entries_to_target_in_queries: +
+experiment_name: 
+experiment_starting_time: 
+measure_IOs: 0
+print_IOs_per_file: 0
+total_IOs: 0
+clean_caches_for_experiments: 0
+file_system_page_size: 4096
+only_tune: 0
+num_read_query_sessions: 1
+
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+[Verbosity]: range query starting working_version.cc:884 runWorkload
+
+[Verbosity]: lexico_validity:  True 
+
+[Verbosity]: range query completed working_version.cc:913 runWorkload
+
+----------------------Closing DB----------------------- completion_status = 1
+Re-opening DB -- Re-setting compaction style to: 1
+End of experiment - TEST !!
+RocksDB Perf Context : 
+user_key_comparison_count = 18776636, block_cache_hit_count = 13174, block_read_count = 9325, block_read_byte = 37511980, block_read_time = 1657462238, block_read_cpu_time = 314730666, block_cache_index_hit_count = 9007, block_cache_standalone_handle_count = 0, block_cache_real_handle_count = 0, index_block_read_count = 0, block_cache_filter_hit_count = 4167, filter_block_read_count = 0, compression_dict_block_read_count = 0, secondary_cache_hit_count = 0, compressed_sec_cache_insert_real_count = 0, compressed_sec_cache_insert_dummy_count = 0, compressed_sec_cache_uncompressed_bytes = 0, compressed_sec_cache_compressed_bytes = 0, block_checksum_time = 391450858, block_decompress_time = 0, get_read_bytes = 0, multiget_read_bytes = 0, iter_read_bytes = 3142360064, blob_cache_hit_count = 0, blob_read_count = 0, blob_read_byte = 0, blob_read_time = 0, blob_checksum_time = 0, blob_decompress_time = 0, internal_key_skipped_count = 3301133, internal_delete_skipped_count = 0, internal_recent_skipped_count = 0, internal_merge_count = 0, internal_merge_point_lookup_count = 0, internal_range_del_reseek_count = 0, get_snapshot_time = 0, get_from_memtable_time = 0, get_from_memtable_count = 0, get_post_process_time = 0, get_from_output_files_time = 0, seek_on_memtable_time = 341051, seek_on_memtable_count = 106, next_on_memtable_count = 27931, prev_on_memtable_count = 0, seek_child_seek_time = 160995020, seek_child_seek_count = 418, seek_min_heap_time = 268741, seek_max_heap_time = 0, seek_internal_seek_time = 161827115, find_next_user_entry_time = 1994382777, write_wal_time = 3805890716, write_memtable_time = 942447347, write_delay_time = 352742353746, write_scheduling_flushes_compactions_time = 78789018, write_pre_and_post_process_time = 466475089, write_thread_wait_nanos = 0, db_mutex_lock_nanos = 0, db_condition_wait_nanos = 0, merge_operator_time_nanos = 0, read_index_block_nanos = 16222864, read_filter_block_nanos = 6794604, new_table_block_iter_nanos = 18411391389, new_table_iterator_nanos = 1372622270, block_seek_nanos = 13720041, find_table_nanos = 1352124606, bloom_memtable_hit_count = 0, bloom_memtable_miss_count = 0, bloom_sst_hit_count = 0, bloom_sst_miss_count = 0, key_lock_wait_time = 0, key_lock_wait_count = 0, env_new_sequential_file_nanos = 0, env_new_random_access_file_nanos = 0, env_new_writable_file_nanos = 0, env_reuse_writable_file_nanos = 0, env_new_random_rw_file_nanos = 0, env_new_directory_nanos = 0, env_file_exists_nanos = 0, env_get_children_nanos = 0, env_get_children_file_attributes_nanos = 0, env_delete_file_nanos = 0, env_create_dir_nanos = 0, env_create_dir_if_missing_nanos = 0, env_delete_dir_nanos = 0, env_get_file_size_nanos = 0, env_get_file_modification_time_nanos = 0, env_rename_file_nanos = 0, env_link_file_nanos = 0, env_lock_file_nanos = 0, env_unlock_file_nanos = 0, env_new_logger_nanos = 0, get_cpu_nanos = 0, iter_next_cpu_nanos = 13322325236, iter_prev_cpu_nanos = 0, iter_seek_cpu_nanos = 63746247, iter_next_count = 3131024, iter_prev_count = 0, iter_seek_count = 100, encrypt_data_nanos = 0, decrypt_data_nanos = 0, number_async_seek = 0, bloom_filter_useful = 0@level0, 0@level1, 0@level2, 0@level3, bloom_filter_full_positive = 0@level0, 0@level1, 0@level2, 0@level3, bloom_filter_full_true_positive = 0@level0, 0@level1, 0@level2, 0@level3, user_key_return_count = 0@level0, 0@level1, 0@level2, 0@level3, get_from_table_nanos = 0@level0, 0@level1, 0@level2, 0@level3, block_cache_hit_count = 1@level0, 733@level1, 5080@level2, 7360@level3, block_cache_miss_count = 2@level0, 11909@level1, 126806@level2, 682077@level3
+RocksDB Iostats Context : 
+thread_pool_id = 4, bytes_read = 3459653941, bytes_written = 393387508, open_nanos = 41719829, allocate_nanos = 6906715, write_nanos = 3177245728, read_nanos = 15869236450, range_sync_nanos = 0, fsync_nanos = 1016099, prepare_write_nanos = 67182934, logger_nanos = 69696576, cpu_write_nanos = 2630825109, cpu_read_nanos = 1665438937, file_io_stats_by_temperature.hot_file_bytes_read = 0, file_io_stats_by_temperature.warm_file_bytes_read = 0, file_io_stats_by_temperature.cold_file_bytes_read = 0, file_io_stats_by_temperature.hot_file_read_count = 0, file_io_stats_by_temperature.warm_file_read_count = 0, file_io_stats_by_temperature.cold_file_read_count = 0
+RocksDB Statistics : 
+rocksdb.block.cache.miss COUNT : 1718908
+rocksdb.block.cache.hit COUNT : 48359
+rocksdb.block.cache.add COUNT : 20325
+rocksdb.block.cache.add.failures COUNT : 0
+rocksdb.block.cache.index.miss COUNT : 10163
+rocksdb.block.cache.index.hit COUNT : 36557
+rocksdb.block.cache.index.add COUNT : 10163
+rocksdb.block.cache.index.bytes.insert COUNT : 20770080
+rocksdb.block.cache.filter.miss COUNT : 10162
+rocksdb.block.cache.filter.hit COUNT : 11802
+rocksdb.block.cache.filter.add COUNT : 10162
+rocksdb.block.cache.filter.bytes.insert COUNT : 5704560
+rocksdb.block.cache.data.miss COUNT : 1698583
+rocksdb.block.cache.data.hit COUNT : 0
+rocksdb.block.cache.data.add COUNT : 0
+rocksdb.block.cache.data.bytes.insert COUNT : 0
+rocksdb.block.cache.bytes.read COUNT : 96585040
+rocksdb.block.cache.bytes.write COUNT : 26474640
+rocksdb.bloom.filter.useful COUNT : 0
+rocksdb.bloom.filter.full.positive COUNT : 0
+rocksdb.bloom.filter.full.true.positive COUNT : 0
+rocksdb.persistent.cache.hit COUNT : 0
+rocksdb.persistent.cache.miss COUNT : 0
+rocksdb.sim.block.cache.hit COUNT : 0
+rocksdb.sim.block.cache.miss COUNT : 0
+rocksdb.memtable.hit COUNT : 0
+rocksdb.memtable.miss COUNT : 0
+rocksdb.l0.hit COUNT : 0
+rocksdb.l1.hit COUNT : 0
+rocksdb.l2andup.hit COUNT : 0
+rocksdb.compaction.key.drop.new COUNT : 113940
+rocksdb.compaction.key.drop.obsolete COUNT : 0
+rocksdb.compaction.key.drop.range_del COUNT : 0
+rocksdb.compaction.key.drop.user COUNT : 0
+rocksdb.compaction.range_del.drop.obsolete COUNT : 0
+rocksdb.compaction.optimized.del.drop.obsolete COUNT : 0
+rocksdb.compaction.cancelled COUNT : 0
+rocksdb.number.keys.written COUNT : 375001
+rocksdb.number.keys.read COUNT : 0
+rocksdb.number.keys.updated COUNT : 0
+rocksdb.bytes.written COUNT : 390000024
+rocksdb.bytes.read COUNT : 0
+rocksdb.number.db.seek COUNT : 100
+rocksdb.number.db.next COUNT : 3068611
+rocksdb.number.db.prev COUNT : 0
+rocksdb.number.db.seek.found COUNT : 100
+rocksdb.number.db.next.found COUNT : 3068611
+rocksdb.number.db.prev.found COUNT : 0
+rocksdb.db.iter.bytes.read COUNT : 3142360064
+rocksdb.no.file.opens COUNT : 21974
+rocksdb.no.file.errors COUNT : 0
+rocksdb.stall.micros COUNT : 0
+rocksdb.db.mutex.wait.micros COUNT : 0
+rocksdb.number.multiget.get COUNT : 0
+rocksdb.number.multiget.keys.read COUNT : 0
+rocksdb.number.multiget.bytes.read COUNT : 0
+rocksdb.number.merge.failures COUNT : 0
+rocksdb.bloom.filter.prefix.checked COUNT : 0
+rocksdb.bloom.filter.prefix.useful COUNT : 0
+rocksdb.bloom.filter.prefix.true.positive COUNT : 0
+rocksdb.number.reseeks.iteration COUNT : 0
+rocksdb.getupdatessince.calls COUNT : 0
+rocksdb.wal.synced COUNT : 0
+rocksdb.wal.bytes COUNT : 390000024
+rocksdb.write.self COUNT : 375001
+rocksdb.write.other COUNT : 0
+rocksdb.write.wal COUNT : 375001
+rocksdb.compact.read.bytes COUNT : 3718888777
+rocksdb.compact.write.bytes COUNT : 3540774208
+rocksdb.flush.write.bytes COUNT : 389749138
+rocksdb.compact.read.marked.bytes COUNT : 0
+rocksdb.compact.read.periodic.bytes COUNT : 0
+rocksdb.compact.read.ttl.bytes COUNT : 0
+rocksdb.compact.write.marked.bytes COUNT : 0
+rocksdb.compact.write.periodic.bytes COUNT : 0
+rocksdb.compact.write.ttl.bytes COUNT : 0
+rocksdb.number.direct.load.table.properties COUNT : 1067
+rocksdb.number.superversion_acquires COUNT : 90
+rocksdb.number.superversion_releases COUNT : 0
+rocksdb.number.superversion_cleanups COUNT : 0
+rocksdb.number.block.compressed COUNT : 0
+rocksdb.number.block.decompressed COUNT : 0
+rocksdb.number.block.not_compressed COUNT : 0
+rocksdb.merge.operation.time.nanos COUNT : 0
+rocksdb.filter.operation.time.nanos COUNT : 0
+rocksdb.row.cache.hit COUNT : 0
+rocksdb.row.cache.miss COUNT : 0
+rocksdb.read.amp.estimate.useful.bytes COUNT : 6816827732
+rocksdb.read.amp.total.read.bytes COUNT : 6993319989
+rocksdb.number.rate_limiter.drains COUNT : 0
+rocksdb.number.iter.skip COUNT : 168247
+rocksdb.blobdb.num.put COUNT : 0
+rocksdb.blobdb.num.write COUNT : 0
+rocksdb.blobdb.num.get COUNT : 0
+rocksdb.blobdb.num.multiget COUNT : 0
+rocksdb.blobdb.num.seek COUNT : 0
+rocksdb.blobdb.num.next COUNT : 0
+rocksdb.blobdb.num.prev COUNT : 0
+rocksdb.blobdb.num.keys.written COUNT : 0
+rocksdb.blobdb.num.keys.read COUNT : 0
+rocksdb.blobdb.bytes.written COUNT : 0
+rocksdb.blobdb.bytes.read COUNT : 0
+rocksdb.blobdb.write.inlined COUNT : 0
+rocksdb.blobdb.write.inlined.ttl COUNT : 0
+rocksdb.blobdb.write.blob COUNT : 0
+rocksdb.blobdb.write.blob.ttl COUNT : 0
+rocksdb.blobdb.blob.file.bytes.written COUNT : 0
+rocksdb.blobdb.blob.file.bytes.read COUNT : 0
+rocksdb.blobdb.blob.file.synced COUNT : 0
+rocksdb.blobdb.blob.index.expired.count COUNT : 0
+rocksdb.blobdb.blob.index.expired.size COUNT : 0
+rocksdb.blobdb.blob.index.evicted.count COUNT : 0
+rocksdb.blobdb.blob.index.evicted.size COUNT : 0
+rocksdb.blobdb.gc.num.files COUNT : 0
+rocksdb.blobdb.gc.num.new.files COUNT : 0
+rocksdb.blobdb.gc.failures COUNT : 0
+rocksdb.blobdb.gc.num.keys.relocated COUNT : 0
+rocksdb.blobdb.gc.bytes.relocated COUNT : 0
+rocksdb.blobdb.fifo.num.files.evicted COUNT : 0
+rocksdb.blobdb.fifo.num.keys.evicted COUNT : 0
+rocksdb.blobdb.fifo.bytes.evicted COUNT : 0
+rocksdb.txn.overhead.mutex.prepare COUNT : 0
+rocksdb.txn.overhead.mutex.old.commit.map COUNT : 0
+rocksdb.txn.overhead.duplicate.key COUNT : 0
+rocksdb.txn.overhead.mutex.snapshot COUNT : 0
+rocksdb.txn.get.tryagain COUNT : 0
+rocksdb.number.multiget.keys.found COUNT : 0
+rocksdb.num.iterator.created COUNT : 90
+rocksdb.num.iterator.deleted COUNT : 89
+rocksdb.block.cache.compression.dict.miss COUNT : 0
+rocksdb.block.cache.compression.dict.hit COUNT : 0
+rocksdb.block.cache.compression.dict.add COUNT : 0
+rocksdb.block.cache.compression.dict.bytes.insert COUNT : 0
+rocksdb.block.cache.add.redundant COUNT : 0
+rocksdb.block.cache.index.add.redundant COUNT : 0
+rocksdb.block.cache.filter.add.redundant COUNT : 0
+rocksdb.block.cache.data.add.redundant COUNT : 0
+rocksdb.block.cache.compression.dict.add.redundant COUNT : 0
+rocksdb.files.marked.trash COUNT : 0
+rocksdb.files.marked.trash.deleted COUNT : 0
+rocksdb.files.deleted.immediately COUNT : 9868
+rocksdb.error.handler.bg.error.count COUNT : 0
+rocksdb.error.handler.bg.errro.count COUNT : 0
+rocksdb.error.handler.bg.io.error.count COUNT : 0
+rocksdb.error.handler.bg.io.errro.count COUNT : 0
+rocksdb.error.handler.bg.retryable.io.error.count COUNT : 0
+rocksdb.error.handler.bg.retryable.io.errro.count COUNT : 0
+rocksdb.error.handler.autoresume.count COUNT : 0
+rocksdb.error.handler.autoresume.retry.total.count COUNT : 0
+rocksdb.error.handler.autoresume.success.count COUNT : 0
+rocksdb.memtable.payload.bytes.at.flush COUNT : 386375640
+rocksdb.memtable.garbage.bytes.at.flush COUNT : 1244592
+rocksdb.secondary.cache.hits COUNT : 0
+rocksdb.verify_checksum.read.bytes COUNT : 0
+rocksdb.backup.read.bytes COUNT : 0
+rocksdb.backup.write.bytes COUNT : 0
+rocksdb.remote.compact.read.bytes COUNT : 0
+rocksdb.remote.compact.write.bytes COUNT : 0
+rocksdb.hot.file.read.bytes COUNT : 0
+rocksdb.warm.file.read.bytes COUNT : 0
+rocksdb.cold.file.read.bytes COUNT : 0
+rocksdb.hot.file.read.count COUNT : 0
+rocksdb.warm.file.read.count COUNT : 0
+rocksdb.cold.file.read.count COUNT : 0
+rocksdb.last.level.read.bytes COUNT : 0
+rocksdb.last.level.read.count COUNT : 0
+rocksdb.non.last.level.read.bytes COUNT : 7180607137
+rocksdb.non.last.level.read.count COUNT : 75161
+rocksdb.last.level.seek.filtered COUNT : 0
+rocksdb.last.level.seek.filter.match COUNT : 0
+rocksdb.last.level.seek.data COUNT : 0
+rocksdb.last.level.seek.data.useful.no.filter COUNT : 0
+rocksdb.last.level.seek.data.useful.filter.match COUNT : 0
+rocksdb.non.last.level.seek.filtered COUNT : 0
+rocksdb.non.last.level.seek.filter.match COUNT : 0
+rocksdb.non.last.level.seek.data COUNT : 4841
+rocksdb.non.last.level.seek.data.useful.no.filter COUNT : 4804
+rocksdb.non.last.level.seek.data.useful.filter.match COUNT : 0
+rocksdb.block.checksum.compute.count COUNT : 1741949
+rocksdb.block.checksum.mismatch.count COUNT : 0
+rocksdb.multiget.coroutine.count COUNT : 0
+rocksdb.blobdb.cache.miss COUNT : 0
+rocksdb.blobdb.cache.hit COUNT : 0
+rocksdb.blobdb.cache.add COUNT : 0
+rocksdb.blobdb.cache.add.failures COUNT : 0
+rocksdb.blobdb.cache.bytes.read COUNT : 0
+rocksdb.blobdb.cache.bytes.write COUNT : 0
+rocksdb.read.async.micros COUNT : 0
+rocksdb.async.read.error.count COUNT : 0
+rocksdb.secondary.cache.filter.hits COUNT : 0
+rocksdb.secondary.cache.index.hits COUNT : 0
+rocksdb.secondary.cache.data.hits COUNT : 0
+rocksdb.table.open.prefetch.tail.miss COUNT : 0
+rocksdb.table.open.prefetch.tail.hit COUNT : 86247
+rocksdb.timestamp.filter.table.checked COUNT : 0
+rocksdb.timestamp.filter.table.filtered COUNT : 0
+rocksdb.bytes.compressed.from COUNT : 0
+rocksdb.bytes.compressed.to COUNT : 0
+rocksdb.bytes.compression_bypassed COUNT : 3887563678
+rocksdb.bytes.compression.rejected COUNT : 0
+rocksdb.number.block_compression_bypassed COUNT : 942941
+rocksdb.number.block_compression_rejected COUNT : 0
+rocksdb.bytes.decompressed.from COUNT : 0
+rocksdb.bytes.decompressed.to COUNT : 0
+rocksdb.db.get.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.write.micros P50 : 13.322317 P95 : 21.798260 P99 : 49.436027 P100 : 429.000000 COUNT : 375001 SUM : 5360956
+rocksdb.compaction.times.micros P50 : 26322.513812 P95 : 62085.843373 P99 : 72417.168675 P100 : 74025.000000 COUNT : 1715 SUM : 46602299
+rocksdb.compaction.times.cpu_micros P50 : 11477.635542 P95 : 26449.652778 P99 : 31689.930556 P100 : 31795.000000 COUNT : 1715 SUM : 20469975
+rocksdb.subcompaction.setup.times.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.table.sync.micros P50 : 2400.000000 P95 : 2859.375000 P99 : 2930.000000 P100 : 4120.000000 COUNT : 196 SUM : 387393
+rocksdb.compaction.outfile.sync.micros P50 : 546.666667 P95 : 1417.780127 P99 : 2057.008547 P100 : 3574.000000 COUNT : 9963 SUM : 6084895
+rocksdb.wal.file.sync.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.manifest.file.sync.micros P50 : 462.289562 P95 : 653.818182 P99 : 1094.237037 P100 : 2238.000000 COUNT : 1992 SUM : 913061
+rocksdb.table.open.io.micros P50 : 221.409836 P95 : 471.747312 P99 : 868.341127 P100 : 16892.000000 COUNT : 21974 SUM : 5461645
+rocksdb.db.multiget.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.block.compaction.micros P50 : 1.416588 P95 : 2.734164 P99 : 261.792768 P100 : 11575.000000 COUNT : 877793 SUM : 14929243
+rocksdb.read.block.get.micros P50 : 1.540378 P95 : 9.174157 P99 : 623.291922 P100 : 19655.000000 COUNT : 841115 SUM : 17030042
+rocksdb.write.raw.block.micros P50 : 0.821525 P95 : 5.516366 P99 : 33.669886 P100 : 24378.000000 COUNT : 983577 SUM : 5757797
+rocksdb.numfiles.in.singlecompaction P50 : 3.220588 P95 : 13.648098 P99 : 18.957692 P100 : 24.000000 COUNT : 1795 SUM : 9864
+rocksdb.db.seek.micros P50 : 1446.666667 P95 : 3800.000000 P99 : 6600.000000 P100 : 6929.000000 COUNT : 100 SUM : 162332
+rocksdb.db.write.stall P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.sst.read.micros P50 : 209.476190 P95 : 1269.128799 P99 : 4051.766055 P100 : 19640.000000 COUNT : 75161 SUM : 32035178
+rocksdb.file.read.flush.micros P50 : 185.267176 P95 : 244.625954 P99 : 249.902290 P100 : 260.000000 COUNT : 216 SUM : 38565
+rocksdb.file.read.compaction.micros P50 : 161.910347 P95 : 1857.595420 P99 : 7596.645309 P100 : 16770.000000 COUNT : 30802 SUM : 16111902
+rocksdb.file.read.db.open.micros P50 : 114.736842 P95 : 218.666667 P99 : 228.000000 P100 : 228.000000 COUNT : 47 SUM : 5949
+rocksdb.num.subcompactions.scheduled P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.per.read P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.per.write P50 : 1040.000000 P95 : 1040.000000 P99 : 1040.000000 P100 : 1040.000000 COUNT : 375001 SUM : 390000024
+rocksdb.bytes.per.multiget P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.compressed P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.decompressed P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.compression.times.nanos P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.decompression.times.nanos P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.num.merge_operands P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.key.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.value.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.write.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.get.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.multiget.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.seek.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.next.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.prev.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.write.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.read.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.sync.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.compression.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.decompression.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.flush.micros P50 : 8965.808824 P95 : 13322.457627 P99 : 13864.491525 P100 : 13937.000000 COUNT : 195 SUM : 1895672
+rocksdb.sst.batch.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.index.and.filter.blocks.read.per.level P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.sst.read.per.level P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.error.handler.autoresume.retry.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.async.read.bytes P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.poll.wait.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.prefetched.bytes.discarded P50 : 2522.750839 P95 : 12902.952626 P99 : 20086.786850 P100 : 627466.000000 COUNT : 36152 SUM : 145372014
+rocksdb.multiget.io.batch.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.level.read.per.multiget P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.async.prefetch.abort.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.table.open.prefetch.tail.read.bytes P50 : 3280.939488 P95 : 16368.677792 P99 : 20881.951220 P100 : 25088.000000 COUNT : 21974 SUM : 95189504
+
+----------------------------------------
+        #I        #U       #PD       #RD       #PQ       #RQ
+    250001    125000         0         0         0       100
+#p_ts_in_tree #kv_in_tree     #I_done   L_in_tree     #U_done    #PD_done       #cmpt  #cmpt_easy fls_rd_cmpt fls_wr_cmpt bts_rd_cmpt bts_wr_cmpt
+          -1          -1      250000          -1      124999          -1          -1          -1          -1          -1          -1          -1
+files in tree = -1
+%space_amp        dpth   exp_runtime (ms)
+       -0           0

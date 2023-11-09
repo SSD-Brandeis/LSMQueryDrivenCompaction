@@ -379,6 +379,20 @@ enum Tickers : uint32_t {
   // Outdated bytes of data present on memtable at flush time.
   MEMTABLE_GARBAGE_BYTES_AT_FLUSH,
 
+  // Statistics for range query partial file flush
+  // Number of files flushed partially
+  PARTIAL_FILE_FLUSH_COUNT,
+  // Number of bytes flushed partially
+  PARTIAL_FILE_FLUSH_BYTES,
+  // outdated bytes of data present on memtable at flush time.
+  PARTIAL_GARBAGE_BYTES_AT_FLUSH,
+  // Number of files flushed fully (not partially)
+  FULL_FILE_FLUSH_COUNT,
+  // Number of bytes flushed fully (not partially)
+  FULL_FILE_FLUSH_BYTES,
+  // outdated bytes of data present on memtable at flush time.
+  FULL_GARBAGE_BYTES_AT_FLUSH,
+
   // Secondary cache statistics
   SECONDARY_CACHE_HITS,
 

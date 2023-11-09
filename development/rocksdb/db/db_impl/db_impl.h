@@ -544,6 +544,8 @@ class DBImpl : public DB {
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;
+  long long num_entries_compacted = 0;
+  long long num_entries_skipped = 0;
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 

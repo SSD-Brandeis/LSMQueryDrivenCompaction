@@ -394,6 +394,7 @@ bool DBIter::FindNextUserEntryInternal(bool skipping_saved_key,
           skipping_saved_key &&
           CompareKeyForSkip(ikey_.user_key, saved_key_.GetUserKey()) <= 0) {
         num_skipped++;  // skip this entry
+        db_impl_->num_entries_skipped++;
         PERF_COUNTER_ADD(internal_key_skipped_count, 1);
       } else {
         assert(!skipping_saved_key ||
@@ -490,6 +491,7 @@ bool DBIter::FindNextUserEntryInternal(bool skipping_saved_key,
           ikey_.user_key, saved_key_.GetUserKey());
       if (cmp == 0 || (skipping_saved_key && cmp < 0)) {
         num_skipped++;
+        db_impl_->num_entries_skipped++;
       } else {
         saved_key_.SetUserKey(
             ikey_.user_key,
@@ -994,6 +996,7 @@ bool DBIter::FindValueForCurrentKey() {
     PERF_COUNTER_ADD(internal_key_skipped_count, 1);
     iter_.Prev();
     ++num_skipped;
+    db_impl_->num_entries_skipped++;
 
     if (visible && timestamp_lb_ != nullptr) {
       // If timestamp_lb_ is not nullptr, we do not have to look further for
@@ -1403,6 +1406,7 @@ bool DBIter::FindUserKeyBeforeSavedKey() {
       }
     } else {
       ++num_skipped;
+      db_impl_->num_entries_skipped++;
     }
 
     iter_.Prev();

@@ -741,6 +741,7 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
       std::cout << " newId: " << cfd->mem_range()->GetID() << " "
                 << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
     }
+    num_entries_compacted += memtable_to_flush->num_entries();
     mutex_.Unlock();
   }
 

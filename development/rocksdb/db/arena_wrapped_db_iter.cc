@@ -332,7 +332,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                    decision_matrix_meta_data_str.c_str());
   }
-  DecisionCell best_decision_cell;
+  DecisionCell best_decision_cell; // FIXME (shubham): The default value sometimes cause triggering compaction from level 0 to 1
 
   for (size_t cell = decision_matrix.size() - 1; cell > 0; cell--) {
     for (size_t row = 0; row < cell; row++) {
@@ -394,6 +394,8 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       db_impl_->read_options_.range_query_compaction_enabled = false;
       db_impl_->read_options_.range_start_key = "";
       db_impl_->read_options_.range_end_key = "";
+      db_impl_->num_entries_skipped = 0;
+      db_impl_->num_entries_compacted = 0;
       // db_impl_->read_options_ = read_options_;
     }
   } else {
@@ -438,7 +440,7 @@ Status ArenaWrappedDBIter::Reset() {
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
 
-  std::string levels_state_before = "Range Query Complete:";
+  std::string levels_state_before = "Range Query Complete: Compacted << " + std::to_string(db_impl_->num_entries_compacted) + " Skipped: " + std::to_string(db_impl_->num_entries_skipped);
   auto storage_info_before = cfd_->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     uint64_t total_entries = 0;
@@ -472,10 +474,11 @@ Status ArenaWrappedDBIter::Reset() {
                   << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
                   << std::endl;
       }
-
       db_impl_->ContinueBackgroundWork();
     }
   }
+  db_impl_->num_entries_skipped = 0;
+  db_impl_->num_entries_compacted = 0;
   db_impl_->ContinueBackgroundWork();
   return Status::OK();
 }

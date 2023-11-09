@@ -17,3 +17,6 @@ db_working_home
 
 # custom increasing workload generator
 workloadGen*
+
+workload.txt
+logs.txt

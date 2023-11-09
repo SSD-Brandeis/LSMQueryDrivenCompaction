@@ -776,6 +776,22 @@ int runWorkload(EmuEnv *_env) {
     outputFile.open("rqc_off_stats.csv");
   }
 
+  std::ofstream compacted_vs_skipped;
+  int rq_query_number = 1;
+  if (_env->enable_range_query_compaction) {
+    compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv");
+  } else {
+    compacted_vs_skipped.open("rqc_off_compacted_vs_skipped.csv");
+  }
+  compacted_vs_skipped << "Range Query No.," << "Compacted," << "Skipped" << std::endl; 
+
+  std::ofstream stats_file;
+  if (_env->enable_range_query_compaction) {
+    stats_file.open("rqc_on_stats.txt");
+  } else {
+    stats_file.open("rqc_off_stats.txt");
+  }
+
   QueryStats *qstats = QueryStats::getQueryStats();
   std::chrono::time_point<std::chrono::system_clock> starting_time, ending_time;
   long long number = 0;
@@ -905,8 +921,13 @@ int runWorkload(EmuEnv *_env) {
           std::cerr << it->status().ToString() << std::endl;
         }
 
+        compacted_vs_skipped << rq_query_number++ << "," << db_impl_->num_entries_compacted << "," << db_impl_->num_entries_skipped << std::endl;
+
         if (_env->enable_range_query_compaction && lexico_valid) {
           it->Reset();
+        } else {
+          db_impl_->num_entries_compacted = 0;
+          db_impl_->num_entries_skipped = 0;
         }
         if (_env->verbosity > 0) {
           std::cout << "\n[Verbosity]: range query completed " << __FILE__ ":"
@@ -987,13 +1008,6 @@ int runWorkload(EmuEnv *_env) {
   }
   levels_info.push_back(std::make_tuple("Total: ", total_files, total_entries));
 
-  std::ofstream stats_file;
-  if (_env->enable_range_query_compaction) {
-    stats_file.open("rqc_on_stats.txt");
-  } else {
-    stats_file.open("rqc_off_stats.txt");
-  }
-
   if (_env->verbosity > 0) {
     stats_file << "\n\n"
                << std::setw(20) << "Level" << std::setw(20) << "Num Files"
@@ -1060,6 +1074,7 @@ int runWorkload(EmuEnv *_env) {
 
     stats_file << options.statistics->ToString();
     stats_file.close();
+    compacted_vs_skipped.close();
 
     std::cout << "RocksDB Statistics : " << std::endl;
     std::cout << options.statistics->ToString() << std::endl;
@@ -1181,7 +1196,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       group1, "lower_to_upper_ratio",
       "Lower to Upper ratio for adjacent levels [def: inf]",
       {"ltu", "lower_to_upper_threshold"});
-      
+
   try {
     parser.ParseCLI(argc, argv);
   } catch (args::Help &) {

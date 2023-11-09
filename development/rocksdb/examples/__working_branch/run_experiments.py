@@ -8,7 +8,7 @@ from typing import List
 CURR_DIR = Path(__file__).parent
 project_dir = Path(__file__).parent.absolute().__str__()
 # WORKLOAD_DIR = CURR_DIR.joinpath("workloads")
-EXPERIMENT_DIR = Path(__file__).parent.joinpath("experiments").absolute().__str__()
+EXPERIMENT_DIR = Path(__file__).parent.joinpath("experiments-Nov-8").absolute().__str__()
 OUTPUT_FILE = Path(__file__).parent.joinpath("stats.txt").absolute().__str__()
 LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 
@@ -58,6 +58,13 @@ def run_workload(params, dir_name, log):
     process_output = os.popen(f"../../working_version {args}").read()
     log.write(f"{process_output}\n")
 
+    files_to_move = [f for f in os.listdir(db_dir) if f.startswith("LOG")]
+
+    for file in files_to_move:
+        source_path = os.path.join(db_dir, file)
+        destination_path = os.path.join(os.getcwd(), file)
+        shutil.move(source_path, destination_path)
+
     if os.path.exists(db_dir):
         log.write("removing db_working_home\n")
         shutil.rmtree(db_dir)
@@ -68,7 +75,315 @@ def run_workload(params, dir_name, log):
 if __name__ == "__main__":
     # read experments to run file `experiments.txt`
     experiements_to_run = list()
-    workloads = json.load(open("experiments.json"))
+    # workloads = json.load(open("experiments.json"))
+    workloads =         {"workloads": [
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.25,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.50,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.75,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 1.0,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        #         {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 10,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 10,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 10,
+        #     "write_cost": 0.25,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 10,
+        #     "write_cost": 0.50,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 10,
+        #     "write_cost": 0.75,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 10,
+        #     "write_cost": 1.0,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # }
+
+        ## Size Ratio = 3 with 100 percent updates
+        # {
+        #     "inserts": 250000,
+        #     "updates": 250000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 250000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 250000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.25,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 250000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.50,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 250000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.75,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 250000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 1.0,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+
+        ## Size Ratio = 10 with 150 percent updates
+        {
+            "inserts": 250000,
+            "updates": 375000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 375000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 375000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 375000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 375000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 375000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+
+        ## Size Ratio = 10 with 200 percent updates
+        {
+            "inserts": 250000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.25,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.50,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 0.75,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 500000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "write_cost": 1.0,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        ]}
 
     for workload in workloads["workloads"]:
         log = open(LOG_FILE, "a")

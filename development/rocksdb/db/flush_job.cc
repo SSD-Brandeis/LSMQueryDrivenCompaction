@@ -1412,9 +1412,10 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
       }
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
-        RecordTick(stats_, MEMTABLE_PAYLOAD_BYTES_AT_FLUSH,
+        RecordTick(stats_, FULL_FILE_FLUSH_BYTES,
                    memtable_payload_bytes);
-        RecordTick(stats_, MEMTABLE_GARBAGE_BYTES_AT_FLUSH,
+        RecordTick(stats_, FULL_FILE_FLUSH_COUNT, 1);
+        RecordTick(stats_, FULL_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
       }
       LogFlush(db_options_.info_log);
@@ -1766,9 +1767,10 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
       }
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
-        RecordTick(stats_, MEMTABLE_PAYLOAD_BYTES_AT_FLUSH,
+        RecordTick(stats_, PARTIAL_FILE_FLUSH_BYTES,
                    memtable_payload_bytes);
-        RecordTick(stats_, MEMTABLE_GARBAGE_BYTES_AT_FLUSH,
+        RecordTick(stats_, PARTIAL_FILE_FLUSH_COUNT, 1);
+        RecordTick(stats_, PARTIAL_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
       }
       LogFlush(db_options_.info_log);
@@ -1926,9 +1928,10 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
       }
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
-        RecordTick(stats_, MEMTABLE_PAYLOAD_BYTES_AT_FLUSH,
+        RecordTick(stats_, PARTIAL_FILE_FLUSH_BYTES,
                    memtable_payload_bytes);
-        RecordTick(stats_, MEMTABLE_GARBAGE_BYTES_AT_FLUSH,
+        RecordTick(stats_, PARTIAL_FILE_FLUSH_COUNT, 1);
+        RecordTick(stats_, PARTIAL_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
       }
       LogFlush(db_options_.info_log);

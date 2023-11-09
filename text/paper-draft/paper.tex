@@ -23,7 +23,6 @@
 \usepackage{bm}
 \usepackage{balance}
 
-
 \newcommand{\newtext}[1]{{\color{blue} #1}}
 \newcommand{\margincomment}[1]{\marginnote{{[{\sf {\color{red}\scriptsize #1}}]}}}
 \newcommand{\Margincomment}[1]{\marginnote{{[{\sf {\color{blue}\scriptsize #1}}]}}}
@@ -46,6 +45,11 @@
 \newcommand\Paragraphno[1]{\vspace{0.02in}  \noindent \textbf{#1}}
 \newcommand\Textcolor[2]{\hspace*{-3mm} \textcolor{#1}{#2} }
 
+\newcommand{\shubham}[1]{\textcolor{myGreen}{#1}}
+\newcommand{\manos}[1]{\textcolor{myRed}{#1}}
+\newcommand{\subhadeep}[1]{\textcolor{myBlue}{#1}}
+
+
 % \AtBeginDocument{%
 %   \providecommand\BibTeX{{%
 %     Bib\TeX}}}
@@ -66,8 +70,25 @@
 \begin{document}
 
 
-\title{Efficient Range Deletes in LSM Engines}
+\title{Query-driven compaction in LSM-trees}
 
+\author{Shubham Kaushik}
+\affiliation{%
+    \institution{Boston University}
+    \country{USA}
+}
+
+\author{****}
+\affiliation{%
+    \institution{Boston University}
+    \country{USA}
+}
+
+\author{****}
+\affiliation{%
+    \institution{Boston University}
+    \country{USA}
+}
 
 % \author{Ben Trovato}
 % \authornote{Both authors contributed equally to this research.}
@@ -159,7 +180,7 @@
 \label{sec:intro}
 \input{1-intro}
 
-\section{LSM Background}
+\section{Background}
 \label{sec:background}
 \input{2-background} 
 

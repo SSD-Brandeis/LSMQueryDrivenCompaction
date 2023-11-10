@@ -543,6 +543,8 @@ Status ArenaWrappedDBIter::Refresh() {
       reinit_internal_iter();
       break;
     } else {
+      db_iter_->JustResetDbImpl(db_impl_);
+      db_iter_->JustResetReadOptions(read_options_);
       SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();
       // Refresh range-tombstones in MemTable
       if (!read_options_.ignore_range_deletions) {

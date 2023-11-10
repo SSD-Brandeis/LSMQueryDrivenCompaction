@@ -213,6 +213,10 @@ class DBIter final : public Iterator {
     }
   }
   void set_valid(bool v) { valid_ = v; }
+  void JustResetDbImpl(DBImpl* db_impl) { db_impl_ = db_impl; }
+  void JustResetReadOptions(const ReadOptions& read_options) {
+    read_options_mutable_ = read_options;
+  }
 
  private:
   // For all methods in this block:
@@ -325,6 +329,7 @@ class DBIter final : public Iterator {
 
   const SliceTransform* prefix_extractor_;
   const ReadOptions read_options_;
+  ReadOptions read_options_mutable_;
   Env* const env_;
   SystemClock* clock_;
   Logger* logger_;

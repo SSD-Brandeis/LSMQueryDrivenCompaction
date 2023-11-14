@@ -8,7 +8,7 @@ from typing import List
 CURR_DIR = Path(__file__).parent
 project_dir = Path(__file__).parent.absolute().__str__()
 # WORKLOAD_DIR = CURR_DIR.joinpath("workloads")
-EXPERIMENT_DIR = Path(__file__).parent.joinpath("experiments-Nov-8").absolute().__str__()
+EXPERIMENT_DIR = Path(__file__).parent.joinpath("experiments-Nov-9-varing-range-and-varing-selectivity").absolute().__str__()
 OUTPUT_FILE = Path(__file__).parent.joinpath("stats.txt").absolute().__str__()
 LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # read experments to run file `experiments.txt`
     experiements_to_run = list()
     # workloads = json.load(open("experiments.json"))
-    workloads =         {"workloads": [
+    workloads = {"workloads": [
         # {
         #     "inserts": 250000,
         #     "updates": 125000,
@@ -99,45 +99,291 @@ if __name__ == "__main__":
         #     "range_queries": 100,
         #     "selectivity": 0.25,
         #     "size_ratio": 3,
-        #     "write_cost": 0.25,
+        #     # "write_cost": 0.25,
         #     "upper_to_lower_ratio": 0.4,
         #     "lower_to_upper_ratio": 0.8,
         #     "range_query_enabled": 1
         # },
+
+
+        ############# NOVEMBER 9th 2023 ##############
+        
+        ## Change the range queries from 10, 100, 500, 1000, 2000
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 10,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 10,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 10,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 500,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 500,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 500,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 1000,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 1000,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 1000,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 2000,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 2000,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },        
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 2000,
+            "selectivity": 0.25,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+
+        ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80  VANILLA
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.10,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.20,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.40,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.60,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.80,
+            "size_ratio": 3,
+            "range_query_enabled": 0
+        },
+
+        ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80   RQDC = 1
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.10,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.20,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.40,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.60,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.80,
+            "size_ratio": 3,
+            "range_query_enabled": 1
+        },
+
+        ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80   RQDC = 1 with UTL AND LTU
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.10,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.20,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.40,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.60,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+        {
+            "inserts": 250000,
+            "updates": 125000,
+            "range_queries": 100,
+            "selectivity": 0.80,
+            "size_ratio": 3,
+            "upper_to_lower_ratio": 0.4,
+            "lower_to_upper_ratio": 0.8,
+            "range_query_enabled": 1
+        },
+
+
+
+
+
+
+
+        ###### OLDER EXPERIMENTS ########
         # {
-        #     "inserts": 250000,
-        #     "updates": 125000,
-        #     "range_queries": 100,
-        #     "selectivity": 0.25,
-        #     "size_ratio": 3,
-        #     "write_cost": 0.50,
-        #     "upper_to_lower_ratio": 0.4,
-        #     "lower_to_upper_ratio": 0.8,
-        #     "range_query_enabled": 1
-        # },
-        # {
-        #     "inserts": 250000,
-        #     "updates": 125000,
-        #     "range_queries": 100,
-        #     "selectivity": 0.25,
-        #     "size_ratio": 3,
-        #     "write_cost": 0.75,
-        #     "upper_to_lower_ratio": 0.4,
-        #     "lower_to_upper_ratio": 0.8,
-        #     "range_query_enabled": 1
-        # },
-        # {
-        #     "inserts": 250000,
-        #     "updates": 125000,
-        #     "range_queries": 100,
-        #     "selectivity": 0.25,
-        #     "size_ratio": 3,
-        #     "write_cost": 1.0,
-        #     "upper_to_lower_ratio": 0.4,
-        #     "lower_to_upper_ratio": 0.8,
-        #     "range_query_enabled": 1
-        # },
-        #         {
         #     "inserts": 250000,
         #     "updates": 125000,
         #     "range_queries": 100,
@@ -198,7 +444,7 @@ if __name__ == "__main__":
         #     "range_query_enabled": 1
         # }
 
-        ## Size Ratio = 3 with 100 percent updates
+        # # Size Ratio = 3 with 100 percent updates
         # {
         #     "inserts": 250000,
         #     "updates": 250000,
@@ -260,129 +506,129 @@ if __name__ == "__main__":
         #     "range_query_enabled": 1
         # },
 
-        ## Size Ratio = 10 with 150 percent updates
-        {
-            "inserts": 250000,
-            "updates": 375000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 375000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 375000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 0.25,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 375000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 0.50,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 375000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 0.75,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 375000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 1.0,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
+        # # Size Ratio = 10 with 150 percent updates
+        # {
+        #     "inserts": 250000,
+        #     "updates": 375000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 375000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 375000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.25,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 375000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.50,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 375000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.75,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 375000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 1.0,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
 
-        ## Size Ratio = 10 with 200 percent updates
-        {
-            "inserts": 250000,
-            "updates": 500000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 500000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 500000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 0.25,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 500000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 0.50,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 500000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 0.75,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 500000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "write_cost": 1.0,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
+        # # Size Ratio = 10 with 200 percent updates
+        # {
+        #     "inserts": 250000,
+        #     "updates": 500000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 500000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 500000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.25,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 500000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.50,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 500000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 0.75,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 500000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "write_cost": 1.0,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
         ]}
 
     for workload in workloads["workloads"]:

@@ -500,7 +500,7 @@ void BlockBasedTableIterator::CheckOutOfBound() {
       while ((still_in_range = (user_comparator_.CompareWithoutTimestamp(
                                     Slice(read_options_.range_end_key),
                                     /*a_has_ts=*/false, user_key(),
-                                    /*b_has_ts=*/true) > 0) &&
+                                    /*b_has_ts=*/true) >= 0) &&
                                Valid())) {
         Next();
       }

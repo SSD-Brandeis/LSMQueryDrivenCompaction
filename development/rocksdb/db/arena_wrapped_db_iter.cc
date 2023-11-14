@@ -104,7 +104,6 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
         0;  // total entries that will be read from this level
 
     long long E_useful_entries_in_level = 0;
-    // long long E_unuseful_entries_in_level = 0;
     std::string file_names = "";
     Slice useful_min_key = "";
     Slice useful_max_key = "";
@@ -125,10 +124,6 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                     fd.file_metadata->largest.user_key()) >=
               0) {
         // 100 % overlap
-        // std::cout
-        //     << "[Optimization]: Found 100 percent overlap (Total Entries: "
-        //     << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
-        //     << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
         total_entries_will_be_read += fd.file_metadata->num_entries;
         E_useful_entries_in_level += fd.file_metadata->num_entries;
@@ -159,17 +154,12 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                                      fd.file_metadata->smallest.user_key()) ==
                0)) {
         // head overlap
-        // std::cout << "[Optimization]: Found head overlap (Total Entries: "
-        //           << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
-        //           << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
         total_entries_will_be_read += fd.file_metadata->num_entries;
         E_useful_entries_in_level += GuessTheDifferenceWithMinMaxKey(
             "", read_options_.range_end_key, l, fd.file_metadata,
             useful_min_key, useful_max_key);
         file_names += std::to_string(fd.fd.GetNumber()) + " ";
-        // E_unuseful_entries_in_level +=
-        //     fd.file_metadata->num_entries - E_useful_entries_in_level;
       }
       // 2 & 3. tail of a file overlap
       else if ((user_comparator_->Compare(
@@ -188,17 +178,12 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                     Slice(read_options_.range_end_key),
                     fd.file_metadata->largest.user_key()) > 0)) {
         // tail overlap
-        // std::cout << "[Optimization]: Found tail overlap (Total Entries: "
-        //           << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
-        //           << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
         total_entries_will_be_read += fd.file_metadata->num_entries;
         E_useful_entries_in_level += GuessTheDifferenceWithMinMaxKey(
             read_options_.range_start_key, "", l, fd.file_metadata,
             useful_min_key, useful_max_key);
         file_names += std::to_string(fd.fd.GetNumber()) + " ";
-        // E_unuseful_entries_in_level +=
-        //     fd.file_metadata->num_entries - E_useful_entries_in_level;
       }
       // 6. Range fits inside file overlap
       else if (user_comparator_->Compare(
@@ -207,11 +192,6 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
                user_comparator_->Compare(Slice(read_options_.range_end_key),
                                          fd.file_metadata->largest.user_key()) <
                    0) {
-        // single file
-        // std::cout
-        //     << "[Optimization]: Found single file overlap (Total Entries: "
-        //     << fd.file_metadata->num_entries << " )" << __FILE__ << ":"
-        //     << __LINE__ << " " << __FUNCTION__ << std::endl;
         num_files_are_overlapping += 1;
         total_entries_will_be_read += fd.file_metadata->num_entries;
         E_useful_entries_in_level += GuessTheDifferenceWithMinMaxKey(
@@ -230,12 +210,14 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     decision_matrix_meta_data.push_back(decision_meta);
 
     if (num_files_are_overlapping > 1) {
-      // std::cout << "[NUM FILES ARE OVERLAPPING] : " <<
-      // num_files_are_overlapping
-      //           << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-      //           << std::endl;
       num_levels_are_overlapping += 1;
     }
+  }
+
+  if (num_levels_are_overlapping <= 1) {
+    DecisionCell best_decision_cell;
+    db_impl_->decision_cell_ = best_decision_cell;
+    return false;
   }
 
   std::vector<std::vector<DecisionCell>> decision_matrix(

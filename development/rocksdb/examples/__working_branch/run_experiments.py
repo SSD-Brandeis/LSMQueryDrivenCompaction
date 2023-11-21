@@ -8,7 +8,7 @@ from typing import List
 CURR_DIR = Path(__file__).parent
 project_dir = Path(__file__).parent.absolute().__str__()
 # WORKLOAD_DIR = CURR_DIR.joinpath("workloads")
-EXPERIMENT_DIR = Path(__file__).parent.joinpath("experiments-Nov-9-varing-range-and-varing-selectivity").absolute().__str__()
+EXPERIMENT_DIR = Path(__file__).parent.joinpath("experiments-Nov-17").absolute().__str__()
 OUTPUT_FILE = Path(__file__).parent.joinpath("stats.txt").absolute().__str__()
 LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 
@@ -26,7 +26,7 @@ def create_workload(args, dir_name, log):
         os.mkdir(dir_name)
 
     os.chdir(dir_name)
-    process_output = os.popen(f"../../../../../emulator/emu_runner {args} -E 1024").read()
+    process_output = os.popen(f"../../../../../emulator/emu_runner {args} -E 256").read()
     log.write(f"{process_output}\n")
     os.chdir(project_dir)
 
@@ -53,8 +53,9 @@ def run_workload(params, dir_name, log):
         log.write("removing db_working_home\n")
         shutil.rmtree(db_dir)
 
-    args = f"> '{dir_name}.log' -V 1 {params}"
+    args = f"-V 1{params} > '{dir_name}.log'"
     print("running for rq on", dir_name)
+    print(f"../../working_version {args}")
     process_output = os.popen(f"../../working_version {args}").read()
     log.write(f"{process_output}\n")
 
@@ -77,6 +78,99 @@ if __name__ == "__main__":
     experiements_to_run = list()
     # workloads = json.load(open("experiments.json"))
     workloads = {"workloads": [
+
+        ############# NOVEMBER 17th 2023 ##############
+        {
+            "inserts": 1000000,
+            "updates": 250000 * 10,
+            "range_queries": 100 * 10,
+            "size_ratio": 6,
+            "range_query_enabled": 0
+        },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.5,
+        #     "lower_to_upper_ratio": 0.8,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.6,
+        #     "lower_to_upper_ratio": 0.8,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.7,
+        #     "lower_to_upper_ratio": 0.8,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.7,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.5,
+        #     "lower_to_upper_ratio": 0.7,
+        # },
+
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.6,
+        #     "lower_to_upper_ratio": 0.7,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.6,
+        # },
+        # {
+        #     "inserts": 1000000,
+        #     "updates": 250000 * 10,
+        #     "range_queries": 100 * 10,
+        #     "size_ratio": 6,
+        #     "range_query_enabled": 1,
+        #     "upper_to_lower_ratio": 0.5,
+        #     "lower_to_upper_ratio": 0.6,
+        # }
+
+
         # {
         #     "inserts": 250000,
         #     "updates": 125000,
@@ -108,273 +202,273 @@ if __name__ == "__main__":
 
         ############# NOVEMBER 9th 2023 ##############
         
-        ## Change the range queries from 10, 100, 500, 1000, 2000
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 10,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 10,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 10,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 500,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 500,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 500,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 1000,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 1000,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 1000,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 2000,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 2000,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },        
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 2000,
-            "selectivity": 0.25,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
+        # ## Change the range queries from 10, 100, 500, 1000, 2000
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 10,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 10,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 10,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 500,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 500,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 500,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 1000,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 1000,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 1000,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 2000,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 2000,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },        
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 2000,
+        #     "selectivity": 0.25,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
 
-        ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80  VANILLA
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.10,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.20,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.40,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.60,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.80,
-            "size_ratio": 3,
-            "range_query_enabled": 0
-        },
+        # ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80  VANILLA
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.10,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.20,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.40,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.60,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.80,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 0
+        # },
 
-        ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80   RQDC = 1
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.10,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.20,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.40,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.60,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.80,
-            "size_ratio": 3,
-            "range_query_enabled": 1
-        },
+        # ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80   RQDC = 1
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.10,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.20,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.40,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.60,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.80,
+        #     "size_ratio": 3,
+        #     "range_query_enabled": 1
+        # },
 
-        ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80   RQDC = 1 with UTL AND LTU
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.10,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.20,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.40,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.60,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
-        {
-            "inserts": 250000,
-            "updates": 125000,
-            "range_queries": 100,
-            "selectivity": 0.80,
-            "size_ratio": 3,
-            "upper_to_lower_ratio": 0.4,
-            "lower_to_upper_ratio": 0.8,
-            "range_query_enabled": 1
-        },
+        # ### Change the selectivity from 0.10, 0.20, 0.40, 0.60, 0.80   RQDC = 1 with UTL AND LTU
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.10,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.20,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.40,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.60,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
+        # {
+        #     "inserts": 250000,
+        #     "updates": 125000,
+        #     "range_queries": 100,
+        #     "selectivity": 0.80,
+        #     "size_ratio": 3,
+        #     "upper_to_lower_ratio": 0.4,
+        #     "lower_to_upper_ratio": 0.8,
+        #     "range_query_enabled": 1
+        # },
 
 
 
@@ -638,6 +732,7 @@ if __name__ == "__main__":
         dir_name = ""
 
         if "inserts" in workload:
+            run_args += f" -I {workload['inserts']}"
             gen_workload_args += f" -I {workload['inserts']}"
             dir_name += (
                 f"I {workload['inserts']}"
@@ -645,21 +740,23 @@ if __name__ == "__main__":
                 else f" I {workload['inserts']}"
             )
         if "updates" in workload:
+            run_args += f" -U {workload['updates']}"
             gen_workload_args += f" -U {workload['updates']}"
             dir_name += (
                 f"U {workload['updates']}"
                 if dir_name == ""
                 else f" U {workload['updates']}"
             )
-        if "range_queries" in workload and "selectivity" in workload:
+        if "range_queries" in workload:
+            run_args += f" -S {workload['range_queries']}"
             gen_workload_args += f" -S {workload['range_queries']}"
-            gen_workload_args += f" -Y {workload['selectivity']}"
+            # gen_workload_args += f" -Y {workload['selectivity']}"
             dir_name += (
                 f"S {workload['range_queries']}"
                 if dir_name == ""
                 else f" S {workload['range_queries']}"
             )
-            dir_name += f" Y {workload['selectivity']}"
+            # dir_name += f" Y {workload['selectivity']}"
         if "size_ratio" in workload:
             run_args += f" -T {workload['size_ratio']}"
             dir_name += (

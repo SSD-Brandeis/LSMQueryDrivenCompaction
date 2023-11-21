@@ -139,6 +139,8 @@ void printExperimentalSetup(EmuEnv *_env);                 // !YBS-sep07-XX!
 void printWorkloadStatistics(operation_tracker op_track);  // !YBS-sep07-XX!
 int runWorkload(EmuEnv *_env);
 inline void showProgress(const uint32_t &n, const uint32_t &count);
+bool isOneEpochComplete(const int num_epochs, int &num_inserts,
+                        int &num_updates, EmuEnv *_env);
 
 int main(int argc, char *argv[]) {
   // check emu_environment.h for the contents of EmuEnv and also the definitions
@@ -669,6 +671,12 @@ int runWorkload(EmuEnv *_env) {
   BlockBasedTableOptions table_options;
   FlushOptions f_options;
 
+  // number of epochs to run the experiment
+  int num_epochs = 10;
+
+  int num_inserts_count = 0;
+  int num_updates_count = 0;
+
   configOptions(_env, &options, &table_options, &w_options, &r_options,
                 &f_options);
 
@@ -682,6 +690,8 @@ int runWorkload(EmuEnv *_env) {
   }
 
   options.info_log_level = InfoLogLevel::DEBUG_LEVEL;
+  options.level_compaction_dynamic_file_size =
+      false;  // stop creating dynamic size SST files
   options.ignore_max_compaction_bytes_for_input = false;
   options.max_compaction_bytes = _env->buffer_size;
   printExperimentalSetup(_env);  // !YBS-sep07-XX!
@@ -783,7 +793,9 @@ int runWorkload(EmuEnv *_env) {
   } else {
     compacted_vs_skipped.open("rqc_off_compacted_vs_skipped.csv");
   }
-  compacted_vs_skipped << "Range Query No.," << "Compacted," << "Skipped" << std::endl; 
+  compacted_vs_skipped << "Range Query No.,"
+                       << "Compacted,"
+                       << "Skipped" << std::endl;
 
   std::ofstream stats_file;
   if (_env->enable_range_query_compaction) {
@@ -811,6 +823,7 @@ int runWorkload(EmuEnv *_env) {
     _env->current_op = instruction;  // !YBS-sep18-XX!
     switch (instruction) {
       case 'I':  // insert
+        num_inserts_count++;
         workload_file >> key >> value;
         qstats->query_type = QueryType::INSERT;
         qstats->key = std::to_string(key);
@@ -828,6 +841,7 @@ int runWorkload(EmuEnv *_env) {
         break;
 
       case 'U':  // update
+        num_updates_count++;
         workload_file >> key >> value;
         qstats->query_type = QueryType::UPDATE;
         qstats->key = std::to_string(key);
@@ -921,7 +935,9 @@ int runWorkload(EmuEnv *_env) {
           std::cerr << it->status().ToString() << std::endl;
         }
 
-        compacted_vs_skipped << rq_query_number++ << "," << db_impl_->num_entries_compacted << "," << db_impl_->num_entries_skipped << std::endl;
+        compacted_vs_skipped << rq_query_number++ << ","
+                             << db_impl_->num_entries_compacted << ","
+                             << db_impl_->num_entries_skipped << std::endl;
 
         if (_env->enable_range_query_compaction && lexico_valid) {
           it->Reset();
@@ -943,6 +959,62 @@ int runWorkload(EmuEnv *_env) {
       default:
         std::cerr << "ERROR: Case match NOT found !!" << std::endl;
         break;
+    }
+
+    if (isOneEpochComplete(num_epochs, num_inserts_count, num_updates_count,
+                           _env)) {
+      stats_file << "=============== One epoch complete =============== "
+                    "(Recording Stats ...)"
+                 << std::endl;
+
+      // auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
+      //     db_impl_->DefaultColumnFamily());
+      // ColumnFamilyData *cfd = cfh->cfd();
+
+      // std::vector<
+      //     std::tuple<std::string /*level number*/, int /*number of files*/,
+      //                int /*number of entries*/>>
+      //     levels_info;
+      // int total_files = 0;
+      // int total_entries = 0;
+
+      // std::string levels_state_before =
+      //     "Workload done, waiting for compaction...";
+      // auto storage_info_before = cfd->current()->storage_info();
+      // for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
+      //   int num_entries = 0;
+      //   levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
+      //   auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
+      //   for (size_t file_index = 0; file_index < num_files; file_index++) {
+      //     auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
+      //     levels_state_before +=
+      //         "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+      //         fd.file_metadata->smallest.user_key().ToString() + ", " +
+      //         fd.file_metadata->largest.user_key().ToString() + ")" +
+      //         std::to_string(fd.file_metadata->num_entries) + "] ";
+      //     num_entries += storage_info_before->LevelFilesBrief(l)
+      //                        .files[file_index]
+      //                        .file_metadata->num_entries;
+      //   }
+      //   total_files += num_files;
+      //   total_entries += num_entries;
+      //   levels_info.push_back(
+      //       std::make_tuple("Level-" + to_string(l), num_files, num_entries));
+      // }
+      // levels_info.push_back(
+      //     std::make_tuple("Total: ", total_files, total_entries));
+
+      // stats_file << "\n\n"
+      //            << std::setw(20) << "Level" << std::setw(20) << "Num Files"
+      //            << std::setw(20) << "Num Entries" << std::endl;
+
+      // for (auto level_info : levels_info) {
+      //   stats_file << std::setw(20) << std::get<0>(level_info) << std::setw(20)
+      //              << std::get<1>(level_info) << std::setw(20)
+      //              << std::get<2>(level_info) << std::endl;
+      // }
+
+      stats_file << options.statistics->ToString();
     }
 
     qstats->total_time_taken =
@@ -1177,7 +1249,15 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
   args::ValueFlag<long> num_inserts_cmd(
       group1, "inserts",
       "The number of unique inserts to issue in the experiment [def: 1]",
-      {'i', "inserts"});
+      {'I', "inserts"});
+  args::ValueFlag<long> num_updates_cmd(
+      group1, "updates",
+      "The number of unique updates to issue in the experiment [def: 0]",
+      {'U', "updates"});
+  args::ValueFlag<long> num_range_queries_cmd(
+      group1, "range_queries",
+      "The number of unique range queries to issue in the experiment [def: 0]",
+      {'S', "range_queries"});
 
   args::ValueFlag<int> enable_range_query_compaction_cmd(
       group1, "enable_range_query_compaction",
@@ -1225,7 +1305,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 512;
   _env->entries_per_page =
       entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
-  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 1024;
+  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 256; // 1024; [Shubham]
   _env->buffer_size = buffer_size_cmd
                           ? args::get(buffer_size_cmd)
                           : _env->buffer_size_in_pages *
@@ -1253,6 +1333,10 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
                                      : 1;  // !YBS-feb15-XXI!
 
   _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
+  _env->num_updates = num_updates_cmd ? args::get(num_updates_cmd) : 0;
+  _env->num_range_queries =
+      num_range_queries_cmd ? args::get(num_range_queries_cmd) : 0;
+
   _env->max_background_jobs = 0;  // [Shubham]
 
   _env->target_file_size_base = _env->buffer_size;  // !YBS-sep07-XX!
@@ -1365,4 +1449,15 @@ inline void showProgress(const uint32_t &workload_size,
     std::cout << "\n";
     return;
   }
+}
+
+bool isOneEpochComplete(const int num_epochs, int &num_inserts,
+                        int &num_updates, EmuEnv *_env) {
+  if (num_inserts == _env->num_inserts && num_updates == 0) {
+    return true;
+  } else if (num_updates == _env->num_updates / num_epochs) {
+    num_updates = 0;
+    return true;
+  }
+  return false;
 }

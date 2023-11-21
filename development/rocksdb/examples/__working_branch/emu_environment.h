@@ -312,6 +312,8 @@ class EmuEnv {
 
   // Workload options -- not sure if necessary to have these here!
   long num_inserts;
+  long num_updates;
+  long num_range_queries;
 
   // old options
 

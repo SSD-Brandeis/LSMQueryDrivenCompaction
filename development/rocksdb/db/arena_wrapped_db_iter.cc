@@ -234,7 +234,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
             std::get<1>(decision_matrix_meta_data[i]) /
                 (std::get<1>(decision_matrix_meta_data[i]) +
                  std::get<2>(decision_matrix_meta_data[i])),
-            std::vector<float>(j - i + 1, read_options_.lower_to_upper_ratio),
+            std::vector<float>(j - i + 1, read_options_.higher_threshold),
             read_options_);
       } else {
         float useful = 0;
@@ -381,6 +381,7 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       // db_impl_->read_options_ = read_options_;
     }
   } else {
+    db_impl_->was_decision_true = true;
     db_impl_->added_last_table = false;
   }
 
@@ -459,6 +460,7 @@ Status ArenaWrappedDBIter::Reset() {
       db_impl_->ContinueBackgroundWork();
     }
   }
+  db_impl_->was_decision_true = false;
   db_impl_->num_entries_skipped = 0;
   db_impl_->num_entries_compacted = 0;
   db_impl_->ContinueBackgroundWork();

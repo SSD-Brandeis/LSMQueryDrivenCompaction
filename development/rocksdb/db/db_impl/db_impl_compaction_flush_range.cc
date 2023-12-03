@@ -16,7 +16,7 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-// TODO: (shubham) remove this after testing
+// // TODO: (shubham) remove this after testing
 std::ostream& operator<<(std::ostream& os, const DecisionCell& data) {
   os << std::to_string(data.start_level_) + ">" +
             std::to_string(data.end_level_) + "[" +
@@ -392,7 +392,7 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
 
     if (flush_reason == FlushReason::kRangeFlush) {
       // level = range_query_last_level_;
-      level = decision_cell_.GetEndLevel();
+      level = decision_cell_.end_level_;
     }
 
     if (immutable_db_options().verbosity > 0) {
@@ -694,8 +694,8 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
                                                MemTable* mem_range, int level,
                                                bool just_delete,
                                                FileMetaData* file_meta) {
-  if (level != -1 && (level < decision_cell_.GetStartLevel() ||
-                      level > decision_cell_.GetEndLevel())) {
+  if (level != -1 && (level < decision_cell_.start_level_ ||
+                      level > decision_cell_.end_level_)) {
     if (flush_reason == FlushReason::kPartialFlush) {
       file_meta->being_compacted = false;
     }

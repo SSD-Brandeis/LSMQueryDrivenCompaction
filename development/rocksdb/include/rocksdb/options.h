@@ -1619,12 +1619,10 @@ struct ReadOptions {
   // Used to check if the range query compaction is enabled
   bool range_query_compaction_enabled = false;
 
-  // Write cost (WC) threshold for range query compaction
-  float write_cost_threshold = 0;  // default: [0f]
   // number of entries overlap from upper to lower level
-  float upper_to_lower_ratio = 0;  // default: [0f]
+  float lower_threshold = 0;  // default: [0f]
   // number of entries overlap from lower to upper level 
-  float lower_to_upper_ratio = 0;  // default: [0f]
+  float higher_threshold = 0;  // default: [inf]
   // NOTE END
 
   // Specify to create a tailing iterator -- a special iterator that has a

@@ -200,8 +200,8 @@ class EmuEnv {
   bool enable_range_query_compaction;
 
   float write_cost_threshold;
-  float upper_to_lower_ratio;
-  float lower_to_upper_ratio;
+  float lower_threshold;
+  float higher_threshold;
 
   // options with default values
   // Memory allocation

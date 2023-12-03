@@ -51,8 +51,8 @@ class QueryStats {
        << qstats.key << ", " << qstats.num_levels_before << ", "
        << qstats.num_levels_after << ", " << qstats.num_files_before << ", "
        << qstats.num_files_after << ", " << qstats.num_entries_before << ", "
-       << qstats.num_entries_after << ", " << qstats.total_time_taken
-       << std::endl;
+       << qstats.num_entries_after << ", " << qstats.total_time_taken << ", "
+       << qstats.decision << std::endl;
     return os;
   }
 
@@ -80,6 +80,8 @@ class QueryStats {
 
   double total_time_taken;
 
+  bool decision = false;
+
   static QueryStats *getQueryStats() {
     if (QueryStats::_instance == nullptr) {
       QueryStats::_instance = new QueryStats();
@@ -97,6 +99,7 @@ class QueryStats {
     num_entries_before = 0;
     num_entries_after = 0;
     total_time_taken = 0;
+    decision = false;
   }
 };
 
@@ -518,9 +521,8 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
 
   // range query compaction options
   r_op->range_query_compaction_enabled = _env->enable_range_query_compaction;
-  r_op->write_cost_threshold = _env->write_cost_threshold;
-  r_op->upper_to_lower_ratio = _env->upper_to_lower_ratio;
-  r_op->lower_to_upper_ratio = _env->lower_to_upper_ratio;
+  r_op->lower_threshold = _env->lower_threshold;
+  r_op->higher_threshold = _env->higher_threshold;
 
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
   // flushed op->db_write_buffer_size = 0;   // disable op->arena_block_size =
@@ -809,6 +811,7 @@ int runWorkload(EmuEnv *_env) {
   long long number = 0;
 
   std::cout << "Starting workload execution with env: " << *_env << std::endl;
+  auto workload_start_time = std::chrono::system_clock::now();
 
   while (!workload_file.eof()) {
     // auto info = db_impl_->getLevelFilesEntriesCount();
@@ -938,6 +941,10 @@ int runWorkload(EmuEnv *_env) {
         compacted_vs_skipped << rq_query_number++ << ","
                              << db_impl_->num_entries_compacted << ","
                              << db_impl_->num_entries_skipped << std::endl;
+        
+        if (db_impl_->was_decision_true) {
+          qstats->decision = true;
+        }
 
         if (_env->enable_range_query_compaction && lexico_valid) {
           it->Reset();
@@ -1094,10 +1101,14 @@ int runWorkload(EmuEnv *_env) {
 
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
+  auto workload_end_time = std::chrono::system_clock::now();
+  auto workload_duration =
+      std::chrono::duration_cast<std::chrono::duration<double>>(
+          workload_end_time - workload_start_time);
 
   auto total_info = levels_info.back();
   outputFile << ++number << ", Total, , 0, " << levels_info.size() << ", 0, "
-             << total_files << ", 0, " << total_entries << ", 0";
+             << total_files << ", 0, " << total_entries << ", 0, " << workload_duration.count() << ", 0" << std::endl;
 
   outputFile.close();
   s = db->Close();
@@ -1269,11 +1280,11 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       "Write cost threshold for range query compaction [def: 0]",
       {"wc", "write_cost_threshold"});
   args::ValueFlag<float> utl_threshold_cmd(
-      group1, "upper_to_lower_ratio",
+      group1, "lower_threshold",
       "Upper to Lower ratio for adjacent levels [def: 0]",
       {"utl", "upper_to_lower_threshold"});
   args::ValueFlag<float> ltu_threshold_cmd(
-      group1, "lower_to_upper_ratio",
+      group1, "higher_threshold",
       "Lower to Upper ratio for adjacent levels [def: inf]",
       {"ltu", "lower_to_upper_threshold"});
 
@@ -1350,9 +1361,9 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
           : 0;  // default to false
   _env->write_cost_threshold =
       wc_threshold_cmd ? args::get(wc_threshold_cmd) : 0;  // default to 0
-  _env->upper_to_lower_ratio =
+  _env->lower_threshold =
       utl_threshold_cmd ? args::get(utl_threshold_cmd) : 0;  // default to 0
-  _env->lower_to_upper_ratio =
+  _env->higher_threshold =
       ltu_threshold_cmd
           ? args::get(ltu_threshold_cmd)
           : std::numeric_limits<float>::infinity();  // default to inf

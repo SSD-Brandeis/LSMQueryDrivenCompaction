@@ -129,14 +129,13 @@ struct DecisionCell {
   std::string GetDecision() {
     bool decision = true;
     for (auto ratio : overlapping_entries_ratio_) {
-      if (ratio < read_options_.upper_to_lower_ratio ||
-          ratio > read_options_.lower_to_upper_ratio) {
+      if (ratio < read_options_.lower_threshold ||
+          ratio > read_options_.higher_threshold) {
         decision = false;
         break;
       }
     }
-    return (decision &&
-            entries_useful_to_unuseful_ratio_ > read_options_.write_cost_threshold)
+    return decision
                ? "True"
                : "False";  // TODO: (shubham) you mght not need the string
                            // values
@@ -540,6 +539,7 @@ class DBImpl : public DB {
   int bg_partial_or_range_flush_scheduled_ = 0;
   int bg_partial_or_range_flush_running_ = 0;
   bool added_last_table = false;
+  bool was_decision_true = false;
   DecisionCell decision_cell_;
 
   ReadOptions read_options_;

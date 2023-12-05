@@ -4,9 +4,10 @@
 \end{figure}
 
 LSM-based data stores are designed to efficiently manage write-heavy workloads. The data is ingested through 
-a memtable, an in-memory data structure that stores keys and their corresponding values. Once the memtable reaches its 
-capacity, it is flushed to disk in the form of a sorted run. These sorted runs are stored across multiple levels in 
-files that are sorted by key. The compactions are also triggered in the background when the size of a level exceeds a 
+an in-memory buffer (a.k.a memtable in Rocksdb), a data structure that stores keys and their corresponding values. 
+Once an in-memory buffer reaches its capacity, it is flushed to the disk in the form of an immutable sorted file (a.k.a Sorted Strings Table, SSTable or SST). 
+These sorted files together forms a single sorted run which represents one level of LSM tree. Every level is completely sorted 
+across all files, that are sorted by key. The compactions are triggered in the background when the size of a level exceeds a 
 specific threshold.
 
 \Paragraph{Updates in LSM} Updates are executed in an out-of-place fashion, where new values are written to lower levels 
@@ -30,6 +31,6 @@ next level, which is usually much larger as per the configured size ratio.
 The compactions are triggered to move data from lower levels to higher levels. The process involves selecting a file 
 based on a compaction score from the lower level using a configured compaction policy. This file is then merged with 
 overlapping files from the higher level. Invalid keys are filtered out during this merge, and the valid keys are 
-written to the higher level. This compaction process occurs only between adjacent levels. Once a file is compacted, 
+written to the higher level. The compaction process will always occurs between adjacent levels. Once a file is compacted, 
 it is removed from the lower level, and the new compacted file is written to the higher level. This process can repeat
 multiple times until the level size falls below a specified threshold.

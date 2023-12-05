@@ -2,7 +2,7 @@
 integration of artificial intelligence and machine learning, has resulted in the generation of vast amounts of data.
 This data often requires real-time processing and exhibits a write-heavy nature. The data stores like RocksDB and 
 LevelDB have been designed to efficiently handle such workloads. These data stores rely on the technique of
-\Paragraph{log-structured merge (LSM)} trees, an efficient data structure tailored for managing write-heavy workloads. The
+\textbf{log-structured merge (LSM)} trees, an efficient data structure tailored for managing write-heavy workloads. The
 fundamental concept underlying LSM trees is of out-of-place updates, which logically invalidate keys instead of 
 performing in-place updates.
 
@@ -16,7 +16,7 @@ range queries are performed by merging the sorted runs from multiple levels and 
 logically invalided. This process is also called \textbf{sort-merge}, which is similar to the compaction~\cite{Sarkar2021}.
 
 \Paragraph{Problem} When executing a range query, the sort-merge operation is performed on sorted runs from multiple 
-levels, leading to the retrieval of both valid and invalid keys from higher levels. Consequently, more data is read than 
+levels that retrieves both valid and invalid keys from those levels. Consequently, more data is read than 
 actually required. This situation is acceptable when performing a single range query for a specific range. However, when 
 the same query or an overlapping one is executed repeatedly, a nearly identical amount of work is executed. Furthermore, 
 when a compaction is triggered within that specific range, some of the invalid keys that were previously read, sorted 
@@ -35,14 +35,14 @@ gains efficiency, subsequently leading to less number of I/O operations and a mo
 % Problem Statement
 \subsection{Problem Statement}
 The state-of-the-art LSM-based data stores performs range queries by retrieving multiple files from various levels and 
-filter out invalid keys. Once the range query is complete, the work done via the sort-merge operation for query is 
-discarded. The results are neither cached nor flushed back to the LSM tree except returning it to the application. This 
+filter out invalid keys. Once the range query is complete, the work done by the sort-merge operation for the query is 
+discarded. The results are neither cached nor flushed back to the LSM tree except just returning it to the application. This 
 approach can give rise to two problems: (1) \textit{Redundant Work}: when the same range query or 
 an overlapping one is executed again, and (2) \textit{Increased Write Amplification}: when a compaction is triggered 
-for the files containing keys within the range of a previous range query. During these process, the system re-reads the 
-invalid keys and subsequently either drops them or replaces them with new values. As a result, the same data bytes are 
-read and written during both the range query and compaction processes, leading to higher read, write, and space 
-amplification.
+for the files containing invalid keys or keys that were accessed within the last few range queries. During these process, 
+the system re-reads the invalid keys and subsequently either drops them or replaces them with new values. As a result, 
+the same data bytes are read and written during both the range query and compaction processes, leading to higher read, 
+write, and space amplification.
 
 
 % Contributions

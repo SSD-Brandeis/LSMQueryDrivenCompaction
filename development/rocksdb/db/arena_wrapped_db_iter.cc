@@ -418,9 +418,11 @@ Status ArenaWrappedDBIter::Reset() {
                   << std::endl;
       }
       db_impl_->ContinueBackgroundWork();
+      break;
     }
     db_impl_->SchedulePartialOrRangeFileFlush();
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    db_impl_->range_queries_complete_cv_.Wait();
+    // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
 
   std::string levels_state_before = "Range Query Complete: Compacted << " + std::to_string(db_impl_->num_entries_compacted) + " Skipped: " + std::to_string(db_impl_->num_entries_skipped);

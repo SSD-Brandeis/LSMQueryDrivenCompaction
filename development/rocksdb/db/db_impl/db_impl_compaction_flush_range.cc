@@ -585,6 +585,10 @@ void DBImpl::BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri) {
     bg_partial_or_range_flush_scheduled_--;
     // See if there's more work to be done
     SchedulePartialOrRangeFileFlush();
+
+    if (unscheduled_partial_or_range_flushes_ == 0) {
+      range_queries_complete_cv_.Signal();
+    }
     atomic_flush_install_cv_.SignalAll();
     bg_cv_.SignalAll();
     // IMPORTANT: there should be no code after calling SignalAll. This call may

@@ -157,7 +157,8 @@ void DumpSupportInfo(Logger* logger) {
 DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
                const bool seq_per_batch, const bool batch_per_txn,
                bool read_only)
-    : dbname_(dbname),
+    : range_queries_complete_cv_(&range_queries_complete_mutex_),
+      dbname_(dbname),
       own_info_log_(options.info_log == nullptr),
       init_logger_creation_s_(),
       initial_db_options_(SanitizeOptions(dbname, options, read_only,

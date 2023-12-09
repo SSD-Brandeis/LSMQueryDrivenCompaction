@@ -540,7 +540,10 @@ class DBImpl : public DB {
   int bg_partial_or_range_flush_running_ = 0;
   bool added_last_table = false;
   bool was_decision_true = false;
-  DecisionCell decision_cell_;
+  DecisionCell decision_cell_;    
+  // Conditional variable to coordinate the completion of range queries flush
+  InstrumentedMutex range_queries_complete_mutex_;  // TODO: (Shubham) Why this lock is even required???
+  InstrumentedCondVar range_queries_complete_cv_;
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;

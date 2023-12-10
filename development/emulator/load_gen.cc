@@ -41,10 +41,10 @@ long range_delete_count = 0;
 float range_delete_selectivity = 0;
 long point_query_count = 0;
 long range_query_count = 0;
-std::vector<float> range_query_selectivity = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
-std::string range_query_selectivity_string = "[";
+// std::vector<float> range_query_selectivity = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
+// std::string range_query_selectivity_string = "[";
 
-// float range_query_selectivity = 0;
+float range_query_selectivity = 0;
 float zero_result_point_delete_proportion = 0;
 float zero_result_point_lookup_proportion = 0;
 long existing_point_query_count = 0;
@@ -119,13 +119,13 @@ Key get_key(int _key_size){
     return s;
 }*/
 
-float getRandomSelectivity() {
-    if (range_query_selectivity.empty()) {
-        return 0.0;
-    }
-    int randomIndex = rand() % range_query_selectivity.size();
-    return range_query_selectivity[randomIndex];
-}
+// float getRandomSelectivity() {
+//     if (range_query_selectivity.empty()) {
+//         return 0.0;
+//     }
+//     int randomIndex = rand() % range_query_selectivity.size();
+//     return range_query_selectivity[randomIndex];
+// }
 
 std::string get_value(int _value_size)
 {
@@ -153,13 +153,13 @@ std::vector<std::string> StringSplit(const std::string &arg, char delim)
 
 void generate_workload(int argc, char *argv[])
 {
-    for (size_t i = 0; i < range_query_selectivity.size(); ++i) {
-            range_query_selectivity_string += std::to_string(range_query_selectivity[i]);
-            if (i < range_query_selectivity.size() - 1) {
-                range_query_selectivity_string += ", ";
-            }
-        }
-    range_query_selectivity_string += "]";
+    // for (size_t i = 0; i < range_query_selectivity.size(); ++i) {
+    //         range_query_selectivity_string += std::to_string(range_query_selectivity[i]);
+    //         if (i < range_query_selectivity.size() - 1) {
+    //             range_query_selectivity_string += ", ";
+    //         }
+    //     }
+    // range_query_selectivity_string += "]";
 
     if (parse_arguments2(argc, argv))
     {
@@ -658,8 +658,9 @@ void generate_workload(int argc, char *argv[])
 
             // for now we use the hardcoded range selectivity
             long insert_pool_size = insert_pool.size();
-            float random_selectivity = getRandomSelectivity();
-            long entries_in_range_query = floor(random_selectivity * insert_pool_size); // computed on the current size of insert pool
+            // float random_selectivity = getRandomSelectivity();
+            // long entries_in_range_query = floor(random_selectivity * insert_pool_size); // computed on the current size of insert pool
+            long entries_in_range_query = floor(range_query_selectivity * insert_pool_size); // computed on the current size of insert pool
             long start_index = (long)(rand() % insert_pool_size);
             long end_index = -1;
             if (start_index + entries_in_range_query > insert_pool_size)
@@ -730,7 +731,8 @@ void print_workload_parameters(int _insert_count, int _update_count, int _point_
               << "effective_ingestion_count = " << _effective_ingestion_count << ", "
               << "point_query_count = " << point_query_count << ", "
               << "range_query_count = " << range_query_count << ", "
-              << "range_query_selectivity = " << range_query_selectivity_string << ", "
+            //   << "range_query_selectivity = " << range_query_selectivity_string << ", "
+              << "range_query_selectivity = " << range_query_selectivity << ", "
               << "zero_result_point_lookup_proportion= " << zero_result_point_lookup_proportion << ", "
               << "existing_point_query_count = " << existing_point_query_count << ", "
               << "non_existing_point_query_count = " << non_existing_point_query_count << ", "
@@ -926,7 +928,7 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<float> range_delete_selectivity_cmd(group1, "y", "Range delete selectivity [def: 0]", {'y', "range_delete_selectivity"});
     args::ValueFlag<long> point_query_cmd(group1, "Q", "Number of point queries [def: 0]", {'Q', "point_query"});
     args::ValueFlag<long> range_query_cmd(group1, "S", "Number of range queries [def: 0]", {'S', "range_query"});
-    // args::ValueFlag<float> range_query_selectivity_cmd(group1, "Y", "Range query selectivity [def: 0]", {'Y', "range_query_selectivity"});
+    args::ValueFlag<float> range_query_selectivity_cmd(group1, "Y", "Range query selectivity [def: 0]", {'Y', "range_query_selectivity"});
     args::ValueFlag<float> zero_result_point_delete_proportion_cmd(group1, "z", "Proportion of zero-result point deletes [def: 0]", {'z', "zero_result_point_delete_proportion"});
     args::ValueFlag<float> zero_result_point_lookup_proportion_cmd(group1, "Z", "Proportion of zero-result point lookups [def: 0]", {'Z', "zero_result_point_lookup_proportion"});
     args::ValueFlag<float> unique_zero_result_point_lookup_proportion_cmd(group1, "UZ", "Proportion of maximum unique zero-result point lookups [def: 0.5]", {"UZ", "unique_zero_result_point_lookup_proportion"});
@@ -1025,7 +1027,7 @@ int parse_arguments2(int argc, char *argv[])
     range_delete_selectivity = range_delete_selectivity_cmd ? args::get(range_delete_selectivity_cmd) : 0;
     point_query_count = point_query_cmd ? args::get(point_query_cmd) : 0;
     range_query_count = range_query_cmd ? args::get(range_query_cmd) : 0;
-    // range_query_selectivity = range_query_selectivity_cmd ? args::get(range_query_selectivity_cmd) : 0;
+    range_query_selectivity = range_query_selectivity_cmd ? args::get(range_query_selectivity_cmd) : 0;
     zero_result_point_delete_proportion = zero_result_point_delete_proportion_cmd ? args::get(zero_result_point_delete_proportion_cmd) : 0;
     zero_result_point_lookup_proportion = zero_result_point_lookup_proportion_cmd ? args::get(zero_result_point_lookup_proportion_cmd) : 0;
     if (point_query_count != 0 && (zero_result_point_lookup_proportion < 0 || zero_result_point_lookup_proportion > 1))

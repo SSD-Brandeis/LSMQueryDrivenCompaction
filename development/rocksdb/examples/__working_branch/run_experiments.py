@@ -13,35 +13,35 @@ OUTPUT_FILE = Path(__file__).parent.joinpath("stats.txt").absolute().__str__()
 LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 
 
-upper_to_lower_ratio = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 1]
-lower_to_upper_ratio = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4]
-selectivities = [0.01, 0.02, 0.1]
+# upper_to_lower_ratio = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 3]
+# lower_to_upper_ratio = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4]
+# selectivities = [0.01, 0.02, 0.1]
 
-one_exp = {
-    "inserts": 1000000,
-    "updates": 250000,
-    "range_queries": 100,
-    "size_ratio": 4,
-}
+# one_exp = {
+#     "inserts": 1000000,
+#     "updates": 250000,
+#     "range_queries": 100,
+#     "size_ratio": 4,
+# }
 
-workloads = []
+# workloads = []
 
-for selectivity in selectivities:
-    for utl in upper_to_lower_ratio:
-        for ltu in lower_to_upper_ratio:
-            workload = one_exp.copy()
+# for selectivity in selectivities:
+#     for utl in upper_to_lower_ratio:
+#         for ltu in lower_to_upper_ratio:
+#             workload = one_exp.copy()
 
-            if utl == 0 and ltu == 0:
-                workload["range_query_enabled"] = 0
-            elif utl == ltu:
-                continue
-            else:
-                workload["range_query_enabled"] = 1
+#             if utl == 0 and ltu == 0:
+#                 workload["range_query_enabled"] = 0
+#             elif utl >= ltu:
+#                 continue
+#             else:
+#                 workload["range_query_enabled"] = 1
                 
-            workload["selectivity"] = selectivity
-            workload["upper_to_lower_ratio"] = utl
-            workload["lower_to_upper_ratio"] = ltu
-            workloads.append(workload)
+#             workload["selectivity"] = selectivity
+#             workload["upper_to_lower_ratio"] = utl
+#             workload["lower_to_upper_ratio"] = ltu
+#             workloads.append(workload)
 
 # print(workloads)
 
@@ -91,37 +91,36 @@ def run_workload(params, dir_name, log):
     log.write(" -------------- STARTING -------------- \n")
 
     db_dir = os.path.join(os.getcwd(), "db_working_home")
-    print("\nrunning workload\n")
+    log.write(f"\nrunning workload: {params} \n")
     if os.path.exists(db_dir):
         log.write("removing db_working_home\n")
         shutil.rmtree(db_dir)
 
     args = f"-V 2 {params} > '{dir_name}.log'"
-    print("running for rq on", dir_name)
-    print(f"../../working_version {args}")
+    log.write(f"../../working_version {args}")
     process_output = os.popen(f"../../working_version {args}").read()
     log.write(f"{process_output}\n")
 
-    files_to_move = [f for f in os.listdir(db_dir) if f.startswith("LOG")]
+    # files_to_move = [f for f in os.listdir(db_dir) if f.startswith("LOG")]
 
     sst_files_count, sst_files_size = getSSTFileInfo(db_dir)
-    print("sst_files_count", sst_files_count)
-    print("sst_files_size", sst_files_size)
 
     # open a file and write the stats
     with open("sst_file_size_and_count.txt", "a") as f:
+        log.write(f"writing stats to sst_file_size_and_count.txt\n")
         f.write(f"{sst_files_count}\t{sst_files_size}\n")
 
-    for file in files_to_move:
-        source_path = os.path.join(db_dir, file)
-        destination_path = os.path.join(os.getcwd(), file)
-        shutil.move(source_path, destination_path)
+    workload_file = os.path.join(os.path.join(os.getcwd(),"workload.txt"))
+
+    if os.path.exists(workload_file):
+        log.write("removing workload.txt\n")
+        os.remove(workload_file)
 
     if os.path.exists(db_dir):
         log.write("removing db_working_home\n")
         shutil.rmtree(db_dir)
 
-    log.write(" -------------- DONE -------------- ")
+    log.write(" -------------- DONE -------------- \n\n\n\n")
     os.chdir(CURR_DIR)
 
 if __name__ == "__main__":
@@ -149,6 +148,7 @@ if __name__ == "__main__":
             )
         if "range_queries" in workload:
             run_args += f" -S {workload['range_queries']}"
+            run_args += f" -Y {workload['selectivity']}"
             gen_workload_args += f" -S {workload['range_queries']}"
             gen_workload_args += f" -Y {workload['selectivity']}"
             dir_name += (
@@ -164,13 +164,13 @@ if __name__ == "__main__":
                 if dir_name == ""
                 else f" T {workload['size_ratio']}"
             )
-        if "write_cost" in workload:
-            run_args += f" --wc {workload['write_cost']}"
-            dir_name += (
-                f"wc {workload['write_cost']}"
-                if dir_name == ""
-                else f" wc {workload['write_cost']}"
-            )
+        # if "write_cost" in workload:
+        #     run_args += f" --wc {workload['write_cost']}"
+        #     dir_name += (
+        #         f"wc {workload['write_cost']}"
+        #         if dir_name == ""
+        #         else f" wc {workload['write_cost']}"
+        #     )
         if "upper_to_lower_ratio" in workload:
             run_args += f" --utl {workload['upper_to_lower_ratio']}"
             dir_name += (

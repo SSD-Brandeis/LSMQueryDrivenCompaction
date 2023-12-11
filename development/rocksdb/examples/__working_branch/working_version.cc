@@ -48,10 +48,7 @@ std::string getQueryType(QueryType qtype);
 class QueryStats {
   friend std::ostream &operator<<(std::ostream &os, const QueryStats &qstats) {
     os << qstats.query_number << ", " << getQueryType(qstats.query_type) << ", "
-       << qstats.key << ", " << qstats.num_levels_before << ", "
-       << qstats.num_levels_after << ", " << qstats.num_files_before << ", "
-       << qstats.num_files_after << ", " << qstats.num_entries_before << ", "
-       << qstats.num_entries_after << ", " << qstats.total_time_taken << ", "
+       << qstats.key << ", " << qstats.total_time_taken << ", "
        << qstats.decision << std::endl;
     return os;
   }
@@ -1055,8 +1052,7 @@ int runWorkload(EmuEnv *_env) {
           workload_end_time - workload_start_time);
 
   auto total_info = levels_info.back();
-  outputFile << ++number << ", Total, , 0, " << levels_info.size() << ", 0, "
-             << total_files << ", 0, " << total_entries << ", 0, " << workload_duration.count() << ", 0" << std::endl;
+  outputFile << ++number << ", Total, , " << workload_duration.count() << ", 0" << std::endl;
 
   outputFile.close();
   s = db->Close();

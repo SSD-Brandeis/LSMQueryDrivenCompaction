@@ -795,9 +795,9 @@ int runWorkload(EmuEnv *_env) {
   } else {
     compacted_vs_skipped.open("rqc_off_compacted_vs_skipped.csv");
   }
-  compacted_vs_skipped << "Range Query No.,"
-                       << "Compacted,"
+  compacted_vs_skipped << "Compacted,"
                        << "Skipped" << std::endl;
+  compacted_vs_skipped.close();
 
   std::ofstream stats_file;
   if (_env->enable_range_query_compaction) {
@@ -938,19 +938,18 @@ int runWorkload(EmuEnv *_env) {
           std::cerr << it->status().ToString() << std::endl;
         }
 
-        compacted_vs_skipped << rq_query_number++ << ","
-                             << db_impl_->num_entries_compacted << ","
-                             << db_impl_->num_entries_skipped << std::endl;
-        
         if (db_impl_->was_decision_true) {
           qstats->decision = true;
         }
 
         if (_env->enable_range_query_compaction && lexico_valid) {
           it->Reset();
-        } else {
-          db_impl_->num_entries_compacted = 0;
-          db_impl_->num_entries_skipped = 0;
+        } 
+        else {
+          compacted_vs_skipped.open("rqc_off_compacted_vs_skipped.csv", std::ios_base::app);
+          compacted_vs_skipped << 0 << ","
+                               << 0 << std::endl;
+          compacted_vs_skipped.close();
         }
         if (_env->verbosity > 0) {
           std::cout << "\n[Verbosity]: range query completed " << __FILE__ ":"
@@ -973,54 +972,6 @@ int runWorkload(EmuEnv *_env) {
       stats_file << "=============== One epoch complete =============== "
                     "(Recording Stats ...)"
                  << std::endl;
-
-      // auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
-      //     db_impl_->DefaultColumnFamily());
-      // ColumnFamilyData *cfd = cfh->cfd();
-
-      // std::vector<
-      //     std::tuple<std::string /*level number*/, int /*number of files*/,
-      //                int /*number of entries*/>>
-      //     levels_info;
-      // int total_files = 0;
-      // int total_entries = 0;
-
-      // std::string levels_state_before =
-      //     "Workload done, waiting for compaction...";
-      // auto storage_info_before = cfd->current()->storage_info();
-      // for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-      //   int num_entries = 0;
-      //   levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
-      //   auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-      //   for (size_t file_index = 0; file_index < num_files; file_index++) {
-      //     auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-      //     levels_state_before +=
-      //         "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-      //         fd.file_metadata->smallest.user_key().ToString() + ", " +
-      //         fd.file_metadata->largest.user_key().ToString() + ")" +
-      //         std::to_string(fd.file_metadata->num_entries) + "] ";
-      //     num_entries += storage_info_before->LevelFilesBrief(l)
-      //                        .files[file_index]
-      //                        .file_metadata->num_entries;
-      //   }
-      //   total_files += num_files;
-      //   total_entries += num_entries;
-      //   levels_info.push_back(
-      //       std::make_tuple("Level-" + to_string(l), num_files, num_entries));
-      // }
-      // levels_info.push_back(
-      //     std::make_tuple("Total: ", total_files, total_entries));
-
-      // stats_file << "\n\n"
-      //            << std::setw(20) << "Level" << std::setw(20) << "Num Files"
-      //            << std::setw(20) << "Num Entries" << std::endl;
-
-      // for (auto level_info : levels_info) {
-      //   stats_file << std::setw(20) << std::get<0>(level_info) << std::setw(20)
-      //              << std::get<1>(level_info) << std::setw(20)
-      //              << std::get<2>(level_info) << std::endl;
-      // }
-
       stats_file << options.statistics->ToString();
     }
 
@@ -1028,10 +979,6 @@ int runWorkload(EmuEnv *_env) {
         (std::chrono::duration_cast<std::chrono::duration<double>>(
              ending_time - starting_time))
             .count();
-    // auto info_after = db_impl_->getLevelFilesEntriesCount();
-    // qstats->num_levels_after = std::get<0>(info_after);
-    // qstats->num_files_after = std::get<1>(info_after);
-    // qstats->num_entries_after = std::get<2>(info_after);
     outputFile << *qstats;
     qstats->reset();
 
@@ -1099,8 +1046,9 @@ int runWorkload(EmuEnv *_env) {
     }
   }
 
-  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                 levels_state_before.c_str());
+  // ROCKS_LOG_ERROR(db_impl_->immutable_db_options().info_log, "%s \n",
+  //                levels_state_before.c_str());
+  
   auto workload_end_time = std::chrono::system_clock::now();
   auto workload_duration =
       std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -1157,7 +1105,6 @@ int runWorkload(EmuEnv *_env) {
 
     stats_file << options.statistics->ToString();
     stats_file.close();
-    compacted_vs_skipped.close();
 
     std::cout << "RocksDB Statistics : " << std::endl;
     std::cout << options.statistics->ToString() << std::endl;

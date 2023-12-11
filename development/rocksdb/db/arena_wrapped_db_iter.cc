@@ -338,6 +338,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
 
 Status ArenaWrappedDBIter::Refresh(const std::string start_key,
                                    const std::string end_key) {
+  db_impl_->num_entries_skipped = 0;
+  db_impl_->num_entries_compacted = 0;
   if (db_impl_->immutable_db_options().verbosity > 0) {
     std::cout << "\n[Verbosity]: refreshing iterator " << __FILE__ ":"
               << __LINE__ << " " << __FUNCTION__ << std::endl;
@@ -376,8 +378,6 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
       db_impl_->read_options_.range_query_compaction_enabled = false;
       db_impl_->read_options_.range_start_key = "";
       db_impl_->read_options_.range_end_key = "";
-      db_impl_->num_entries_skipped = 0;
-      db_impl_->num_entries_compacted = 0;
       // db_impl_->read_options_ = read_options_;
     }
   } else {
@@ -391,7 +391,7 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
 Status ArenaWrappedDBIter::Reset() {
   // db_impl_->WaitForCompact(WaitForCompactOptions());
   // Check if the last table is added to the queue
-  if (!db_impl_->added_last_table) {
+  if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr && cfd_->mem_range()->num_entries() > 0) {
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 imm_range);
@@ -424,6 +424,12 @@ Status ArenaWrappedDBIter::Reset() {
     db_impl_->range_queries_complete_cv_.Wait();
     // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
+
+  std::ofstream compacted_vs_skipped;
+  compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv", std::ios_base::app);
+  compacted_vs_skipped << db_impl_->num_entries_compacted << ","
+                       << db_impl_->num_entries_skipped << std::endl;
+  compacted_vs_skipped.close();
 
   std::string levels_state_before = "Range Query Complete: Compacted << " + std::to_string(db_impl_->num_entries_compacted) + " Skipped: " + std::to_string(db_impl_->num_entries_skipped);
   auto storage_info_before = cfd_->current()->storage_info();

@@ -325,11 +325,9 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     }
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
-      if (db_impl_->immutable_db_options().verbosity > 0) {
-        std::cout << "\n[Verbosity]: best decision cell: " << best_decision_cell
-                  << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      }
+      std::cout << "\nBest decision cell: " << best_decision_cell
+                << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+                << std::endl;
       break;
     }
   }
@@ -371,15 +369,14 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
                 << std::endl;
       std::cout << "\n[Verbosity]: continuing background work " << __FILE__ ":"
                 << __LINE__ << " " << __FUNCTION__ << std::endl;
-      db_impl_->ContinueBackgroundWork();
-      read_options_.range_query_compaction_enabled = false;
-      read_options_.range_start_key = "";
-      read_options_.range_end_key = "";
-      db_impl_->read_options_.range_query_compaction_enabled = false;
-      db_impl_->read_options_.range_start_key = "";
-      db_impl_->read_options_.range_end_key = "";
-      // db_impl_->read_options_ = read_options_;
     }
+    db_impl_->ContinueBackgroundWork();
+    read_options_.range_query_compaction_enabled = false;
+    read_options_.range_start_key = "";
+    read_options_.range_end_key = "";
+    db_impl_->read_options_.range_query_compaction_enabled = false;
+    db_impl_->read_options_.range_start_key = "";
+    db_impl_->read_options_.range_end_key = "";
   } else {
     db_impl_->was_decision_true = true;
     db_impl_->added_last_table = false;
@@ -397,7 +394,6 @@ Status ArenaWrappedDBIter::Reset() {
                                                 imm_range);
     db_impl_->added_last_table = true;
   }
-  bool background_work_continued = false;
   while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
          db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
          db_impl_->bg_partial_or_range_flush_running_ > 0) {
@@ -410,16 +406,6 @@ Status ArenaWrappedDBIter::Reset() {
                 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
                 << std::endl;
     }
-    // if (db_impl_->unscheduled_partial_or_range_flushes_ == 0) {
-    //   background_work_continued = true;
-    //   if (db_impl_->immutable_db_options().verbosity > 0) {
-    //     std::cout << "\n[Verbosity]: continuing background work "
-    //               << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-    //               << std::endl;
-    //   }
-    //   db_impl_->ContinueBackgroundWork();
-    //   break;
-    // }
     db_impl_->SchedulePartialOrRangeFileFlush();
     db_impl_->range_queries_complete_cv_.Wait();
     // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -458,15 +444,6 @@ Status ArenaWrappedDBIter::Reset() {
     read_options_.range_start_key = "";
     read_options_.range_query_compaction_enabled = false;
     db_impl_->read_options_ = read_options_;
-
-    if (!background_work_continued) {
-      if (db_impl_->immutable_db_options().verbosity > 0) {
-        std::cout << "\n[Verbosity]: continuing background work "
-                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      }
-      db_impl_->ContinueBackgroundWork();
-    }
   }
   db_impl_->was_decision_true = false;
   db_impl_->num_entries_skipped = 0;

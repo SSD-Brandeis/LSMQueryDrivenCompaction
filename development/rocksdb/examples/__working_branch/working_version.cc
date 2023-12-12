@@ -1230,6 +1230,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       group1, "higher_threshold",
       "Lower to Upper ratio for adjacent levels [def: inf]",
       {"ltu", "lower_to_upper_threshold"});
+  args::ValueFlag<float> range_query_selectivity_cmd(group1, "Y", "Range query selectivity [def: 0]", {'Y', "range_query_selectivity"});
 
   try {
     parser.ParseCLI(argc, argv);

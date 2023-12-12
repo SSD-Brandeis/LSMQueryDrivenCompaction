@@ -410,16 +410,16 @@ Status ArenaWrappedDBIter::Reset() {
                 << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
                 << std::endl;
     }
-    if (db_impl_->unscheduled_partial_or_range_flushes_ == 0) {
-      background_work_continued = true;
-      if (db_impl_->immutable_db_options().verbosity > 0) {
-        std::cout << "\n[Verbosity]: continuing background work "
-                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      }
-      db_impl_->ContinueBackgroundWork();
-      break;
-    }
+    // if (db_impl_->unscheduled_partial_or_range_flushes_ == 0) {
+    //   background_work_continued = true;
+    //   if (db_impl_->immutable_db_options().verbosity > 0) {
+    //     std::cout << "\n[Verbosity]: continuing background work "
+    //               << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
+    //               << std::endl;
+    //   }
+    //   db_impl_->ContinueBackgroundWork();
+    //   break;
+    // }
     db_impl_->SchedulePartialOrRangeFileFlush();
     db_impl_->range_queries_complete_cv_.Wait();
     // std::this_thread::sleep_for(std::chrono::milliseconds(5000));

@@ -13,9 +13,9 @@ OUTPUT_FILE = Path(__file__).parent.joinpath("stats.txt").absolute().__str__()
 LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 
 
-# lower_bound = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 3]
-# upper_bound = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4]
-# selectivities = [0.01, 0.02, 0.1]
+# lower_bound = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6]
+# upper_bound = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6]
+# selectivities = [0.1]
 
 # one_exp = {
 #     "inserts": 1000000,
@@ -27,20 +27,18 @@ LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 # workloads = []
 
 # for selectivity in selectivities:
-#     for ub in lower_bound:
-#         for lb in upper_bound:
+#     for lb in lower_bound:
+#         for ub in upper_bound:
 #             workload = one_exp.copy()
 
-#             if ub == 0 and lb == 0:
+#             if lb == 0 and ub == 0:
 #                 workload["range_query_enabled"] = 0
-#             elif ub >= lb:
-#                 continue
 #             else:
 #                 workload["range_query_enabled"] = 1
                 
 #             workload["selectivity"] = selectivity
-#             workload["lower_bound"] = ub
-#             workload["upper_bound"] = lb
+#             workload["lower_bound"] = lb
+#             workload["upper_bound"] = ub
 #             workloads.append(workload)
 
 # print(workloads)

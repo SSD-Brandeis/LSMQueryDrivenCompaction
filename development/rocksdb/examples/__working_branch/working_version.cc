@@ -1058,6 +1058,9 @@ int runWorkload(EmuEnv *_env) {
 
   auto total_info = levels_info.back();
   outputFile << ++number << ", Total, , " << workload_duration.count() << ", 0" << std::endl;
+  uint64_t estimatedSize;
+  db->GetAggregatedIntProperty("rocksdb.estimate-live-data-size",
+                                &estimatedSize);
 
   outputFile.close();
   s = db->Close();
@@ -1105,8 +1108,6 @@ int runWorkload(EmuEnv *_env) {
     // Print Full RocksDB stats
 
     stats_file << options.statistics->ToString();
-    uint64_t estimatedSize;
-    db_impl_->GetAggregatedIntProperty("rocksdb.estimate-live-data-size", &estimatedSize);
     stats_file << "Estimated live data size: " << estimatedSize << std::endl;
     stats_file.close();
 

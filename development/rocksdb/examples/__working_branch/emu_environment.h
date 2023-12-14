@@ -199,9 +199,9 @@ class EmuEnv {
   // enable range query compaction
   bool enable_range_query_compaction;
 
-  float write_cost_threshold;
+//   float write_cost_threshold;
   float lower_threshold;
-  float higher_threshold;
+  float upper_threshold;
 
   // options with default values
   // Memory allocation

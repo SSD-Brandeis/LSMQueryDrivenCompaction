@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 #include "db/column_family.h"
 #include "db/compaction/compaction_iterator.h"
@@ -129,8 +130,8 @@ struct DecisionCell {
   std::string GetDecision() {
     bool decision = true;
     for (auto ratio : overlapping_entries_ratio_) {
-      if (ratio < read_options_.lower_threshold ||
-          ratio > read_options_.higher_threshold) {
+      if (std::isnan(ratio) || ratio < read_options_.lower_threshold ||
+          ratio > read_options_.upper_threshold) {
         decision = false;
         break;
       }

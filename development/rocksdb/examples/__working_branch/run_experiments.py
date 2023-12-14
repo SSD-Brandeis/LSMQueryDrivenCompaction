@@ -13,8 +13,8 @@ OUTPUT_FILE = Path(__file__).parent.joinpath("stats.txt").absolute().__str__()
 LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 
 
-# upper_to_lower_ratio = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 3]
-# lower_to_upper_ratio = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4]
+# lower_bound = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 3]
+# upper_bound = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4]
 # selectivities = [0.01, 0.02, 0.1]
 
 # one_exp = {
@@ -27,20 +27,20 @@ LOG_FILE = Path(__file__).parent.joinpath("logs.txt").absolute().__str__()
 # workloads = []
 
 # for selectivity in selectivities:
-#     for utl in upper_to_lower_ratio:
-#         for ltu in lower_to_upper_ratio:
+#     for ub in lower_bound:
+#         for lb in upper_bound:
 #             workload = one_exp.copy()
 
-#             if utl == 0 and ltu == 0:
+#             if ub == 0 and lb == 0:
 #                 workload["range_query_enabled"] = 0
-#             elif utl >= ltu:
+#             elif ub >= lb:
 #                 continue
 #             else:
 #                 workload["range_query_enabled"] = 1
                 
 #             workload["selectivity"] = selectivity
-#             workload["upper_to_lower_ratio"] = utl
-#             workload["lower_to_upper_ratio"] = ltu
+#             workload["lower_bound"] = ub
+#             workload["upper_bound"] = lb
 #             workloads.append(workload)
 
 # print(workloads)
@@ -96,7 +96,7 @@ def run_workload(params, dir_name, log):
         log.write("removing db_working_home\n")
         shutil.rmtree(db_dir)
 
-    args = f"-V 2 {params} > '{dir_name}.log'"
+    args = f" {params} > '{dir_name}.log'"
     log.write(f"../../working_version {args}")
     process_output = os.popen(f"../../working_version {args}").read()
     log.write(f"{process_output}\n")
@@ -109,6 +109,11 @@ def run_workload(params, dir_name, log):
     with open("sst_file_size_and_count.txt", "a") as f:
         log.write(f"writing stats to sst_file_size_and_count.txt\n")
         f.write(f"{sst_files_count}\t{sst_files_size}\n")
+
+    # for file in files_to_move:
+    #     source_path = os.path.join(db_dir, file)
+    #     destination_path = os.path.join(os.getcwd(), file)
+    #     shutil.move(source_path, destination_path)
 
     workload_file = os.path.join(os.path.join(os.getcwd(),"workload.txt"))
 
@@ -171,19 +176,19 @@ if __name__ == "__main__":
         #         if dir_name == ""
         #         else f" wc {workload['write_cost']}"
         #     )
-        if "upper_to_lower_ratio" in workload:
-            run_args += f" --utl {workload['upper_to_lower_ratio']}"
+        if "lower_bound" in workload:
+            run_args += f" --lb {workload['lower_bound']}"
             dir_name += (
-                f"utl {workload['upper_to_lower_ratio']}"
+                f"lb {workload['lower_bound']}"
                 if dir_name == ""
-                else f" utl {workload['upper_to_lower_ratio']}"
+                else f" lb {workload['lower_bound']}"
             )
-        if "lower_to_upper_ratio" in workload:
-            run_args += f" --ltu {workload['lower_to_upper_ratio']}"
+        if "upper_bound" in workload:
+            run_args += f" --ub {workload['upper_bound']}"
             dir_name += (
-                f"ltu {workload['lower_to_upper_ratio']}"
+                f"ub {workload['upper_bound']}"
                 if dir_name == ""
-                else f" ltu {workload['lower_to_upper_ratio']}"
+                else f" ub {workload['upper_bound']}"
             )
         if "range_query_enabled" in workload:
             run_args += f" --rq {workload['range_query_enabled']}"

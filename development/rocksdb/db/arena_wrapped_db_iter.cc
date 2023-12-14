@@ -201,6 +201,9 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
       }
     }
 
+  // `decision_matrix_meta_data` store the `level`, `E_useful`, `E_unuseful`,
+  // `Min_E_useful`, `Max_E_useful` and `Overlapping_Min_Max_E_useful`
+  // `total_entries` for each level.
     auto decision_meta = std::make_tuple(
         l, E_useful_entries_in_level,
         total_entries_will_be_read - E_useful_entries_in_level, useful_min_key,
@@ -234,7 +237,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
             std::get<1>(decision_matrix_meta_data[i]) /
                 (std::get<1>(decision_matrix_meta_data[i]) +
                  std::get<2>(decision_matrix_meta_data[i])),
-            std::vector<float>(j - i + 1, read_options_.higher_threshold),
+            std::vector<float>(j - i + 1, read_options_.upper_threshold),
             read_options_);
       } else {
         float useful = 0;
@@ -414,7 +417,7 @@ Status ArenaWrappedDBIter::Reset() {
   std::ofstream compacted_vs_skipped;
   compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv", std::ios_base::app);
   compacted_vs_skipped << db_impl_->num_entries_compacted << ","
-                       << db_impl_->num_entries_skipped << std::endl;
+                       << db_impl_->num_entries_skipped;
   compacted_vs_skipped.close();
 
   std::string levels_state_before = "Range Query Complete: Compacted << " + std::to_string(db_impl_->num_entries_compacted) + " Skipped: " + std::to_string(db_impl_->num_entries_skipped);

@@ -157,9 +157,9 @@ EmuEnv::EmuEnv() {
 
   // enable range query compaction
   enable_range_query_compaction = false;
-  write_cost_threshold = 0.0f;
+  // write_cost_threshold = 0.0f;
   lower_threshold = 0.0f;
-  higher_threshold = std::numeric_limits<float>::infinity();
+  upper_threshold = std::numeric_limits<float>::infinity();
 
   // Workload options -- not sure if necessary to have these here!
   // int num_inserts = 0;
@@ -551,9 +551,9 @@ ostream& operator<<(ostream& os, const EmuEnv& env) {
   os << "allow_write_stall: " << env.allow_write_stall << endl;
   os << "enable_range_query_compaction: " << env.enable_range_query_compaction
      << endl;
-  os << "write_cost_threshold: " << env.write_cost_threshold << endl;
+  // os << "write_cost_threshold: " << env.write_cost_threshold << endl;
   os << "lower_threshold: " << env.lower_threshold << endl;
-  os << "higher_threshold: " << env.higher_threshold << endl;
+  os << "upper_threshold: " << env.upper_threshold << endl;
   os << "num_inserts: " << env.num_inserts << endl;
   os << "path: " << env.path << endl;
   os << "debugging: " << env.debugging << endl;

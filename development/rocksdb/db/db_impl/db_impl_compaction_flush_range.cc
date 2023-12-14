@@ -19,8 +19,7 @@ namespace ROCKSDB_NAMESPACE {
 // // TODO: (shubham) remove this after testing
 std::ostream& operator<<(std::ostream& os, const DecisionCell& data) {
   os << std::to_string(data.start_level_) + ">" +
-            std::to_string(data.end_level_) + "[" +
-            std::to_string(data.entries_useful_to_unuseful_ratio_) + "(" +
+            std::to_string(data.end_level_) + "[(" +
             data.getStringOfOverlappingEntriesRatio() + ")]";
   return os;
 }
@@ -88,7 +87,7 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
     if (s.ok()) {
       table_reader = cfd->table_cache()->get_cache().Value(handle);
-    }
+    } // (Shubham) What if table_reader is still null?
   }
 
   if (s.ok()) {

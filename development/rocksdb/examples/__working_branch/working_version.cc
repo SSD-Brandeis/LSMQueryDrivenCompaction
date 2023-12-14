@@ -19,6 +19,7 @@
 #include "rocksdb/advanced_options.h"
 #include "rocksdb/options.h"
 #include "rocksdb/table.h"
+#include <rocksdb/statistics.h>
 
 // #include "../db/version_set.h"
 // #include "../db/version_edit.h"
@@ -519,7 +520,7 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   // range query compaction options
   r_op->range_query_compaction_enabled = _env->enable_range_query_compaction;
   r_op->lower_threshold = _env->lower_threshold;
-  r_op->higher_threshold = _env->higher_threshold;
+  r_op->upper_threshold = _env->upper_threshold;
 
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
   // flushed op->db_write_buffer_size = 0;   // disable op->arena_block_size =
@@ -793,7 +794,7 @@ int runWorkload(EmuEnv *_env) {
     compacted_vs_skipped.open("rqc_off_compacted_vs_skipped.csv");
   }
   compacted_vs_skipped << "Compacted,"
-                       << "Skipped" << std::endl;
+                       << "Skipped," << "Returned" << std::endl;
   compacted_vs_skipped.close();
 
   std::ofstream stats_file;
@@ -817,6 +818,7 @@ int runWorkload(EmuEnv *_env) {
     // qstats->num_files_before = std::get<1>(info);
     // qstats->num_entries_before = std::get<2>(info);
     char instruction;
+    long long keys_returned_count;
     long key, start_key, end_key;
     string value;
     workload_file >> instruction;
@@ -923,10 +925,12 @@ int runWorkload(EmuEnv *_env) {
         }
 
         assert(it->status().ok());
+        keys_returned_count = 0;
         for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
           if (it->key().ToString() >= to_string(end_key)) {
             break;
           }
+          keys_returned_count++;
           if (_env->verbosity > 1) {
             std::cout << "found key = " << it->key().ToString() << std::endl;
           }
@@ -941,11 +945,14 @@ int runWorkload(EmuEnv *_env) {
 
         if (_env->enable_range_query_compaction && lexico_valid) {
           it->Reset();
+          compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv", std::ios_base::app);
+          compacted_vs_skipped << "," << std::to_string(keys_returned_count) << std::endl;
+          compacted_vs_skipped.close();
         } 
         else {
           compacted_vs_skipped.open("rqc_off_compacted_vs_skipped.csv", std::ios_base::app);
           compacted_vs_skipped << 0 << ","
-                               << 0 << std::endl;
+                               << 0 << "," << 0 << std::endl;
           compacted_vs_skipped.close();
         }
         if (_env->verbosity > 0) {
@@ -1031,16 +1038,14 @@ int runWorkload(EmuEnv *_env) {
   }
   levels_info.push_back(std::make_tuple("Total: ", total_files, total_entries));
 
-  if (_env->verbosity > 0) {
-    stats_file << "\n\n"
-               << std::setw(20) << "Level" << std::setw(20) << "Num Files"
-               << std::setw(20) << "Num Entries" << std::endl;
+  stats_file << "\n\n"
+              << std::setw(20) << "Level" << std::setw(20) << "Num Files"
+              << std::setw(20) << "Num Entries" << std::endl;
 
-    for (auto level_info : levels_info) {
-      stats_file << std::setw(20) << std::get<0>(level_info) << std::setw(20)
-                 << std::get<1>(level_info) << std::setw(20)
-                 << std::get<2>(level_info) << std::endl;
-    }
+  for (auto level_info : levels_info) {
+    stats_file << std::setw(20) << std::get<0>(level_info) << std::setw(20)
+                << std::get<1>(level_info) << std::setw(20)
+                << std::get<2>(level_info) << std::endl;
   }
 
   // ROCKS_LOG_ERROR(db_impl_->immutable_db_options().info_log, "%s \n",
@@ -1100,6 +1105,9 @@ int runWorkload(EmuEnv *_env) {
     // Print Full RocksDB stats
 
     stats_file << options.statistics->ToString();
+    uint64_t estimatedSize;
+    db_impl_->GetAggregatedIntProperty("rocksdb.estimate-live-data-size", &estimatedSize);
+    stats_file << "Estimated live data size: " << estimatedSize << std::endl;
     stats_file.close();
 
     std::cout << "RocksDB Statistics : " << std::endl;
@@ -1218,18 +1226,18 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       "Enable range query comapaction [def: 0]",
       {"rq", "range_query_compaction"});
 
-  args::ValueFlag<float> wc_threshold_cmd(
-      group1, "write_cost_threshold",
-      "Write cost threshold for range query compaction [def: 0]",
-      {"wc", "write_cost_threshold"});
-  args::ValueFlag<float> utl_threshold_cmd(
-      group1, "lower_threshold",
-      "Upper to Lower ratio for adjacent levels [def: 0]",
-      {"utl", "upper_to_lower_threshold"});
-  args::ValueFlag<float> ltu_threshold_cmd(
-      group1, "higher_threshold",
-      "Lower to Upper ratio for adjacent levels [def: inf]",
-      {"ltu", "lower_to_upper_threshold"});
+  // args::ValueFlag<float> wc_threshold_cmd(
+  //     group1, "write_cost_threshold",
+  //     "Write cost threshold for range query compaction [def: 0]",
+  //     {"wc", "write_cost_threshold"});
+  args::ValueFlag<float> upper_threshold_cmd(
+      group1, "higher_bound",
+      "Higher threshold between adjancent levels to perform compaction [def: inf]",
+      {"ub", "upper_threshold"});
+  args::ValueFlag<float> lower_threshold_cmd(
+      group1, "lower_bound",
+      "Lower threshold between adjacent levels to perform compaction [def: 0]",
+      {"lb", "lower_threshold"});
   args::ValueFlag<float> range_query_selectivity_cmd(group1, "Y", "Range query selectivity [def: 0]", {'Y', "range_query_selectivity"});
 
   try {
@@ -1303,13 +1311,13 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       enable_range_query_compaction_cmd
           ? args::get(enable_range_query_compaction_cmd)
           : 0;  // default to false
-  _env->write_cost_threshold =
-      wc_threshold_cmd ? args::get(wc_threshold_cmd) : 0;  // default to 0
+  // _env->write_cost_threshold =
+  //     wc_threshold_cmd ? args::get(wc_threshold_cmd) : 0;  // default to 0
   _env->lower_threshold =
-      utl_threshold_cmd ? args::get(utl_threshold_cmd) : 0;  // default to 0
-  _env->higher_threshold =
-      ltu_threshold_cmd
-          ? args::get(ltu_threshold_cmd)
+      lower_threshold_cmd ? args::get(lower_threshold_cmd) : 0;  // default to 0
+  _env->upper_threshold =
+      upper_threshold_cmd
+          ? args::get(upper_threshold_cmd)
           : std::numeric_limits<float>::infinity();  // default to inf
 
   return 0;

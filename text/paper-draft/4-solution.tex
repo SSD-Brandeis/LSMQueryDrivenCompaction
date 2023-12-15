@@ -265,13 +265,13 @@ in i} to \textit{number of useful entries in $i+1$} ($R_{ete}$).
         % R_{utu} = \frac{\sum_{i=start}^{end} E_{\text{useful }i}}{\sum_{i=start}^{end} {E_{\text{useful }i}\ +\ E_{\text{unuseful }i}}}\\
         % R_{utu} > WC_{threshold}\\\\
         R_{ete} = \frac{z_{i}}{z_{i+1}} \forall\ i=start\ to\ end\\
-        R_{ete} >= UTL_{overlap}\ \&\ R_{ete} <= LTU_{overlap}
+        R_{ete} >= lower\_bound\ \&\ R_{ete} <= upper\_bound
       \end{array}
     \right.
   \end{math}
 \end{center}
 \hfill \break
-where \textit{$UTL_{overlap}$} is the threshold for overlapping entries from upper to lower level, and \textit{$LTU_{overlap}$} 
+where \textit{$lower\_bound$} is the threshold for overlapping entries from upper to lower level, and \textit{$upper\_bound$} 
 is the threshold for overlapping entries from lower to upper level.
 
 \begin{figure}

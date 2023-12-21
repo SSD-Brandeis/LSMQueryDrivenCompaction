@@ -52,3 +52,41 @@ levels of the LSM tree. While this approach may slightly increase the flush writ
 substantially reduces the presence of invalid keys in the LSM tree. As a result, there is a notable reduction in read, 
 write, and space amplification during both compaction processes and future range queries. We have also implemented our
 approach in RocksDB, a popular LSM-based data store and conducted a series of experiments to evaluate its performance.
+The contributions impacting different parameters are as follows.
+
+\Paragraph{Reduced Space Amplification}
+The Range Query-Driven Compaction (RQDC) approach exhibits a significant reduction in space amplification compared to 
+the vanilla approach. In a workload scenario consisting of an initial epoch with 1 million inserts followed by 10 
+epochs, each involving 250,000 updates and 10 interleaved range queries of 10\% selectivity (size ratio 4 and entry size of 256 bytes), 
+shows some notable findings. Specifically, employing RQDC with lower and upper bounds set at 0.25 and 1.5, 
+respectively, resulted in a 4\% reduction in space usage than vanilla. Additionally, a more aggressive setting with lower and upper 
+bounds set at 0 and 6, respectively, showed a substantial 14\% decrease in space utilization. The reduction in space 
+amplification is attributed to the elimination of invalid keys during query-driven compactions, leading to a more 
+space-efficient storage structure. This lower and upper bound decide how big the compaction it can perform, when it is set
+to 0 and 6, it compact more data for a specific range query than it does for 0.25 and 1.5.
+
+\begin{figure}
+    \includegraphics[scale=0.11]{Figures/Vanilla Range Query vanilla.png}
+    \caption{Flow of ``vanilla'' range query in LSM. This outlines the sequential steps involved in a range 
+    query}\label{fig:vanilla_range_query}
+\end{figure}
+
+\Paragraph{Improved Range Query Performance}
+RQDC significantly enhances the efficiency of range queries, as evidenced by findings from a workload scenario same as 
+above. In the vanilla approach, there was a continuous increase in the 
+percentage of invalid keys read by range queries (show in Figure~\ref{fig:increased_invalid_keys}), reaching up to 2\% of unique inserts by the end of the workload run. 
+However, when the experiment was conducted with RQDC, specifically with lower and upper bounds set at 0 and 6, 
+respectively, the percentage of invalid keys read by range queries came down to 0.7\% with a cost of a 30\% increase in 
+average range query time (shown in Figure~\ref{fig:reduced_invalid_keys} and Figure~\ref{fig:increased_range_queries_time}). 
+While there was a maximum spike of 0.7\% in the invalid keys read by 4 out of 100 range 
+queries, the remaining 96\% of range queries read less than 0.5\% of invalid keys. We ran the same experiment with the 
+lower and upper bound set to 0.25 and 1.5 with RQDC, showing a 1.1\% of invalid keys at the end of the experiment, 
+which is lower than vanilla at a cost of a 2\% increase in average range query time (shown in Figure~\ref{fig:another_epoch_with_lb_ub} and Figure\ref{fig:range_queries_time}).
+
+\Paragraph{Optimized Write Amplification}
+While RQDC introduces additional writes during the query-driven compaction process, it maintains a competitive write 
+amplification level similar to the vanilla approach using configurable lower bound and upper bound thresholds. The 
+experiments that we ran for the same epoch workload showed that for the lower and upper bound of 0 and 6, the 
+write amplification increases up to 5\% compared to vanilla, and for the lower and upper bound of 0.25 and 1.5, it
+goes to 8\%. The strategy of eliminating invalid keys during compactions, triggered by range queries, increases write 
+amplification slightly, which can be controlled by changing the values of the lower and upper bound.

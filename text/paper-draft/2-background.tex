@@ -1,7 +1,12 @@
 \begin{figure}
-    \includegraphics[scale=0.10]{Figures/Vanilla Range Query vanilla.png}
-    \caption{Vanilla range query flow in LSM}\label{fig:vanilla_range_query}
+    \includegraphics[scale=0.2]{Figures/File range overlaps.png}
+    \caption{Possible file overlaps with range-query}\label{fig:file_range_overlaps}
 \end{figure}
+
+\begin{figure*}
+    \includegraphics[scale=0.10]{Figures/RQ-driven numeric key sorting.png}
+    \caption{Flow diagram of query-driven compaction in LSM. This outlines the steps involved in compaction during range query.}\label{fig:query-driven_compaction}
+\end{figure*}
 
 LSM-based data stores are designed to efficiently manage write-heavy workloads. The data is ingested through 
 an in-memory buffer (a.k.a memtable in Rocksdb), a data structure that stores keys and their corresponding values. 

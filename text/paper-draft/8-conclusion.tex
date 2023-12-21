@@ -1,0 +1,57 @@
+In this study, we explored and addressed key challenges in log-structured merge (LSM) trees, particularly focusing on 
+improving the efficiency of range queries and compactions in the context of write-intensive workloads. The prevalent use 
+of LSM trees in modern data systems prompted our investigation into optimizing the traditional approach through the 
+introduction of a novel query-driven compaction strategy. The motivation behind our work stemmed from the observation
+that conventional LSM designs incur redundant work and increased write amplification, especially when executing 
+overlapping range queries. To tackle these issues, we proposed a query-driven compaction strategy that selectively 
+removes invalid keys during range queries, significantly reducing the workload for subsequent queries. Our approach 
+demonstrated substantial benefits in experimental settings, showcasing a notable reduction in the number of compactions 
+triggered during workload execution. We empirically validated the efficiency of our strategy through experiments 
+conducted on a real-world LSM-based data store, RocksDB, using baremetal cloud instances. The results highlighted 
+significant improvements in both speed and efficiency, particularly evident in reduced space amplification and optimized 
+use of system resources.
+
+We acknowledged the limitations of a blind application of the query-driven approach and introduced an informative 
+compaction strategy to make more informed decisions based on the overlap between levels. This adaptive approach 
+showcased comparable write amplification to the conventional method while providing additional advantages such as 
+reduced space amplification. The experimental findings demonstrated the effectiveness of our approach, indicating that 
+the query-driven compaction outperformed traditional methods in terms of space amplification. Through a 
+carefully designed experimental setup involving different workload scenarios and tuning parameters, we showcased the 
+versatility and applicability of our strategy.
+
+\subsection{Concrete Benefits}
+
+\Paragraph{Space Efficiency}
+RQDC consistently reduces the overall size of the database and the number of SST files. This directly translates to 
+more efficient space utilization.
+
+\Paragraph{Query Performance}
+The reduction in invalid keys during compaction positively impacts subsequent range query executions, leading to 
+improved query performance.
+
+\Paragraph{Competitive Write Amplification}
+RQDC manages to achieve competitive write amplification level compared to the vanilla approach, despite introducing 
+additional compaction writes.
+
+\subsection{Future Directions}
+
+While the results are promising, there are opportunities for further refinement and optimization:
+
+\Paragraph{Fine-Tuning Parameters}
+Experimentation with different values of \textit{lower\_bound} and \textit{upper\_bound} should continue to find the 
+most effective thresholds for specific size ratios and workloads. Dynamic adjustment of these parameters based on 
+workload characteristics could enhance adaptability.
+
+\Paragraph{Finding More Accurate Overlap}
+Discovering a more accurate representation of overlap before initiating compaction could eliminate cases where the 
+overlap is merely a result of start and end keys. Identifying the actual keys, potentially alternate keys on both 
+adjacent levels (e.g., odd and even), can contribute to reducing such scenarios and saving on write amplification.
+
+\Paragraph{Experimenting Deletes}
+Extending the RQDC approach to handle delete operations, especially in the presence of tombstones, has the potential 
+to further reduce write amplification.
+
+In conclusion, our research contributes to the ongoing efforts to enhance LSM-based data stores for write-intensive 
+workloads. The query-driven compaction strategy, coupled with an informative decision-making approach, tries to offers a 
+practical solution to the challenges posed by overlapping range queries. Our findings provide valuable insights for 
+database developers and researchers seeking to optimize the performance of LSM trees in real-world scenarios.

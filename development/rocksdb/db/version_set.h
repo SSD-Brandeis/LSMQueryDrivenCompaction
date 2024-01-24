@@ -30,7 +30,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "cache/cache_helpers.h"
 #include "db/blob/blob_file_meta.h"

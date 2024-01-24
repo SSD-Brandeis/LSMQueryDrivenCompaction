@@ -9,7 +9,6 @@
 
 #pragma once
 #include <cstdint>
-#include <iostream>
 #include <string>
 
 #include "db/db_impl/db_impl.h"

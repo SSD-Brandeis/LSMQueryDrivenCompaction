@@ -8,7 +8,6 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #include <cinttypes>
 #include <deque>
-#include <iostream>
 
 #include "db/builder.h"
 #include "db/db_impl/db_impl.h"
@@ -3361,6 +3360,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
 
       return Status::OK();
     }
+
     auto cfd = PickCompactionFromQueue(&task_token, log_buffer);
     if (cfd == nullptr) {
       // Can't find any executable task from the compaction queue.

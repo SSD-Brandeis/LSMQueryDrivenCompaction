@@ -136,7 +136,7 @@ class BlockBasedTable : public TableReader {
                                 bool allow_unprepared_value = false) override;
 
   // Returns a new iterator over the index of table contents. If supported
-  std::tuple<uint64_t, Slice> GetOverlappingEntriesForFile(
+  std::tuple<uint64_t, Slice> GetNumOfRangeOverlappingEntriesFromFile(
       const ReadOptions& read_options, Slice& target) override {
     auto skip_count_with_key =
         NewIndexIterator(read_options, /*need_upper_bound_check=*/false,

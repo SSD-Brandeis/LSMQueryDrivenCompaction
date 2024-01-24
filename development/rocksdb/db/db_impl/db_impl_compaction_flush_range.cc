@@ -16,14 +16,6 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-// // TODO: (shubham) remove this after testing
-std::ostream& operator<<(std::ostream& os, const DecisionCell& data) {
-  os << std::to_string(data.start_level_) + ">" +
-            std::to_string(data.end_level_) + "[(" +
-            data.getStringOfOverlappingEntriesRatio() + ")]";
-  return os;
-}
-
 std::tuple<long long /*levels*/, long long /*files*/, long long /*entries*/>
 DBImpl::getLevelFilesEntriesCount(ColumnFamilyData* cfd) {
   ColumnFamilyData* cfd_ = cfd;
@@ -90,6 +82,8 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
     } // (Shubham) What if table_reader is still null?
   }
 
+  std::cout << "ENTRY SIZE FROM THE READ OPTION TO GET THE NUMBER OF ENTRIES BY DIVIDING THE OFFSET IS " << read_options_.entry_size << std::endl;
+
   if (s.ok()) {
     const ReadOptions read_options;
     if (given_start_key != "" && given_end_key == "") {
@@ -103,11 +97,11 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
       Slice target = Slice(given_start_key);
       auto skip_count_with_key =
-          table_reader->GetOverlappingEntriesForFile(read_options, target);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
       overlapping_count =
-          file_meta->num_entries - std::get<0>(skip_count_with_key);
+          file_meta->num_entries - (std::get<0>(skip_count_with_key) / read_options_.entry_size);
       useful_min_key = std::get<1>(skip_count_with_key);
-    } else if (given_end_key != "" && given_start_key == "") {
+    } else if (given_start_key == "" && given_end_key != "") {
       // end key comes when head is overlapping
       //
       //    |-----|
@@ -118,8 +112,8 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
       Slice target = Slice(given_end_key);
       auto skip_count_with_key =
-          table_reader->GetOverlappingEntriesForFile(read_options, target);
-      overlapping_count = std::get<0>(skip_count_with_key);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
+      overlapping_count = (std::get<0>(skip_count_with_key) / read_options_.entry_size);
       useful_max_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key != "" && given_end_key != "") {
       // both start and end key comes when file middle portion is overlapping
@@ -133,11 +127,11 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice start = Slice(given_start_key);
       Slice end = Slice(given_end_key);
       auto start_overlapping =
-          table_reader->GetOverlappingEntriesForFile(read_options, start);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, start);
       auto end_overlapping =
-          table_reader->GetOverlappingEntriesForFile(read_options, end);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, end);
       overlapping_count =
-          std::get<0>(end_overlapping) - std::get<0>(start_overlapping);
+          ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) / read_options_.entry_size);
       // (file_meta->num_entries - std::get<0>(start_overlapping)) -
       // std::get<0>(end_overlapping);  Looks like this is wrong
       useful_min_key = std::get<1>(start_overlapping);
@@ -145,7 +139,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
     }
   }
 
-  assert(overlapping_count >= 0);
   return overlapping_count;
 }
 

@@ -967,8 +967,6 @@ class LevelIterator final : public InternalIterator {
         range_del_agg_(range_del_agg),
         pinned_iters_mgr_(nullptr),
         db_impl_(db_impl),
-        // start_key_(start_key),
-        // end_key_(end_key),
         compaction_boundaries_(compaction_boundaries),
         is_next_read_sequential_(false),
         block_protection_bytes_per_key_(block_protection_bytes_per_key),
@@ -1211,6 +1209,7 @@ void LevelIterator::TrySetDeleteRangeSentinel(const Slice& boundary_key) {
 }
 
 void LevelIterator::Seek(const Slice& target) {
+
   prefix_exhausted_ = false;
   ClearSentinel();
   // Check whether the seek key fall under the same file
@@ -1587,7 +1586,6 @@ bool LevelIterator::SkipEmptyFileForward() {
       break;
     }
     // may init a new *range_tombstone_iter
-
     InitFileIterator(file_index_ + 1);
     // We moved to a new SST file
     // Seek range_tombstone_iter_ to reset its !Valid() default state.

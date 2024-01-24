@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <vector>
+#include <iostream>
 
 #include "db/builder.h"
 #include "db/db_iter.h"
@@ -40,7 +41,6 @@
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "table/merging_iterator.h"
-#include "table/sst_file_dumper.h"  // TODO: (shubham) You may want to remove this
 #include "table/table_builder.h"
 #include "table/two_level_iterator.h"
 #include "test_util/sync_point.h"

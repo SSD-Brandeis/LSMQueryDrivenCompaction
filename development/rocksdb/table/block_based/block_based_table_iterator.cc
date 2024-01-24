@@ -9,8 +9,6 @@
 
 #include "table/block_based/block_based_table_iterator.h"
 
-#include <iostream>
-
 namespace ROCKSDB_NAMESPACE {
 
 void BlockBasedTableIterator::SeekToFirst() { SeekImpl(nullptr, false); }

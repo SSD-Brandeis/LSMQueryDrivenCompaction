@@ -94,56 +94,40 @@ struct TrackLevels {
 struct DecisionCell {
   int start_level_;
   int end_level_;
-  float entries_useful_to_unuseful_ratio_;
   std::vector<float> overlapping_entries_ratio_;
   ReadOptions read_options_;
 
   DecisionCell(int start_level, int end_level,
-               float entries_useful_to_unuseful_ratio,
                std::vector<float> overlapping_entries_ratio,
                ReadOptions read_options)
       : start_level_(start_level),
         end_level_(end_level),
-        entries_useful_to_unuseful_ratio_(entries_useful_to_unuseful_ratio),
         overlapping_entries_ratio_(overlapping_entries_ratio),
         read_options_(read_options) {}
 
   DecisionCell() {
     start_level_ = 0;
     end_level_ = 0;
-    entries_useful_to_unuseful_ratio_ = -1;
     overlapping_entries_ratio_ = {};
   }
 
   int GetStartLevel() { return start_level_; }
   int GetEndLevel() { return end_level_; }
 
-  // TODO: (shubham) remove this after testing
-  std::string getStringOfOverlappingEntriesRatio() const {
-    std::string str = "";
-    for (auto ratio : overlapping_entries_ratio_) {
-      str += std::to_string(ratio) + " ";
-    }
-    return str;
-  }
-
-  std::string GetDecision() {
+  bool GetDecision() {
     bool decision = true;
+    std::cout << "START_LEVEL: " << start_level_ << " END_LEVEL: " << end_level_ << std::endl;
     for (auto ratio : overlapping_entries_ratio_) {
+      std::cout << "RATIO: " << ratio << " lower bound: " << read_options_.lower_threshold << " upper bound: " << read_options_.upper_threshold << std::endl;
       if (std::isnan(ratio) || ratio < read_options_.lower_threshold ||
           ratio > read_options_.upper_threshold) {
         decision = false;
         break;
       }
     }
-    return decision
-               ? "True"
-               : "False";  // TODO: (shubham) you mght not need the string
-                           // values
+    return decision;
   }
 };
-
-extern std::ostream& operator<<(std::ostream& os, const DecisionCell& data);
 
 // Class to maintain directories for all database paths other than main one.
 class Directories {
@@ -594,7 +578,8 @@ class DBImpl : public DB {
   virtual Status GetSortedWalFiles(VectorLogPtr& files) override;
   virtual Status GetCurrentWalFile(
       std::unique_ptr<LogFile>* current_log_file) override;
-  virtual Status GetCreationTimeOfOldestFile(uint64_t* creation_time) override;
+  virtual Status GetCreationTimeOfOldestFile(
+      uint64_t* creation_time) override;
 
   virtual Status GetUpdatesSince(
       SequenceNumber seq_number, std::unique_ptr<TransactionLogIterator>* iter,
@@ -1873,8 +1858,8 @@ class DBImpl : public DB {
     const InternalKey* begin = nullptr;  // nullptr means beginning of key range
     const InternalKey* end = nullptr;    // nullptr means end of key range
     InternalKey* manual_end = nullptr;   // how far we are compacting
-    InternalKey tmp_storage;   // Used to keep track of compaction progress
-    InternalKey tmp_storage1;  // Used to keep track of compaction progress
+    InternalKey tmp_storage;      // Used to keep track of compaction progress
+    InternalKey tmp_storage1;     // Used to keep track of compaction progress
 
     // When the user provides a canceled pointer in CompactRangeOptions, the
     // above varaibe is the reference of the user-provided

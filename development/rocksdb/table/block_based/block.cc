@@ -12,7 +12,6 @@
 #include "table/block_based/block.h"
 
 #include <algorithm>
-#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -472,9 +471,7 @@ std::tuple<uint64_t, Slice> IndexBlockIter::SeekAndReturnSkipCount(
       next_ikey.DecodeFrom(this->key());
       offset = this->value().handle.offset();
     }
-    
-    auto skip_count = offset / 1024;  // TODO (shubham): 1024 is a magic number "change it to entry size"
-    return std::make_tuple(skip_count, last_key);
+    return std::make_tuple(offset, last_key);
   }
   return std::make_tuple(0, Slice());
 }

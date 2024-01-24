@@ -8,7 +8,6 @@
 #include <set>
 #include <type_traits>
 #include <unordered_set>
-#include <iostream>
 
 #include "db/memtable.h"
 #include "memory/arena.h"

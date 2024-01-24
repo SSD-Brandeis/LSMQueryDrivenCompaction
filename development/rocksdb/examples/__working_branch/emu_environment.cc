@@ -159,7 +159,7 @@ EmuEnv::EmuEnv() {
   enable_range_query_compaction = false;
   // write_cost_threshold = 0.0f;
   lower_threshold = 0.0f;
-  upper_threshold = std::numeric_limits<float>::infinity();
+  upper_threshold = std::numeric_limits<float>::max();
 
   // Workload options -- not sure if necessary to have these here!
   // int num_inserts = 0;

@@ -73,8 +73,8 @@ struct ThreadStatus {
     STAGE_MEMTABLE_ROLLBACK,
     STAGE_MEMTABLE_INSTALL_FLUSH_RESULTS,
     NUM_OP_STAGES,
-    STAGE_FLUSH_WRITE_LN,
-    STAGE_FLUSH_WRITE_PARTIAL
+    STAGE_FLUSH_WRITE_LN, // write at level N
+    STAGE_FLUSH_WRITE_PARTIAL // write partial file
   };
 
   enum CompactionPropertyType : int {

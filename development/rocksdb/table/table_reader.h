@@ -61,7 +61,7 @@ class TableReader {
       bool allow_unprepared_value = false) = 0;
 
   // Returns a new iterator over the index of table contents. If supported
-  virtual std::tuple<uint64_t, Slice> GetOverlappingEntriesForFile(
+  virtual std::tuple<uint64_t, Slice> GetNumOfRangeOverlappingEntriesFromFile(
       const ReadOptions& /*read_options*/, Slice& /*target*/) {
     return std::make_tuple(0, Slice());
   }

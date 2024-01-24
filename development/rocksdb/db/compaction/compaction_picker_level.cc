@@ -236,7 +236,8 @@ void LevelCompactionBuilder::SetupInitialFiles() {
     return;
   }
 
-  // Check if there are any files marked for compaction
+  // if we didn't find a compaction, check if there are any files marked for
+  // compaction
   parent_index_ = base_index_ = -1;
 
   compaction_picker_->PickFilesMarkedForCompaction(
@@ -475,7 +476,6 @@ bool LevelCompactionBuilder::SetupOtherInputsIfNeeded() {
 Compaction* LevelCompactionBuilder::PickCompaction() {
   // Pick up the first file to start compaction. It may have been extended
   // to a clean cut.
-
   SetupInitialFiles();
   if (start_level_inputs_.empty()) {
     return nullptr;
@@ -513,9 +513,6 @@ Compaction* LevelCompactionBuilder::GetCompaction() {
   bool l0_files_might_overlap =
       start_level_ == 0 && !is_l0_trivial_move_ &&
       (compaction_inputs_.size() > 1 || compaction_inputs_[0].size() > 1);
-  
-  // creating a new compaction
-  // print compaction_inputs_[0].size() and filenames
   auto c = new Compaction(
       vstorage_, ioptions_, mutable_cf_options_, mutable_db_options_,
       std::move(compaction_inputs_), output_level_,
@@ -781,7 +778,7 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   // being compacted.
   const std::vector<int>& file_scores =
       vstorage_->FilesByCompactionPri(start_level_);
-  
+
   unsigned int cmp_idx;
   for (cmp_idx = vstorage_->NextCompactionIndex(start_level_);
        cmp_idx < file_scores.size(); cmp_idx++) {

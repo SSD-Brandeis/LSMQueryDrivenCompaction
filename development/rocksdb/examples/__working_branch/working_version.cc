@@ -18,8 +18,10 @@
 #include "include/rocksdb/env.h"
 #include "rocksdb/advanced_options.h"
 #include "rocksdb/options.h"
-#include "rocksdb/table.h"
+#include <rocksdb/table.h>
 #include <rocksdb/statistics.h>
+#include <rocksdb/db.h>
+#include <rocksdb/cache.h>
 
 // #include "../db/version_set.h"
 // #include "../db/version_edit.h"
@@ -521,6 +523,7 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   r_op->range_query_compaction_enabled = _env->enable_range_query_compaction;
   r_op->lower_threshold = _env->lower_threshold;
   r_op->upper_threshold = _env->upper_threshold;
+  r_op->entry_size = _env->entry_size;
 
   // op->max_write_buffer_number_to_maintain = 0;    // immediately freed after
   // flushed op->db_write_buffer_size = 0;   // disable op->arena_block_size =
@@ -927,13 +930,13 @@ int runWorkload(EmuEnv *_env) {
         assert(it->status().ok());
         keys_returned_count = 0;
         for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
-          if (it->key().ToString() >= to_string(end_key)) {
+          if (it->key().ToString() > to_string(end_key)) {
             break;
           }
           keys_returned_count++;
-          if (_env->verbosity > 1) {
+          // if (_env->verbosity > 1) {
             std::cout << "found key = " << it->key().ToString() << std::endl;
-          }
+          // }
         }
         if (!it->status().ok()) {
           std::cerr << it->status().ToString() << std::endl;
@@ -1014,19 +1017,19 @@ int runWorkload(EmuEnv *_env) {
   int total_files = 0;
   int total_entries = 0;
 
-  std::string levels_state_before = "Workload done, waiting for compaction...";
+  // std::string levels_state_before = "Workload done, waiting for compaction...";
   auto storage_info_before = cfd->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     int num_entries = 0;
-    levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
+    // levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
     auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
     for (size_t file_index = 0; file_index < num_files; file_index++) {
       auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-      levels_state_before +=
-          "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-          fd.file_metadata->smallest.user_key().ToString() + ", " +
-          fd.file_metadata->largest.user_key().ToString() + ")" +
-          std::to_string(fd.file_metadata->num_entries) + "] ";
+    //   levels_state_before +=
+    //       "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+    //       fd.file_metadata->smallest.user_key().ToString() + ", " +
+    //       fd.file_metadata->largest.user_key().ToString() + ")" +
+    //       std::to_string(fd.file_metadata->num_entries) + "] ";
       num_entries += storage_info_before->LevelFilesBrief(l)
                          .files[file_index]
                          .file_metadata->num_entries;
@@ -1079,6 +1082,24 @@ int runWorkload(EmuEnv *_env) {
   std::cout << "Re-opening DB -- Re-setting compaction style to: "
             << _env->compaction_pri << "\n";
   s = DB::Open(options, kDBPath, &db);
+
+    std::string each_level_stats;
+    std::string sst_file_size;
+
+    bool result = db->GetProperty("rocksdb.levelstats", &each_level_stats);
+    bool live_sst_file_size = db->GetProperty("rocksdb.live-sst-files-size", &sst_file_size);
+
+    std::cout << std::endl;
+    std::cout << "Level Statistics" << std::endl;
+
+    if (result){
+        std::cout << each_level_stats << std::endl;  // printing level stats
+    }
+    if (live_sst_file_size) {
+        std::cout << "Total SST Files Size : " << sst_file_size << std::endl;  // printing sst file size
+    }
+    std::cout << "----------------------------------------" << std::endl;
+
   fade_stats->db_open = true;
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
@@ -1266,10 +1287,10 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
   _env->size_ratio =
       size_ratio_cmd ? args::get(size_ratio_cmd) : 2;  // 10; [Shubham]
   _env->buffer_size_in_pages =
-      buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 512;
+      buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 512; // // change to 128 or 256
   _env->entries_per_page =
-      entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
-  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 256; // 1024; [Shubham]
+      entries_per_page_cmd ? args::get(entries_per_page_cmd) : 2; // change to 128
+  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 256; // 1024; [Shubham] change to 32
   _env->buffer_size = buffer_size_cmd
                           ? args::get(buffer_size_cmd)
                           : _env->buffer_size_in_pages *
@@ -1305,7 +1326,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
 
   _env->target_file_size_base = _env->buffer_size;  // !YBS-sep07-XX!
   _env->max_bytes_for_level_base =
-      _env->buffer_size;  // * _env->size_ratio;  // !YBS-sep07-XX!
+      _env->buffer_size * _env->size_ratio;  // !YBS-sep07-XX!
 
   // range query compaction
   _env->enable_range_query_compaction =

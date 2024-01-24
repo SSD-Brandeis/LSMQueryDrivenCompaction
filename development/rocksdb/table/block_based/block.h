@@ -13,7 +13,6 @@
 
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include "db/kv_checksum.h"
 #include "db/pinned_iterators_manager.h"

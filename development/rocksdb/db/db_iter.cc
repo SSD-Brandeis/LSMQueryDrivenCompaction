@@ -143,9 +143,15 @@ void DBIter::Next() {
     cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                            Slice(key().data(), key().size()),
                            Slice(value().data(), value().size()), nullptr);
+    
+    const MutableCFOptions mutable_cf_options = *cfd_->GetLatestMutableCFOptions();
+    uint64_t max_size = MaxFileSizeForLevel(
+            mutable_cf_options, db_impl_->decision_cell_.end_level_,
+            cfd_->ioptions()
+                ->compaction_style);
+    uint64_t n87_percent_of_max_size = max_size * 7/8;
 
-    if (cfd_->mem_range()->get_data_size() >
-        db_impl_->GetOptions().target_file_size_base) {
+    if (cfd_->mem_range()->get_data_size() >= n87_percent_of_max_size) {
       MemTable* imm_range = cfd_->mem_range();
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
                                                   cfd_, imm_range);

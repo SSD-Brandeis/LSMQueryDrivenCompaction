@@ -7,8 +7,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #pragma once
-#include <iostream>
-
 #include "table/block_based/block_based_table_reader.h"
 #include "table/block_based/block_based_table_reader_impl.h"
 #include "table/block_based/block_prefetcher.h"
@@ -250,7 +248,6 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   BlockPrefetcher block_prefetcher_;
 
   const bool allow_unprepared_value_;
-
   // True if block_iter_ is initialized and points to the same block
   // as index iterator.
   bool block_iter_points_to_real_block_;

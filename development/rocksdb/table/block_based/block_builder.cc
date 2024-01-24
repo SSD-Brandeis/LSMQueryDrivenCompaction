@@ -34,7 +34,6 @@
 #include "table/block_based/block_builder.h"
 
 #include <assert.h>
-#include <iostream>
 
 #include <algorithm>
 

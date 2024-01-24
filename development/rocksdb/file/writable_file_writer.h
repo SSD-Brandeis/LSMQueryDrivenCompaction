@@ -10,7 +10,6 @@
 #pragma once
 #include <atomic>
 #include <string>
-#include <iostream>
 
 #include "db/version_edit.h"
 #include "env/file_system_tracer.h"

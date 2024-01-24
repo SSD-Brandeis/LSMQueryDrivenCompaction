@@ -1612,6 +1612,7 @@ struct ReadOptions {
   // Only used when `range_query_compaction_enabled is true
   // start_key represent the range start key and
   // end_key represent the end key of the range query
+  int entry_size = 0;
   std::string range_start_key;
   std::string range_end_key;
   bool range_query_partial_block_read = false;

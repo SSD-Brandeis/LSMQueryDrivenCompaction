@@ -13,7 +13,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <iostream>
 
 #include "rocksdb/comparator.h"
 #include "rocksdb/slice.h"

@@ -80,7 +80,7 @@ class ArenaWrappedDBIter : public Iterator {
 
   // Algorithm to decide if range query compaction can be performed
   bool CanPerformRangeQueryCompaction();
-  long long GuessTheDifferenceWithMinMaxKey(
+  long long GuessTheNumberOfKeysBWStartAndEnd(
       const std::string given_start_key, const std::string given_end_key,
       int level, FileMetaData* file_meta, Slice& useful_min_key,
       Slice& useful_max_key);
@@ -123,8 +123,6 @@ class ArenaWrappedDBIter : public Iterator {
   // If this is nullptr, it means the mutable memtable does not contain range
   // tombstone when added under this DBIter.
   TruncatedRangeDelIterator** memtable_range_tombstone_iter_ = nullptr;
-  const Slice* prev_iterate_upper_bound = nullptr;
-  const Slice* prev_iterate_lower_bound = nullptr;
 };
 
 // Generate the arena wrapped iterator class.

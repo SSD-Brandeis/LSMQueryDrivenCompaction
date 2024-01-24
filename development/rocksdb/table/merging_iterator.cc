@@ -12,8 +12,6 @@
 #include "table/merging_iterator.h"
 
 #include "db/arena_wrapped_db_iter.h"
-#include "file/read_write_util.h"
-// #include "logging/logging.h"
 
 namespace ROCKSDB_NAMESPACE {
 // MergingIterator uses a min/max heap to combine data from point iterators.
@@ -141,9 +139,7 @@ class MergingIterator : public InternalIterator {
     status_.PermitUncheckedError();
   }
 
-  bool Valid() const override { 
-    return current_ != nullptr && status_.ok(); 
-  }
+  bool Valid() const override { return current_ != nullptr && status_.ok(); }
 
   Status status() const override { return status_; }
 
@@ -569,9 +565,6 @@ class MergingIterator : public InternalIterator {
   // to seek to the end of a range tombstone as an optimization.
   void FindNextVisibleKey();
   void FindPrevVisibleKey();
-
-  // FileMetaData vector to hold newly added files during range query
-  std::vector<FileMetaData*> range_query_compaction_files;
 
   // Advance this merging iterators to the first key >= `target` for all
   // components from levels >= starting_level. All iterators before

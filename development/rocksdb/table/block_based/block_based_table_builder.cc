@@ -11,7 +11,6 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <iostream>
 
 #include <atomic>
 #include <list>
@@ -1946,7 +1945,7 @@ Status BlockBasedTableBuilder::Finish() {
   }
 
   r->props.tail_start_offset = r->offset;
-  
+
   // Write meta blocks, metaindex block and footer in the following order.
   //    1. [meta block: filter]
   //    2. [meta block: index]

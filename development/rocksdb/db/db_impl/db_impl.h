@@ -116,9 +116,7 @@ struct DecisionCell {
 
   bool GetDecision() {
     bool decision = true;
-    std::cout << "START_LEVEL: " << start_level_ << " END_LEVEL: " << end_level_ << std::endl;
     for (auto ratio : overlapping_entries_ratio_) {
-      std::cout << "RATIO: " << ratio << " lower bound: " << read_options_.lower_threshold << " upper bound: " << read_options_.upper_threshold << std::endl;
       if (std::isnan(ratio) || ratio < read_options_.lower_threshold ||
           ratio > read_options_.upper_threshold) {
         decision = false;
@@ -509,9 +507,6 @@ class DBImpl : public DB {
                                          int level = -1,
                                          bool just_delete = false,
                                          FileMetaData* file_meta = nullptr);
-
-  std::tuple<long long, long long, long long> getLevelFilesEntriesCount(
-      ColumnFamilyData* cfd = nullptr);
 
   long long GetRoughOverlappingEntries(const std::string given_start_key,
                                        const std::string given_end_key,

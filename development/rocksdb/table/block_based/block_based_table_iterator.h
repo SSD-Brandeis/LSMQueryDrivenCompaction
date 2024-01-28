@@ -279,7 +279,6 @@ class BlockBasedTableIterator : public InternalIteratorBase<Slice> {
   void FindBlockForward();
   void FindKeyBackward();
   void CheckOutOfBound();
-  void RecheckOutOfBound();
 
   // Check if data block is fully within iterate_upper_bound.
   //

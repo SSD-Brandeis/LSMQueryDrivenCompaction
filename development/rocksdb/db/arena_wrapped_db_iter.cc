@@ -315,11 +315,11 @@ Status ArenaWrappedDBIter::Reset() {
     db_impl_->range_queries_complete_cv_.Wait();
   }
 
-  std::ofstream compacted_vs_skipped;
-  compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv", std::ios_base::app);
-  compacted_vs_skipped << db_impl_->num_entries_compacted << ","
-                       << db_impl_->num_entries_skipped;
-  compacted_vs_skipped.close();
+  // std::ofstream compacted_vs_skipped;
+  // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv", std::ios_base::app);
+  // compacted_vs_skipped << db_impl_->num_entries_compacted << ","
+  //                      << db_impl_->num_entries_skipped;
+  // compacted_vs_skipped.close();
 
   std::string levels_state_before = "Range Query Complete: Compacted << " + std::to_string(db_impl_->num_entries_compacted) + " Skipped: " + std::to_string(db_impl_->num_entries_skipped);
   auto storage_info_before = cfd_->current()->storage_info();

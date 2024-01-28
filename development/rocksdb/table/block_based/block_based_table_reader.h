@@ -142,12 +142,6 @@ class BlockBasedTable : public TableReader {
         NewIndexIterator(read_options, /*need_upper_bound_check=*/false,
                          /*input_iter=*/nullptr, /*get_context=*/nullptr,
                          /*lookup_contex=*/nullptr)->SeekAndReturnSkipCount(target);
-
-    // TODO (shubham): Remove this after testing !!!
-    // std::ofstream outputFile("zone_map.txt");
-    // DumpIndexBlock(outputFile);
-    // outputFile.close();
-    // std::cout << "Dumped index block" << std::endl;
     return skip_count_with_key;
   }
 

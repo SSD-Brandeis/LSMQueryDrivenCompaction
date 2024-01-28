@@ -1212,9 +1212,7 @@ Status PartialOrRangeFlushJob::Run(LogsWithPrepTracker* /*prep_tracker*/,
     s = Status::ShutdownInProgress("Database shutdown");
   }
 
-  if (!s.ok()) {
-    cfd_->imm()->RollbackMemtableFlush(mems_, meta_.fd.GetNumber());
-  } else if (write_manifest_) {
+  if (write_manifest_) {
     TEST_SYNC_POINT("PartialOrRangeFlushJob::InstallResults");
     // TODO: (shubham) Add your InstallMemtableFlushResults here if required
     // If edits_ are collectively pushed in last than not required
@@ -1296,7 +1294,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
   std::vector<BlobFileAddition> blob_file_additions;
 
   {
-    auto write_hint = cfd_->CalculateSSTWriteHint(0);
+    auto write_hint = cfd_->CalculateSSTWriteHint(level_);
     Env::IOPriority io_priority = GetRateLimiterPriorityForWrite();
     db_mutex_->Unlock();
     if (log_buffer_) {
@@ -1510,7 +1508,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
   stats.num_output_files_blob = static_cast<int>(blobs.size());
 
   RecordTimeToHistogram(stats_, FLUSH_TIME, stats.micros);
-  cfd_->internal_stats()->AddCompactionStats(0 /* level */, thread_pri_, stats);
+  cfd_->internal_stats()->AddCompactionStats(level_, thread_pri_, stats);
   cfd_->internal_stats()->AddCFStats(
       InternalStats::BYTES_FLUSHED,
       stats.bytes_written + stats.bytes_written_blob);
@@ -1550,7 +1548,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   std::vector<BlobFileAddition> blob_file_additions;
 
   {
-    auto write_hint = cfd_->CalculateSSTWriteHint(0);
+    auto write_hint = cfd_->CalculateSSTWriteHint(level_);
     Env::IOPriority io_priority = GetRateLimiterPriorityForWrite();
     db_mutex_->Unlock();
     if (log_buffer_) {
@@ -1778,7 +1776,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   }
 
   if (tail_part && s.ok()) {
-    auto write_hint = cfd_->CalculateSSTWriteHint(0);
+    auto write_hint = cfd_->CalculateSSTWriteHint(level_);
     Env::IOPriority io_priority = GetRateLimiterPriorityForWrite();
     db_mutex_->Unlock();
     if (log_buffer_) {
@@ -2051,7 +2049,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   stats.num_output_files_blob = static_cast<int>(blobs.size());
 
   RecordTimeToHistogram(stats_, FLUSH_TIME, stats.micros);
-  cfd_->internal_stats()->AddCompactionStats(0 /* level */, thread_pri_, stats);
+  cfd_->internal_stats()->AddCompactionStats(level_, thread_pri_, stats);
   cfd_->internal_stats()->AddCFStats(
       InternalStats::BYTES_FLUSHED,
       stats.bytes_written + stats.bytes_written_blob);

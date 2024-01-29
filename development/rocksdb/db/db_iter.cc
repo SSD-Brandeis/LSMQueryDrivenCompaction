@@ -133,13 +133,6 @@ void DBIter::Next() {
   if (read_options_mutable_.range_query_compaction_enabled &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    if (db_impl_->immutable_db_options().verbosity > 1) {
-      std::cout << "\n[Verbosity]: adding new key: " << key().data()
-                << " at level: " << db_impl_->decision_cell_.GetEndLevel()
-                << " via memtable: " << cfd_->mem_range()->GetID()
-                << " total_entries: " << cfd_->mem_range()->num_entries()
-                << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
     cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                            Slice(key().data(), key().size()),
                            Slice(value().data(), value().size()), nullptr);
@@ -212,13 +205,6 @@ void DBIter::Next() {
       read_options_mutable_.range_query_compaction_enabled &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    if (db_impl_->immutable_db_options().verbosity > 1) {
-      std::cout << "\n[Verbosity]: adding last new key: " << key().data()
-                << " at level: " << db_impl_->decision_cell_.GetEndLevel()
-                << " via memtable: " << cfd_->mem_range()->GetID()
-                << " total_entries: " << cfd_->mem_range()->num_entries()
-                << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
     if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) ==
         0) {
       cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,

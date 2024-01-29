@@ -84,13 +84,6 @@ struct JobContext;
 struct ExternalSstFileInfo;
 struct MemTableInfo;
 
-struct TrackLevels {
-  int index;
-  int level;
-  Slice start;
-  Slice end;
-};
-
 struct DecisionCell {
   int start_level_;
   int end_level_;

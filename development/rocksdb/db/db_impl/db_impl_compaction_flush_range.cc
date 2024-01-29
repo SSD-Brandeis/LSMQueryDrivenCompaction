@@ -2,8 +2,6 @@
 // It would be quite similar to db_impl_compaction_flush.cc
 
 #include <fstream>
-#include <iomanip>
-#include <iostream>
 
 #include "db/builder.h"
 #include "db/compaction/compaction_outputs.h"
@@ -49,8 +47,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       table_reader = cfd->table_cache()->get_cache().Value(handle);
     } // (Shubham) What if table_reader is still null?
   }
-
-  std::cout << "ENTRY SIZE FROM THE READ OPTION TO GET THE NUMBER OF ENTRIES BY DIVIDING THE OFFSET IS " << read_options_.entry_size << std::endl;
 
   if (s.ok()) {
     const ReadOptions read_options;
@@ -100,8 +96,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, end);
       overlapping_count =
           ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) / read_options_.entry_size);
-      // (file_meta->num_entries - std::get<0>(start_overlapping)) -
-      // std::get<0>(end_overlapping);  Looks like this is wrong
       useful_min_key = std::get<1>(start_overlapping);
       useful_max_key = std::get<1>(end_overlapping);
     }
@@ -127,25 +121,6 @@ Status DBImpl::FlushPartialOrRangeFile(
 
   // Only works for single column family
   uint64_t max_memtable_id = std::numeric_limits<uint64_t>::max();
-
-  if (immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: creating partial_flush_job for job_id: "
-              << job_context->job_id
-              << " flush_reason: " << GetFlushReasonString(flush_reason)
-              << " level: " << level << " " << __FILE__ ":" << __LINE__ << " "
-              << __FUNCTION__ << std::endl;
-    if (flush_reason == FlushReason::kPartialFlush) {
-      std::cout << "file_number: " << meta_data->fd.GetNumber()
-                << " smallest_key: " << meta_data->smallest.user_key().data()
-                << " largest_key: " << meta_data->largest.user_key().data()
-                << " " << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                << std::endl;
-    } else {
-      std::cout << "memtable_id: " << memtable->GetID()
-                << " num_entries: " << memtable->num_entries() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
-  }
 
   PartialOrRangeFlushJob flush_job(
       dbname_, cfd, immutable_db_options_, mutable_cf_options, max_memtable_id,
@@ -175,49 +150,14 @@ Status DBImpl::FlushPartialOrRangeFile(
   s = flush_job.Run(&logs_with_prep_tracker_, &file_meta,
                     &switched_to_mempurge);
 
-  if (immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: ran partial_flush_job for job_id: "
-              << job_context->job_id
-              << " flush_reason: " << GetFlushReasonString(flush_reason)
-              << " level: " << level << " status: " << s.ToString() << " "
-              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  }
-
   if (s.ok()) {
     // TODO: (shubham) Instead collect all edits and install it once in end of
     // range query
     Status ios = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
                                         read_options_, flush_job.GetJobEdits(),
                                         &mutex_, directories_.GetDbDir());
-    if (immutable_db_options().verbosity > 0) {
-      std::cout
-          << "\n[Verbosity]: logged and applied partial_flush_job for job_id: "
-          << job_context->job_id
-          << " flush_reason: " << GetFlushReasonString(flush_reason)
-          << " level: " << level << " status: " << ios.ToString() << " "
-          << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      if (flush_reason == FlushReason::kPartialFlush) {
-        std::cout << "file_number: " << meta_data->fd.GetNumber()
-                  << " smallest_key: " << meta_data->smallest.user_key().data()
-                  << " largest_key: " << meta_data->largest.user_key().data()
-                  << " " << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      } else {
-        std::cout << "memtable_id: " << memtable->GetID()
-                  << " num_entries: " << memtable->num_entries() << " "
-                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      }
-    }
     InstallSuperVersionAndScheduleWork(cfd, superversion_context,
                                        mutable_cf_options);
-    if (immutable_db_options().verbosity > 0) {
-      std::cout << "\n[Verbosity]: installed super version for job_id: "
-                << job_context->job_id
-                << " flush_reason: " << GetFlushReasonString(flush_reason)
-                << " level: " << level << " status: " << ios.ToString() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
     if (made_progress) {
       *made_progress = true;
     }
@@ -355,26 +295,6 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
       level = decision_cell_.end_level_;
     }
 
-    if (immutable_db_options().verbosity > 0) {
-      std::cout << "\n[Verbosity]: running job_id: " << job_context->job_id
-                << " flush_reason: " << GetFlushReasonString(flush_reason)
-                << " level: " << level
-                << " just_delete: " << (just_delete ? "True " : "False ")
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      if (flush_reason == FlushReason::kPartialFlush) {
-        std::cout << "file_number: " << file_meta->fd.GetNumber()
-                  << " smallest_key: " << file_meta->smallest.user_key().data()
-                  << " largest_key: " << file_meta->largest.user_key().data()
-                  << " " << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      } else {
-        std::cout << "memtable_id: " << memtable->GetID()
-                  << " num_entries: " << memtable->num_entries() << " "
-                  << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                  << std::endl;
-      }
-    }
-
     superversion_contexts.clear();
     superversion_contexts.reserve(
         flush_req.cfd_to_max_mem_id_to_persist.size());
@@ -388,8 +308,6 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
       if (flush_reason == FlushReason::kPartialFlush && just_delete) {
         assert(file_meta != nullptr);
         VersionEdit* edit_ = new VersionEdit();
-        // const MutableCFOptions& mutable_cf_options =
-        // *cfd->GetLatestMutableCFOptions();;
         edit_->SetPrevLogNumber(0);
         edit_->SetLogNumber(0);
         edit_->SetColumnFamily(cfd->GetID());
@@ -398,23 +316,6 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
         Status ios = versions_->LogAndApply(
             cfd, *cfd->GetLatestMutableCFOptions(), read_options_, edit_,
             &mutex_, directories_.GetDbDir());
-
-        if (immutable_db_options().verbosity > 0) {
-          std::cout << "\n[Verbosity]: file deleted, "
-                    << " flush_reason: " << GetFlushReasonString(flush_reason)
-                    << " level: " << level
-                    << " just_delete: " << (just_delete ? "True " : "False ")
-                    << " file_number: " << file_meta->fd.GetNumber()
-                    << " smallest_key: "
-                    << file_meta->smallest.user_key().data()
-                    << " largest_key: " << file_meta->largest.user_key().data()
-                    << ", finished"
-                    << " LogAndApply status: " << ios.ToString() << " "
-                    << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                    << std::endl;
-          std::cout << "Will use same job_id: " << job_context->job_id
-                    << " for next work" << std::endl;
-        }
         flush_queue_.size() > 1 ? --unscheduled_partial_or_range_flushes_
                                 : unscheduled_partial_or_range_flushes_;
         // InstallSuperVersionAndScheduleWork(cfd,
@@ -583,15 +484,6 @@ void DBImpl::SchedulePartialOrRangeFileFlush() {
 
   auto bg_job_limits = GetBGJobLimits();
 
-  if (immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: trying to schedule, current - scheduled: "
-              << bg_partial_or_range_flush_scheduled_
-              << " running: " << bg_partial_or_range_flush_running_
-              << " unscheduled: " << unscheduled_partial_or_range_flushes_
-              << " max_bg_job_limit: " << bg_job_limits.max_flushes << " "
-              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-  }
-
   while (unscheduled_partial_or_range_flushes_ > 0 &&
          bg_partial_or_range_flush_scheduled_ < bg_job_limits.max_flushes) {
     bg_partial_or_range_flush_scheduled_++;
@@ -599,15 +491,6 @@ void DBImpl::SchedulePartialOrRangeFileFlush() {
     fta->db_ = this;
     fta->thread_pri_ =
         Env::Priority::HIGH;  // schedule everything on high priority thread
-
-    if (immutable_db_options().verbosity > 0) {
-      std::cout << "\n[Verbosity]: scheduling more, now - scheduled: "
-                << bg_partial_or_range_flush_scheduled_
-                << " running: " << bg_partial_or_range_flush_running_
-                << " unscheduled: " << unscheduled_partial_or_range_flushes_
-                << " max_bg_job_limit: " << bg_job_limits.max_flushes << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
 
     env_->Schedule(&DBImpl::BGWorkPartialOrRangeFlush, fta, Env::Priority::HIGH,
                    this, &DBImpl::UnschedulePartialOrRangeFlushCallback);
@@ -642,15 +525,6 @@ void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
   }
   ++unscheduled_partial_or_range_flushes_;
   flush_queue_.push_back(flush_req);
-
-  if (immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: adding to flush queue, scheduled: "
-              << bg_partial_or_range_flush_scheduled_
-              << " running: " << bg_partial_or_range_flush_running_
-              << " unscheduled: " << unscheduled_partial_or_range_flushes_
-              << " " << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-              << std::endl;
-  }
 }
 
 void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
@@ -676,24 +550,6 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     return;
   }
 
-  if (immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: creating new flush request reason: "
-              << GetFlushReasonString(flush_reason) << " level: " << level
-              << " just_delete: " << (just_delete ? "True " : "False ")
-              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    if (flush_reason == FlushReason::kPartialFlush) {
-      std::cout << "file_number: " << file_meta->fd.GetNumber()
-                << " smallest_key: " << file_meta->smallest.user_key().data()
-                << " largest_key: " << file_meta->largest.user_key().data()
-                << " " << __FILE__ ":" << __LINE__ << " " << __FUNCTION__
-                << std::endl;
-    } else {
-      std::cout << "memtable_id: " << mem_range->GetID()
-                << " num_entries: " << mem_range->num_entries() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
-  }
-
   if (cfd == nullptr) {
     auto cfh =
         static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
@@ -705,16 +561,8 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
   // switch new range memtable
   if (flush_reason == FlushReason::kRangeFlush) {
     mutex_.Lock();
-    if (immutable_db_options().verbosity > 0) {
-      std::cout << "\n[Verbosity]: switching in-range memtable prevId: "
-                << mem_range->GetID();
-    }
     cfd->SetMemtableRange(cfd->ConstructNewMemtable(
         *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber()));
-    if (immutable_db_options().verbosity > 0) {
-      std::cout << " newId: " << cfd->mem_range()->GetID() << " "
-                << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
     this->num_entries_compacted += memtable_to_flush->num_entries();
     mutex_.Unlock();
   }

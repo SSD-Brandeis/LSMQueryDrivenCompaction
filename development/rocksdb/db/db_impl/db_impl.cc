@@ -111,8 +111,6 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-struct TrackLevels;
-
 const std::string kDefaultColumnFamilyName("default");
 const std::string kPersistentStatsColumnFamilyName(
     "___rocksdb_stats_history___");
@@ -1907,7 +1905,6 @@ InternalIterator* DBImpl::NewInternalIterator(
         this, &mutex_, super_version,
         read_options.background_purge_on_iterator_cleanup ||
             immutable_db_options_.avoid_unnecessary_blocking_io);
-
     internal_iter->RegisterCleanup(CleanupSuperVersionHandle, cleanup, nullptr);
 
     return internal_iter;

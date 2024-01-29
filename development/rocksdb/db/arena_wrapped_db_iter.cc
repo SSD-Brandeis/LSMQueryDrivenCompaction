@@ -9,8 +9,8 @@
 
 #include "db/arena_wrapped_db_iter.h"
 
-#include <iomanip>
-#include <iostream>
+// #include <iomanip>
+// #include <iostream>
 
 #include "logging/logging.h"
 #include "memory/arena.h"
@@ -230,10 +230,10 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
         // if (db_impl_->immutable_db_options().verbosity > 0) {
-          std::cout << "\n[Verbosity]: Best decision cell: (" 
-                    << best_decision_cell.GetStartLevel() << ", " << best_decision_cell.GetEndLevel()
-                    << ") " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-                    << std::endl;
+        //   std::cout << "\n[Verbosity]: Best decision cell: (" 
+        //             << best_decision_cell.GetStartLevel() << ", " << best_decision_cell.GetEndLevel()
+        //             << ") " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
+        //             << std::endl;
         // }
       break;
     }
@@ -246,38 +246,15 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
                                    const std::string end_key) {
   db_impl_->num_entries_skipped = 0;
   db_impl_->num_entries_compacted = 0;
-  if (db_impl_->immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: refreshing iterator " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "setting range_start_key to: " << start_key << " "
-              << __FILE__ ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "setting range_end_key to: " << end_key << " " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl;
-    std::cout << "enabling read compaction " << __FILE__ ":" << __LINE__ << " "
-              << __FUNCTION__ << std::endl;
-  }
   read_options_.range_end_key = end_key;
   read_options_.range_start_key = start_key;
   read_options_.range_query_compaction_enabled =
       true;  // making it default for this refresh func
   db_impl_->read_options_ = read_options_;
 
-  if (db_impl_->immutable_db_options().verbosity > 0) {
-    std::cout << "\n[Verbosity]: pausing background work " << __FILE__ ":"
-              << __LINE__ << " " << __FUNCTION__ << std::endl;
-  }
-
   db_impl_->PauseBackgroundWork();
 
   if (!CanPerformRangeQueryCompaction()) {
-    if (db_impl_->immutable_db_options().verbosity > 0) {
-      std::cout << "\n[Verbosity]: skipping this time "
-                   "num_levels_are_overlapping <= 1 "
-                << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-                << std::endl;
-      std::cout << "\n[Verbosity]: continuing background work " << __FILE__ ":"
-                << __LINE__ << " " << __FUNCTION__ << std::endl;
-    }
     db_impl_->ContinueBackgroundWork();
     read_options_.range_query_compaction_enabled = false;
     read_options_.range_start_key = "";
@@ -302,15 +279,6 @@ Status ArenaWrappedDBIter::Reset() {
   while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
          db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
          db_impl_->bg_partial_or_range_flush_running_ > 0) {
-    if (db_impl_->immutable_db_options().verbosity > 0) {
-      std::cout << "\n[Verbosity] waiting for flush jobs, scheduled: "
-                << db_impl_->bg_partial_or_range_flush_scheduled_
-                << " unscheduled: "
-                << db_impl_->unscheduled_partial_or_range_flushes_
-                << " running: " << db_impl_->bg_partial_or_range_flush_running_
-                << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-                << std::endl;
-    }
     db_impl_->SchedulePartialOrRangeFileFlush();
     db_impl_->range_queries_complete_cv_.Wait();
   }

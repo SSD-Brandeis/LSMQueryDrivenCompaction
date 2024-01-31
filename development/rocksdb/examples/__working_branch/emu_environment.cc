@@ -12,8 +12,8 @@ EmuEnv* EmuEnv::instance = 0;
 
 EmuEnv::EmuEnv() {
   delete_persistence_latency = -1;                    // in secs
-  level_delete_persistence_latency = new double[20];  // in secs
-  RR_level_last_file_selected = new int[20];          // !YBS-sep06-XX!
+  // level_delete_persistence_latency = new double[20];  // in secs
+  // RR_level_last_file_selected = new int[20];          // !YBS-sep06-XX!
 
   flag = 0;
   oldest_delete_file_timestamp = std::chrono::system_clock::now();
@@ -28,10 +28,10 @@ EmuEnv::EmuEnv() {
   enable_rocksdb_perf_iostat = 0;  // !YBS-feb15-XXI!
 
   // Options set through command line
-  size_ratio = 2;              // 10; [Shubham]
+  size_ratio = 4;              // 10; [Shubham]
   buffer_size_in_pages = 512;  // 4096; [Shubham]
   entries_per_page = 4;
-  entry_size = 1024;  // in Bytes
+  entry_size = 256;  // in Bytes
   buffer_size = buffer_size_in_pages * entries_per_page *
                 entry_size;         // M = P*B*E = 128 * 128 * 128 B = 2 MB
   file_to_memtable_size_ratio = 1;  // f
@@ -197,42 +197,42 @@ EmuEnv* EmuEnv::getInstance() {
 }
 
 // !YBS-sep06-XX
-void EmuEnv::AddNewLevel(int _level_count, EmuEnv* _env) {
-  _env->live_levels = _level_count;
-  if (_env->compaction_pri == 5) {
-    EmuEnv::ReSetLevelDeletePersistenceLatency(_level_count, _env);
-  } else
-    std::cout << "                                                             "
-                 "                                  "
-              << std::endl;
-}
+// void EmuEnv::AddNewLevel(int _level_count, EmuEnv* _env) {
+//   _env->live_levels = _level_count;
+//   if (_env->compaction_pri == 5) {
+//     EmuEnv::ReSetLevelDeletePersistenceLatency(_level_count, _env);
+//   } else
+//     std::cout << "                                                             "
+//                  "                                  "
+//               << std::endl;
+// }
 // !END
 
-void EmuEnv::ReSetLevelDeletePersistenceLatency(
-    int _level_count,
-    EmuEnv* _env) {  // reset dpl-per-level when there in a new level added
-  // note: last level does not have a del_per_lat (therefore, level id replaced
-  // by level-1) !YBS-sep06-XX
-  double x = _env->delete_persistence_latency * (_env->size_ratio - 1) /
-             (pow(_env->size_ratio, (_level_count - 1)) - 1);
-  std::cout << " [ DPL(s) = " << _env->delete_persistence_latency << " = ";
-  for (int i = 0; i < _level_count - 1; ++i) {  // i=0 corresponds to level-1
-    _env->level_delete_persistence_latency[i] = x * pow(_env->size_ratio, i);
-    std::cout << _env->level_delete_persistence_latency[i] << " (L" << i
-              << ") + ";
-  }
-  std::cout << "\b\b]";
-  if (_env->show_progress)
-    std::cout << "                                                           "
-              << std::endl;
-  // !END
-}
+// void EmuEnv::ReSetLevelDeletePersistenceLatency(
+//     int _level_count,
+//     EmuEnv* _env) {  // reset dpl-per-level when there in a new level added
+//   // note: last level does not have a del_per_lat (therefore, level id replaced
+//   // by level-1) !YBS-sep06-XX
+//   double x = _env->delete_persistence_latency * (_env->size_ratio - 1) /
+//              (pow(_env->size_ratio, (_level_count - 1)) - 1);
+//   std::cout << " [ DPL(s) = " << _env->delete_persistence_latency << " = ";
+//   for (int i = 0; i < _level_count - 1; ++i) {  // i=0 corresponds to level-1
+//     _env->level_delete_persistence_latency[i] = x * pow(_env->size_ratio, i);
+//     std::cout << _env->level_delete_persistence_latency[i] << " (L" << i
+//               << ") + ";
+//   }
+//   std::cout << "\b\b]";
+//   if (_env->show_progress)
+//     std::cout << "                                                           "
+//               << std::endl;
+//   // !END
+// }
 
-double EmuEnv::GetLevelDeletePersistenceLatency(int _level, EmuEnv* _env) {
-  return _env
-      ->level_delete_persistence_latency[_level];  // index:_level-1 corresponds
-                                                   // to level:_level-1
-}
+// double EmuEnv::GetLevelDeletePersistenceLatency(int _level, EmuEnv* _env) {
+//   return _env
+//       ->level_delete_persistence_latency[_level];  // index:_level-1 corresponds
+//                                                    // to level:_level-1
+// }
 
 void EmuEnv::DumpDeleteFileTimestamp(
     std::chrono::time_point<std::chrono::system_clock> delete_file_timestamp,
@@ -315,13 +315,13 @@ int EmuEnv::CheckingVector(uint64_t _file_id) {
 }
 
 // !YBS-sep06-XX
-void EmuEnv::PrintRRIndices(EmuEnv* _env) {
-  std::cout << "RRIndexArray = [ ";
-  for (int i = 0; i < 20; i++) {
-    std::cout << _env->RR_level_last_file_selected[i] << " ";
-  }
-  std::cout << " ]" << std::endl;
-}
+// void EmuEnv::PrintRRIndices(EmuEnv* _env) {
+//   std::cout << "RRIndexArray = [ ";
+//   for (int i = 0; i < 20; i++) {
+//     std::cout << _env->RR_level_last_file_selected[i] << " ";
+//   }
+//   std::cout << " ]" << std::endl;
+// }
 // !END
 
 /*
@@ -423,162 +423,3 @@ t1.tv_usec)/1000.0; experiment_time /= 1000.0;  // get it to be in seconds
   delete db;
 }
 */
-
-// function for printing all the options using extration operator
-ostream& operator<<(ostream& os, const EmuEnv& env) {
-  os << "EmuEnv Configuration:" << endl;
-  os << "delete_persistence_latency: " << env.delete_persistence_latency
-     << endl;
-  os << "oldest_delete_file_timestamp: "
-     << chrono::system_clock::to_time_t(env.oldest_delete_file_timestamp)
-     << endl;
-  os << "flag: " << env.flag << endl;
-  os << "vec: ";
-  for (uint64_t value : env.vec) {
-    os << value << " ";
-  }
-  os << endl;
-  os << "version_set_FEF: " << env.version_set_FEF << endl;
-  os << "destroy_database: " << env.destroy_database << endl;
-  os << "clear_system_cache: " << env.clear_system_cache << endl;
-  os << "show_progress: " << env.show_progress << endl;
-  os << "current_op: " << env.current_op << endl;
-  os << "enable_rocksdb_perf_iostat: " << env.enable_rocksdb_perf_iostat
-     << endl;
-  os << "size_ratio: " << env.size_ratio << endl;
-  os << "buffer_size_in_pages: " << env.buffer_size_in_pages << endl;
-  os << "entries_per_page: " << env.entries_per_page << endl;
-  os << "entry_size: " << env.entry_size << endl;
-  os << "buffer_size: " << env.buffer_size << endl;
-  os << "file_to_memtable_size_ratio: " << env.file_to_memtable_size_ratio
-     << endl;
-  os << "file_size: " << env.file_size << endl;
-  os << "verbosity: " << env.verbosity << endl;
-  os << "compaction_pri: " << env.compaction_pri << endl;
-  os << "bits_per_key: " << env.bits_per_key << endl;
-  os << "max_write_buffer_number: " << env.max_write_buffer_number << endl;
-  os << "memtable_factory: " << env.memtable_factory << endl;
-  os << "target_file_size_base: " << env.target_file_size_base << endl;
-  os << "level_compaction_dynamic_level_bytes: "
-     << env.level_compaction_dynamic_level_bytes << endl;
-  os << "compaction_style: " << env.compaction_style << endl;
-  os << "disable_auto_compactions: " << env.disable_auto_compactions << endl;
-  os << "compaction_filter: " << env.compaction_filter << endl;
-  os << "compaction_filter_factory: " << env.compaction_filter_factory << endl;
-  os << "access_hint_on_compaction_start: "
-     << env.access_hint_on_compaction_start << endl;
-  os << "level0_file_num_compaction_trigger: "
-     << env.level0_file_num_compaction_trigger << endl;
-  os << "target_file_size_multiplier: " << env.target_file_size_multiplier
-     << endl;
-  os << "max_background_jobs: " << env.max_background_jobs << endl;
-  os << "max_compaction_bytes: " << env.max_compaction_bytes << endl;
-  os << "max_bytes_for_level_base: " << env.max_bytes_for_level_base << endl;
-  os << "merge_operator: " << env.merge_operator << endl;
-  os << "soft_pending_compaction_bytes_limit: "
-     << env.soft_pending_compaction_bytes_limit << endl;
-  os << "hard_pending_compaction_bytes_limit: "
-     << env.hard_pending_compaction_bytes_limit << endl;
-  os << "periodic_compaction_seconds: " << env.periodic_compaction_seconds
-     << endl;
-  os << "use_direct_io_for_flush_and_compaction: "
-     << env.use_direct_io_for_flush_and_compaction << endl;
-  os << "live_levels: " << env.live_levels << endl;
-  os << "num_levels: " << env.num_levels << endl;
-  os << "no_block_cache: " << env.no_block_cache << endl;
-  os << "block_cache: " << env.block_cache << endl;
-  os << "block_cache_high_priority_ratio: "
-     << env.block_cache_high_priority_ratio << endl;
-  os << "cache_index_and_filter_blocks: " << env.cache_index_and_filter_blocks
-     << endl;
-  os << "cache_index_and_filter_blocks_with_high_priority: "
-     << env.cache_index_and_filter_blocks_with_high_priority << endl;
-  os << "read_amp_bytes_per_bit: " << env.read_amp_bytes_per_bit << endl;
-  os << "data_block_index_type: " << env.data_block_index_type << endl;
-  os << "index_type: " << env.index_type << endl;
-  os << "partition_filters: " << env.partition_filters << endl;
-  os << "metadata_block_size: " << env.metadata_block_size << endl;
-  os << "pin_top_level_index_and_filter: " << env.pin_top_level_index_and_filter
-     << endl;
-  os << "index_shortening: " << env.index_shortening << endl;
-  os << "block_size_deviation: " << env.block_size_deviation << endl;
-  os << "enable_index_compression: " << env.enable_index_compression << endl;
-  os << "compression: " << env.compression << endl;
-  os << "verify_checksums: " << env.verify_checksums << endl;
-  os << "fill_cache: " << env.fill_cache << endl;
-  os << "iter_start_seqnum: " << env.iter_start_seqnum << endl;
-  os << "ignore_range_deletions: " << env.ignore_range_deletions << endl;
-  os << "read_tier: " << env.read_tier << endl;
-  os << "low_pri: " << env.low_pri << endl;
-  os << "sync: " << env.sync << endl;
-  os << "disableWAL: " << env.disableWAL << endl;
-  os << "no_slowdown: " << env.no_slowdown << endl;
-  os << "ignore_missing_column_families: " << env.ignore_missing_column_families
-     << endl;
-  os << "max_open_files: " << env.max_open_files << endl;
-  os << "max_file_opening_threads: " << env.max_file_opening_threads << endl;
-  os << "comparator: " << env.comparator << endl;
-  os << "max_sequential_skip_in_iterations: "
-     << env.max_sequential_skip_in_iterations << endl;
-  os << "memtable_prefix_bloom_size_ratio: "
-     << env.memtable_prefix_bloom_size_ratio << endl;
-  os << "level0_stop_writes_trigger: " << env.level0_stop_writes_trigger
-     << endl;
-  os << "paranoid_file_checks: " << env.paranoid_file_checks << endl;
-  os << "optimize_filters_for_hits: " << env.optimize_filters_for_hits << endl;
-  os << "inplace_update_support: " << env.inplace_update_support << endl;
-  os << "inplace_update_num_locks: " << env.inplace_update_num_locks << endl;
-  os << "report_bg_io_stats: " << env.report_bg_io_stats << endl;
-  os << "max_successive_merges: " << env.max_successive_merges << endl;
-  os << "create_if_missing: " << env.create_if_missing << endl;
-  os << "delayed_write_rate: " << env.delayed_write_rate << endl;
-  os << "bytes_per_sync: " << env.bytes_per_sync << endl;
-  os << "stats_persist_period_sec: " << env.stats_persist_period_sec << endl;
-  os << "enable_thread_tracking: " << env.enable_thread_tracking << endl;
-  os << "stats_history_buffer_size: " << env.stats_history_buffer_size << endl;
-  os << "allow_concurrent_memtable_write: "
-     << env.allow_concurrent_memtable_write << endl;
-  os << "dump_malloc_stats: " << env.dump_malloc_stats << endl;
-  os << "use_direct_reads: " << env.use_direct_reads << endl;
-  os << "avoid_flush_during_shutdown: " << env.avoid_flush_during_shutdown
-     << endl;
-  os << "advise_random_on_open: " << env.advise_random_on_open << endl;
-  os << "delete_obsolete_files_period_micros: "
-     << env.delete_obsolete_files_period_micros << endl;
-  os << "allow_mmap_reads: " << env.allow_mmap_reads << endl;
-  os << "allow_mmap_writes: " << env.allow_mmap_writes << endl;
-  os << "wait: " << env.wait << endl;
-  os << "allow_write_stall: " << env.allow_write_stall << endl;
-  os << "enable_range_query_compaction: " << env.enable_range_query_compaction
-     << endl;
-  // os << "write_cost_threshold: " << env.write_cost_threshold << endl;
-  os << "lower_threshold: " << env.lower_threshold << endl;
-  os << "upper_threshold: " << env.upper_threshold << endl;
-  os << "num_inserts: " << env.num_inserts << endl;
-  os << "path: " << env.path << endl;
-  os << "debugging: " << env.debugging << endl;
-  os << "FPR_optimization_level: " << env.FPR_optimization_level << endl;
-  os << "derived_num_levels: " << env.derived_num_levels << endl;
-  os << "N: " << env.N << endl;
-  os << "derived_N: " << env.derived_N << endl;
-  os << "K: " << env.K << endl;
-  os << "Z: " << env.Z << endl;
-  os << "max_levels: " << env.max_levels << endl;
-  os << "target_level_for_non_zero_result_point_lookups: "
-     << env.target_level_for_non_zero_result_point_lookups << endl;
-  os << "use_block_based_filter: " << env.use_block_based_filter << endl;
-  os << "key_prefix_for_entries_to_target_in_queries: "
-     << env.key_prefix_for_entries_to_target_in_queries << endl;
-  os << "experiment_name: " << env.experiment_name << endl;
-  os << "experiment_starting_time: " << env.experiment_starting_time << endl;
-  os << "measure_IOs: " << env.measure_IOs << endl;
-  os << "print_IOs_per_file: " << env.print_IOs_per_file << endl;
-  os << "total_IOs: " << env.total_IOs << endl;
-  os << "clean_caches_for_experiments: " << env.clean_caches_for_experiments
-     << endl;
-  os << "file_system_page_size: " << env.file_system_page_size << endl;
-  os << "only_tune: " << env.only_tune << endl;
-  os << "num_read_query_sessions: " << env.num_read_query_sessions << endl;
-
-  return os;
-}

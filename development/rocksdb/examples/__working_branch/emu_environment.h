@@ -23,13 +23,13 @@ class EmuEnv {
   static EmuEnv* getInstance();
 
   double delete_persistence_latency;
-  double* level_delete_persistence_latency;
-  int* RR_level_last_file_selected;                         // !YBS-sep06-XX!
-  static void AddNewLevel(int _level_count, EmuEnv* _env);  // !YBS-sep06-XX!
-  static void ReSetLevelDeletePersistenceLatency(
-      int _level_count,
-      EmuEnv* _env);  // reset dpl-per-level when there in a new level added
-  static double GetLevelDeletePersistenceLatency(int _level, EmuEnv* _env);
+//   double* level_delete_persistence_latency;
+//   int* RR_level_last_file_selected;                         // !YBS-sep06-XX!
+//   static void AddNewLevel(int _level_count, EmuEnv* _env);  // !YBS-sep06-XX!
+//   static void ReSetLevelDeletePersistenceLatency(
+//       int _level_count,
+//       EmuEnv* _env);  // reset dpl-per-level when there in a new level added
+//   static double GetLevelDeletePersistenceLatency(int _level, EmuEnv* _env);
 
   std::chrono::time_point<std::chrono::system_clock>
       oldest_delete_file_timestamp;
@@ -341,7 +341,7 @@ class EmuEnv {
   int num_read_query_sessions;
 
   // function for printing all the options using extraction operator
-  friend ostream& operator<<(ostream& os, const EmuEnv& env);
+//   friend ostream& operator<<(ostream& os, const EmuEnv& env);
 };
 
 #endif /*EMU_ENVIRONMENT_H_*/

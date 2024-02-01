@@ -308,8 +308,8 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
       if (flush_reason == FlushReason::kPartialFlush && just_delete) {
         assert(file_meta != nullptr);
         VersionEdit* edit_ = new VersionEdit();
-        edit_->SetPrevLogNumber(0);
-        edit_->SetLogNumber(0);
+        // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since LogandApply will set it anyway
+        // edit_->SetLogNumber(0);
         edit_->SetColumnFamily(cfd->GetID());
         uint64_t file_number = file_meta->fd.GetNumber();
         edit_->DeleteFile(level, file_number);

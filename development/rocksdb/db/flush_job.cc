@@ -1151,8 +1151,8 @@ void PartialOrRangeFlushJob::InitNewTable() {
   // TODO: (shubham) initiate new table here
   db_mutex_->AssertHeld();
   edit_ = new VersionEdit();
-  edit_->SetPrevLogNumber(0);
-  edit_->SetLogNumber(0);
+  // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since LogandApply will set it anyway
+  // edit_->SetLogNumber(0);
   edit_->SetColumnFamily(cfd_->GetID());
   meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
   meta_.epoch_number = cfd_->NewEpochNumber();

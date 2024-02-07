@@ -503,9 +503,6 @@ class DB {
                        ColumnFamilyHandle* /*column_family*/,
                        const Slice& /*key*/, const Slice& /*ts*/,
                        const Slice& /*value*/);
-  
-  // Compaction based on range query
-  // virtual void RangeQueryDrivenCompaction(Slice& start_key, Slice& end_key);
 
   // Apply the specified updates to the database.
   // If `updates` contains no update, WAL will still be synced if

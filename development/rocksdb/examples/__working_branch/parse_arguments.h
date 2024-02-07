@@ -155,7 +155,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       del_per_th_cmd ? args::get(del_per_th_cmd) : 0;
   _env->enable_rocksdb_perf_iostat =
       enable_rocksdb_perf_iostat_cmd ? args::get(enable_rocksdb_perf_iostat_cmd)
-                                     : 1;
+                                     : 0;
 
   _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
   _env->num_updates = num_updates_cmd ? args::get(num_updates_cmd) : 0;

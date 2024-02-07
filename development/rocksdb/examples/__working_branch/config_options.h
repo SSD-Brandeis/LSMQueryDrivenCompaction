@@ -58,6 +58,10 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
       std::cerr << "ERROR: INVALID Data movement policy!" << std::endl;
   }
 
+  op->level_compaction_dynamic_file_size = false;
+  op->ignore_max_compaction_bytes_for_input = false;
+  op->max_compaction_bytes = _env->buffer_size;
+
   op->max_bytes_for_level_multiplier = _env->size_ratio;
   op->allow_concurrent_memtable_write = _env->allow_concurrent_memtable_write;
   op->create_if_missing = _env->create_if_missing;

@@ -20,6 +20,8 @@ std::mutex mtx;
 std::condition_variable cv;
 bool compaction_complete = false;
 
+void printExperimentalSetup(EmuEnv* _env);
+
 class CompactionsListner : public rocksdb::EventListener {
  public:
   explicit CompactionsListner() {}
@@ -73,6 +75,12 @@ int runWorkload(EmuEnv* _env) {
   std::shared_ptr<CompactionsListner> listener =
       std::make_shared<CompactionsListner>();
   options.listeners.emplace_back(listener);
+
+  printExperimentalSetup(_env);  // !YBS-sep07-XX!
+  std::cout << "Maximum #OpenFiles = " << options.max_open_files
+            << std::endl;  // !YBS-sep07-XX!
+  std::cout << "Maximum #ThreadsUsedToOpenFiles = "
+            << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
 
   Status s = DB::Open(options, kDBPath, &db);
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
@@ -305,6 +313,14 @@ int runWorkload(EmuEnv* _env) {
       if (counter == _env->num_inserts + 1) {
         std::cout << "=====================" << std::endl;
         std::cout << "Inserts are completed ..." << std::endl;
+
+        {
+          std::vector<std::string> live_files;
+          uint64_t manifest_size;
+          db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+          WaitForCompactions(db);
+        }
+
         //  "rocksdb.obsolete-sst-files-size" - returns total size (bytes) of
         //  all
         //      SST files that became obsolete but have not yet been deleted or
@@ -405,6 +421,14 @@ int runWorkload(EmuEnv* _env) {
         std::cout << "One Epoch done ... "
                   << num_instructions_executed_for_one_epoch << " instructions"
                   << std::endl;
+
+        {
+          std::vector<std::string> live_files;
+          uint64_t manifest_size;
+          db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+          WaitForCompactions(db);
+        }
+
         printProperty("rocksdb.obsolete-sst-files-size");
         printProperty("rocksdb.live-sst-files-size");
         printProperty("rocksdb.total-sst-files-size");
@@ -447,21 +471,32 @@ int runWorkload(EmuEnv* _env) {
         }
 
         std::cout << "Rocksdb Statistics: " << std::endl;
-        std::cout << "rocksdb.compact.read.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES) << std::endl;
-        std::cout << "rocksdb.compact.write.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES) << std::endl;
-        std::cout << "rocksdb.flush.write.bytes: " << options.statistics->getTickerCount(FLUSH_WRITE_BYTES) << std::endl;
-        std::cout << "rocksdb.partial.file.flush.count: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT) << std::endl;
-        std::cout << "rocksdb.partial.file.flush.bytes: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES) << std::endl;
-        std::cout << "rocksdb.full.file.flush.count: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT) << std::endl;
-        std::cout << "rocksdb.full.file.flush.bytes: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES) << std::endl;
-        std::cout << "rocksdb.compaction.times.micros: " << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
-        std::cout << "rocksdb.compact.read.marked.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_MARKED) << std::endl;
-        std::cout << "rocksdb.compact.read.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_PERIODIC) << std::endl;
-        std::cout << "rocksdb.compact.read.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_TTL) << std::endl;
-        std::cout << "rocksdb.compact.write.marked.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_MARKED) << std::endl;
-        std::cout << "rocksdb.compact.write.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_PERIODIC) << std::endl;
-        std::cout << "rocksdb.compact.write.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_TTL) << std::endl;
-
+        std::cout << "rocksdb.compact.read.bytes: "
+                  << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.compact.write.bytes: "
+                  << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.flush.write.bytes: "
+                  << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.partial.file.flush.count: "
+                  << options.statistics->getTickerCount(
+                         PARTIAL_FILE_FLUSH_COUNT)
+                  << std::endl;
+        std::cout << "rocksdb.partial.file.flush.bytes: "
+                  << options.statistics->getTickerCount(
+                         PARTIAL_FILE_FLUSH_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.full.file.flush.count: "
+                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+                  << std::endl;
+        std::cout << "rocksdb.full.file.flush.bytes: "
+                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.compaction.times.micros: "
+                  << options.statistics->getTickerCount(COMPACTION_TIME)
+                  << std::endl;
         num_instructions_executed_for_one_epoch = 0;
       }
     }
@@ -470,9 +505,12 @@ int runWorkload(EmuEnv* _env) {
 
   workload_file.close();
 
-  WaitForCompactions(db);
-  // db->WaitForCompact(WaitForCompactOptions());
-  // CompactionMayAllComplete(db);
+  {
+    std::vector<std::string> live_files;
+    uint64_t manifest_size;
+    db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+    WaitForCompactions(db);
+  }
 
 #ifdef PROFILE
   std::cout << "=====================" << std::endl;
@@ -517,27 +555,38 @@ int runWorkload(EmuEnv* _env) {
   }
 
   std::cout << "Rocksdb Statistics: " << std::endl;
-  std::cout << "rocksdb.compact.read.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES) << std::endl;
-  std::cout << "rocksdb.compact.write.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES) << std::endl;
-  std::cout << "rocksdb.flush.write.bytes: " << options.statistics->getTickerCount(FLUSH_WRITE_BYTES) << std::endl;
-  std::cout << "rocksdb.partial.file.flush.count: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT) << std::endl;
-  std::cout << "rocksdb.partial.file.flush.bytes: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES) << std::endl;
-  std::cout << "rocksdb.full.file.flush.count: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT) << std::endl;
-  std::cout << "rocksdb.full.file.flush.bytes: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES) << std::endl;
-  std::cout << "rocksdb.compaction.times.micros: " << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
-  std::cout << "rocksdb.compact.read.marked.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_MARKED) << std::endl;
-  std::cout << "rocksdb.compact.read.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_PERIODIC) << std::endl;
-  std::cout << "rocksdb.compact.read.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_TTL) << std::endl;
-  std::cout << "rocksdb.compact.write.marked.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_MARKED) << std::endl;
-  std::cout << "rocksdb.compact.write.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_PERIODIC) << std::endl;
-  std::cout << "rocksdb.compact.write.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_TTL) << std::endl;
-
+  std::cout << "rocksdb.compact.read.bytes: "
+            << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.compact.write.bytes: "
+            << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.flush.write.bytes: "
+            << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.partial.file.flush.count: "
+            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
+            << std::endl;
+  std::cout << "rocksdb.partial.file.flush.bytes: "
+            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.full.file.flush.count: "
+            << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+            << std::endl;
+  std::cout << "rocksdb.full.file.flush.bytes: "
+            << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.compaction.times.micros: "
+            << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
 #endif  // PROFILE
 
-  // Get live files and manifest size
-  std::vector<std::string> live_files;
-  uint64_t manifest_size;
-  db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+  {
+    // Get live files and manifest size
+    std::vector<std::string> live_files;
+    uint64_t manifest_size;
+    db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+    WaitForCompactions(db);
+  }
 
 #ifdef PROFILE
   {
@@ -583,20 +632,30 @@ int runWorkload(EmuEnv* _env) {
     }
 
     std::cout << "Rocksdb Statistics: " << std::endl;
-    std::cout << "rocksdb.compact.read.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES) << std::endl;
-    std::cout << "rocksdb.compact.write.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES) << std::endl;
-    std::cout << "rocksdb.flush.write.bytes: " << options.statistics->getTickerCount(FLUSH_WRITE_BYTES) << std::endl;
-    std::cout << "rocksdb.partial.file.flush.count: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT) << std::endl;
-    std::cout << "rocksdb.partial.file.flush.bytes: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES) << std::endl;
-    std::cout << "rocksdb.full.file.flush.count: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT) << std::endl;
-    std::cout << "rocksdb.full.file.flush.bytes: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES) << std::endl;
-    std::cout << "rocksdb.compaction.times.micros: " << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
-    std::cout << "rocksdb.compact.read.marked.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_MARKED) << std::endl;
-    std::cout << "rocksdb.compact.read.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_PERIODIC) << std::endl;
-    std::cout << "rocksdb.compact.read.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_TTL) << std::endl;
-    std::cout << "rocksdb.compact.write.marked.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_MARKED) << std::endl;
-    std::cout << "rocksdb.compact.write.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_PERIODIC) << std::endl;
-    std::cout << "rocksdb.compact.write.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_TTL) << std::endl;
+    std::cout << "rocksdb.compact.read.bytes: "
+              << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+              << std::endl;
+    std::cout << "rocksdb.compact.write.bytes: "
+              << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+              << std::endl;
+    std::cout << "rocksdb.flush.write.bytes: "
+              << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+              << std::endl;
+    std::cout << "rocksdb.partial.file.flush.count: "
+              << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
+              << std::endl;
+    std::cout << "rocksdb.partial.file.flush.bytes: "
+              << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
+              << std::endl;
+    std::cout << "rocksdb.full.file.flush.count: "
+              << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+              << std::endl;
+    std::cout << "rocksdb.full.file.flush.bytes: "
+              << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+              << std::endl;
+    std::cout << "rocksdb.compaction.times.micros: "
+              << options.statistics->getTickerCount(COMPACTION_TIME)
+              << std::endl;
   }
 #endif  // PROFILE
 
@@ -617,21 +676,32 @@ int runWorkload(EmuEnv* _env) {
   std::cout << "All Range Queries Time: " << all_range_queries_time
             << std::endl;
 
+  std::cout << std::endl;
+
   std::cout << "Rocksdb Statistics: " << std::endl;
-  std::cout << "rocksdb.compact.read.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES) << std::endl;
-  std::cout << "rocksdb.compact.write.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES) << std::endl;
-  std::cout << "rocksdb.flush.write.bytes: " << options.statistics->getTickerCount(FLUSH_WRITE_BYTES) << std::endl;
-  std::cout << "rocksdb.partial.file.flush.count: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT) << std::endl;
-  std::cout << "rocksdb.partial.file.flush.bytes: " << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES) << std::endl;
-  std::cout << "rocksdb.full.file.flush.count: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT) << std::endl;
-  std::cout << "rocksdb.full.file.flush.bytes: " << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES) << std::endl;
-  std::cout << "rocksdb.compaction.times.micros: " << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
-  std::cout << "rocksdb.compact.read.marked.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_MARKED) << std::endl;
-  std::cout << "rocksdb.compact.read.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_PERIODIC) << std::endl;
-  std::cout << "rocksdb.compact.read.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_READ_BYTES_TTL) << std::endl;
-  std::cout << "rocksdb.compact.write.marked.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_MARKED) << std::endl;
-  std::cout << "rocksdb.compact.write.periodic.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_PERIODIC) << std::endl;
-  std::cout << "rocksdb.compact.write.ttl.bytes: " << options.statistics->getTickerCount(COMPACT_WRITE_BYTES_TTL) << std::endl;
+  std::cout << "rocksdb.compact.read.bytes: "
+            << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.compact.write.bytes: "
+            << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.flush.write.bytes: "
+            << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.partial.file.flush.count: "
+            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
+            << std::endl;
+  std::cout << "rocksdb.partial.file.flush.bytes: "
+            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.full.file.flush.count: "
+            << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+            << std::endl;
+  std::cout << "rocksdb.full.file.flush.bytes: "
+            << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+            << std::endl;
+  std::cout << "rocksdb.compaction.times.micros: "
+            << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
 #endif  // TIMER
 
   if (_env->enable_rocksdb_perf_iostat == 1) {
@@ -651,4 +721,43 @@ int runWorkload(EmuEnv* _env) {
   }
 
   return 1;
+}
+
+void printExperimentalSetup(EmuEnv* _env) {
+  int l = 10;
+
+  std::cout << std::setfill(' ') << std::setw(l)
+            << "cmpt_sty"  // !YBS-sep07-XX!
+            << std::setfill(' ') << std::setw(l) << "cmpt_pri"
+            << std::setfill(' ') << std::setw(4) << "T" << std::setfill(' ')
+            << std::setw(l) << "P" << std::setfill(' ') << std::setw(l) << "B"
+            << std::setfill(' ') << std::setw(l) << "E" << std::setfill(' ')
+            << std::setw(l)
+            << "M"
+            // << std::setfill(' ') << std::setw(l)  << "f"
+            << std::setfill(' ') << std::setw(l) << "file_size"
+            << std::setfill(' ') << std::setw(l) << "L1_size"
+            << std::setfill(' ') << std::setw(l) << "blk_cch"  // !YBS-sep09-XX!
+            << std::setfill(' ') << std::setw(l) << "BPK"
+            << "\n";
+  std::cout << std::setfill(' ') << std::setw(l)
+            << _env->compaction_style;  // !YBS-sep07-XX!
+  std::cout << std::setfill(' ') << std::setw(l) << _env->compaction_pri;
+  std::cout << std::setfill(' ') << std::setw(4) << _env->size_ratio;
+  std::cout << std::setfill(' ') << std::setw(l) << _env->buffer_size_in_pages;
+  std::cout << std::setfill(' ') << std::setw(l) << _env->entries_per_page;
+  std::cout << std::setfill(' ') << std::setw(l) << _env->entry_size;
+  std::cout << std::setfill(' ') << std::setw(l) << _env->buffer_size;
+  // std::cout << std::setfill(' ') << std::setw(l) <<
+  // _env->file_to_memtable_size_ratio;
+  std::cout << std::setfill(' ') << std::setw(l) << _env->file_size;
+  std::cout << std::setfill(' ') << std::setw(l)
+            << _env->max_bytes_for_level_base;
+  std::cout << std::setfill(' ') << std::setw(l)
+            << _env->block_cache;  // !YBS-sep09-XX!
+  std::cout << std::setfill(' ') << std::setw(l) << _env->bits_per_key;
+  // std::cout << std::setfill(' ') << std::setw(l) <<
+  // _env->delete_persistence_latency; // !YBS-feb15-XXI!
+
+  std::cout << std::endl;
 }

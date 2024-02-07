@@ -125,14 +125,14 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
 
   // change to 128 or 256 [Added by Subhadeep]
   _env->buffer_size_in_pages =
-      buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 512;
+      buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 128;
 
   // change to 128 [Added by Subhadeep]
   _env->entries_per_page =
-      entries_per_page_cmd ? args::get(entries_per_page_cmd) : 4;
+      entries_per_page_cmd ? args::get(entries_per_page_cmd) : 128;
 
   // change to 32 [Added by Subhadeep]
-  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 256;
+  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 32;
 
   _env->buffer_size = buffer_size_cmd
                           ? args::get(buffer_size_cmd)

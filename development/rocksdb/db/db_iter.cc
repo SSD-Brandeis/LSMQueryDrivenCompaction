@@ -142,9 +142,9 @@ void DBIter::Next() {
             mutable_cf_options, db_impl_->decision_cell_.end_level_,
             cfd_->ioptions()
                 ->compaction_style);
-    uint64_t n87_percent_of_max_size = max_size * 7/8;
+    // uint64_t n87_percent_of_max_size = max_size * 7/8;
 
-    if (cfd_->mem_range()->get_data_size() >= n87_percent_of_max_size) {
+    if (cfd_->mem_range()->get_data_size() >= max_size) {
       MemTable* imm_range = cfd_->mem_range();
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
                                                   cfd_, imm_range);

@@ -15,6 +15,9 @@
 #include "emu_environment.h"
 #include "thread"
 
+// #define PROFILE
+// #define TIMER
+
 std::string kDBPath = "./db_working_home";
 std::mutex mtx;
 std::condition_variable cv;
@@ -119,13 +122,6 @@ int runWorkload(EmuEnv* _env) {
   };
 #endif  // PROFILE
 
-#ifdef TIMER
-  unsigned long long workload_execution_time = 0;
-  unsigned long long all_inserts_time = 0;
-  unsigned long long all_updates_time = 0;
-  unsigned long long all_range_queries_time = 0;
-#endif  // TIMER
-
   // Clearing the system cache
   if (_env->clear_system_cache) {
     std::cout << "Clearing system cache ..." << std::endl;
@@ -150,6 +146,18 @@ int runWorkload(EmuEnv* _env) {
   Iterator* it = db->NewIterator(r_options);  // for range reads
   uint32_t counter = 0;                       // for progress bar
 
+#ifdef TIMER
+  unsigned long long operations_execution_time = 0;
+  unsigned long long workload_execution_time = 0;
+  unsigned long long all_inserts_time = 0;
+  unsigned long long all_updates_time = 0;
+  unsigned long long all_range_queries_time = 0;
+  auto workload_start = std::chrono::high_resolution_clock::now();
+  std::vector<unsigned long long> range_queries_time(_env->num_range_queries,
+                                                     0);
+  long rq_count = 0;
+#endif  // TIMER
+
   while (!workload_file.eof()) {
     char instruction;
     long key, start_key, end_key;
@@ -173,7 +181,7 @@ int runWorkload(EmuEnv* _env) {
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
-          workload_execution_time += duration.count();
+          operations_execution_time += duration.count();
           all_inserts_time += duration.count();
 #endif  // TIMER
         }
@@ -200,7 +208,7 @@ int runWorkload(EmuEnv* _env) {
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
-          workload_execution_time += duration.count();
+          operations_execution_time += duration.count();
           all_updates_time += duration.count();
 #endif  // TIMER
         }
@@ -227,7 +235,7 @@ int runWorkload(EmuEnv* _env) {
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
-          workload_execution_time += duration.count();
+          operations_execution_time += duration.count();
 #endif  // TIMER
         }
 
@@ -249,7 +257,7 @@ int runWorkload(EmuEnv* _env) {
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
-          workload_execution_time += duration.count();
+          operations_execution_time += duration.count();
 #endif  // TIMER
         }
 
@@ -292,8 +300,9 @@ int runWorkload(EmuEnv* _env) {
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
-          workload_execution_time += duration.count();
+          operations_execution_time += duration.count();
           all_range_queries_time += duration.count();
+          range_queries_time.at(rq_count++) = duration.count();
 #endif  // TIMER
         }
 
@@ -395,20 +404,20 @@ int runWorkload(EmuEnv* _env) {
         db->GetColumnFamilyMetaData(&metadata);
         // Print column family metadata
         std::cout << "Column Family Name: " << metadata.name
-                  << " Size: " << metadata.size
+                  << ", Size: " << metadata.size
                   << " bytes, Files Count: " << metadata.file_count
                   << std::endl;
 
         // Print metadata for each level
         for (const auto& level : metadata.levels) {
           std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-                    << " bytes, File Count: " << level.files.size()
+                    << " bytes, Files Count: " << level.files.size()
                     << std::endl;
           std::cout << "\t\t";
 
           // Print metadata for each file in the level
           for (const auto& file : level.files) {
-            std::cout << "[#" << file.file_number << ":" << file.size << "("
+            std::cout << "[#" << file.file_number << ":" << file.size << " ("
                       << file.smallestkey << ", " << file.largestkey << ") "
                       << file.num_entries << "], ";
           }
@@ -450,14 +459,14 @@ int runWorkload(EmuEnv* _env) {
         db->GetColumnFamilyMetaData(&metadata);
         // Print column family metadata
         std::cout << "Column Family Name: " << metadata.name
-                  << " Size: " << metadata.size
+                  << ", Size: " << metadata.size
                   << " bytes, Files Count: " << metadata.file_count
                   << std::endl;
 
         // Print metadata for each level
         for (const auto& level : metadata.levels) {
           std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-                    << " bytes, File Count: " << level.files.size()
+                    << " bytes, Files Count: " << level.files.size()
                     << std::endl;
           std::cout << "\t\t";
 
@@ -536,13 +545,13 @@ int runWorkload(EmuEnv* _env) {
   db->GetColumnFamilyMetaData(&metadata);
   // Print column family metadata
   std::cout << "Column Family Name: " << metadata.name
-            << " Size: " << metadata.size
+            << ", Size: " << metadata.size
             << " bytes, Files Count: " << metadata.file_count << std::endl;
 
   // Print metadata for each level
   for (const auto& level : metadata.levels) {
     std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-              << " bytes, File Count: " << level.files.size() << std::endl;
+              << " bytes, Files Count: " << level.files.size() << std::endl;
     std::cout << "\t\t";
 
     // Print metadata for each file in the level
@@ -613,19 +622,19 @@ int runWorkload(EmuEnv* _env) {
     db->GetColumnFamilyMetaData(&metadata);
     // Print column family metadata
     std::cout << "Column Family Name: " << metadata.name
-              << " Size: " << metadata.size
+              << ", Size: " << metadata.size
               << " bytes, Files Count: " << metadata.file_count << std::endl;
 
     // Print metadata for each level
     for (const auto& level : metadata.levels) {
       std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-                << " bytes, File Count: " << level.files.size() << std::endl;
+                << " bytes, Files Count: " << level.files.size() << std::endl;
       std::cout << "\t\t";
 
       // Print metadata for each file in the level
       for (const auto& file : level.files) {
-        std::cout << "[#" << file.file_number << ":"
-                  << " (" << file.smallestkey << ", " << file.largestkey << ") "
+        std::cout << "[#" << file.file_number << ":" << file.size << " ("
+                  << file.smallestkey << ", " << file.largestkey << ") "
                   << file.num_entries << "], ";
       }
       std::cout << std::endl;
@@ -659,6 +668,15 @@ int runWorkload(EmuEnv* _env) {
   }
 #endif  // PROFILE
 
+  {
+#ifdef TIMER
+    auto workload_stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        workload_stop - workload_start);
+    workload_execution_time += duration.count();
+#endif  // TIMER
+  }
+
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
   s = db->Close();
@@ -670,6 +688,8 @@ int runWorkload(EmuEnv* _env) {
 #ifdef TIMER
   std::cout << "=====================" << std::endl;
   std::cout << "Workload Execution Time: " << workload_execution_time
+            << std::endl;
+  std::cout << "Operations Execution Time: " << operations_execution_time
             << std::endl;
   std::cout << "All Inserts Time: " << all_inserts_time << std::endl;
   std::cout << "All Updates Time: " << all_updates_time << std::endl;
@@ -702,6 +722,20 @@ int runWorkload(EmuEnv* _env) {
             << std::endl;
   std::cout << "rocksdb.compaction.times.micros: "
             << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
+
+  // Open a CSV file to write
+  std::ofstream rq_time_file("range_queries.csv");
+
+  // Write header
+  rq_time_file << "Number, Time" << std::endl;
+
+  // Write data from range_queries_time to CSV
+  for (int i = 0; i < range_queries_time.size(); ++i) {
+    rq_time_file << i + 1 << ", " << range_queries_time[i] << std::endl;
+  }
+
+  // Close the file
+  rq_time_file.close();
 #endif  // TIMER
 
   if (_env->enable_rocksdb_perf_iostat == 1) {

@@ -68,10 +68,11 @@ long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
                                               useful_min_key, useful_max_key);
 }
 
-bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
+bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
+    uint64_t& entries_count) {
   // Let's see how many levels >= 1 have data
   // for the requested range query and then
-  // see how many files in each level have 
+  // see how many files in each level have
   // data from that range query
   //
   // Lastly compute the ratio of useful entries
@@ -176,16 +177,19 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
             read_options_.range_start_key, read_options_.range_end_key, lvl,
             fd.file_metadata, useful_min_key, useful_max_key);
         break;
-      } else {
-        break;
       }
     }
 
+    entries_count += E_useful_entries_in_level;
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
     if (num_files_are_overlapping > 1) {
       num_levels_are_overlapping += 1;
     }
+  }
+
+  if (!read_options_.range_query_compaction_enabled) {
+    return false;
   }
 
   if (num_levels_are_overlapping <= 1) {
@@ -201,7 +205,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
   for (size_t i = 0; i < decision_matrix.size(); i++) {
     for (size_t j = i; j < decision_matrix.size(); j++) {
       if (i == j) {
-        decision_matrix[i][j] = DecisionCell(i + 1, j + 1,
+        decision_matrix[i][j] = DecisionCell(
+            i + 1, j + 1,
             std::vector<float>(j - i + 1, read_options_.upper_threshold),
             read_options_);
       } else {
@@ -209,11 +214,10 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
 
         for (auto k = i; k < j; k++) {
           overlapping_entries_ratio[k - i] =
-              decision_matrix_meta_data[k] /
-              decision_matrix_meta_data[k + 1];
+              decision_matrix_meta_data[k] / decision_matrix_meta_data[k + 1];
         }
-        decision_matrix[i][j] =
-            DecisionCell(i + 1, j + 1, overlapping_entries_ratio, read_options_);
+        decision_matrix[i][j] = DecisionCell(
+            i + 1, j + 1, overlapping_entries_ratio, read_options_);
       }
     }
   }
@@ -229,12 +233,13 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
     }
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
-        // if (db_impl_->immutable_db_options().verbosity > 0) {
-        //   std::cout << "\n[Verbosity]: Best decision cell: (" 
-        //             << best_decision_cell.GetStartLevel() << ", " << best_decision_cell.GetEndLevel()
-        //             << ") " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__
-        //             << std::endl;
-        // }
+      // if (db_impl_->immutable_db_options().verbosity > 0) {
+      // std::cout << "\n[Verbosity]: Best decision cell: ("
+      //           << best_decision_cell.GetStartLevel() << ", "
+      //           << best_decision_cell.GetEndLevel() << ") " << __FILE__ <<
+      //           ":"
+      //           << __LINE__ << " " << __FUNCTION__ << std::endl;
+      // }
       break;
     }
   }
@@ -243,19 +248,24 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction() {
 }
 
 Status ArenaWrappedDBIter::Refresh(const std::string start_key,
-                                   const std::string end_key) {
+                                   const std::string end_key,
+                                   uint64_t& entries_count, bool rqdc_enabled) {
   db_impl_->num_entries_skipped = 0;
   db_impl_->num_entries_compacted = 0;
   read_options_.range_end_key = end_key;
   read_options_.range_start_key = start_key;
   read_options_.range_query_compaction_enabled =
-      true;  // making it default for this refresh func
+      rqdc_enabled;  // making it default for this refresh func
   db_impl_->read_options_ = read_options_;
 
-  db_impl_->PauseBackgroundWork();
+  if (read_options_.range_query_compaction_enabled) {
+    db_impl_->PauseBackgroundWork();
+  }
 
-  if (!CanPerformRangeQueryCompaction()) {
-    db_impl_->ContinueBackgroundWork();
+  if (!CanPerformRangeQueryCompaction(entries_count)) {
+    if (read_options_.range_query_compaction_enabled) {
+      db_impl_->ContinueBackgroundWork();
+    }
     read_options_.range_query_compaction_enabled = false;
     read_options_.range_start_key = "";
     read_options_.range_end_key = "";
@@ -270,7 +280,8 @@ Status ArenaWrappedDBIter::Refresh(const std::string start_key,
 
 Status ArenaWrappedDBIter::Reset() {
   // Check if the last table is added to the queue
-  if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr && cfd_->mem_range()->num_entries() > 0) {
+  if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
+      cfd_->mem_range()->num_entries() > 0) {
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 imm_range);
@@ -284,12 +295,16 @@ Status ArenaWrappedDBIter::Reset() {
   }
 
   // std::ofstream compacted_vs_skipped;
-  // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv", std::ios_base::app);
-  // compacted_vs_skipped << db_impl_->num_entries_compacted << ","
+  // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv",
+  // std::ios_base::app); compacted_vs_skipped <<
+  // db_impl_->num_entries_compacted << ","
   //                      << db_impl_->num_entries_skipped;
   // compacted_vs_skipped.close();
 
-  std::string levels_state_before = "Range Query Complete: Compacted << " + std::to_string(db_impl_->num_entries_compacted) + " Skipped: " + std::to_string(db_impl_->num_entries_skipped);
+  std::string levels_state_before =
+      "Range Query Complete: Compacted << " +
+      std::to_string(db_impl_->num_entries_compacted) +
+      " Skipped: " + std::to_string(db_impl_->num_entries_skipped);
   auto storage_info_before = cfd_->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     uint64_t total_entries = 0;
@@ -365,11 +380,11 @@ Status ArenaWrappedDBIter::Refresh() {
       auto num_files = storage_info->LevelFilesBrief(l).num_files;
       for (size_t file_index = 0; file_index < num_files; file_index++) {
         auto fd = storage_info->LevelFilesBrief(l).files[file_index];
-        levels_state +=
-            "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-            fd.file_metadata->smallest.user_key().ToString() + ", " +
-            fd.file_metadata->largest.user_key().ToString() + ")" +
-            std::to_string(fd.file_metadata->num_entries) + "] ";
+        levels_state += "[" + std::to_string(fd.fd.GetNumber()) + "(" +
+                        fd.file_metadata->smallest.user_key().ToString() +
+                        ", " + fd.file_metadata->largest.user_key().ToString() +
+                        ")" + std::to_string(fd.file_metadata->num_entries) +
+                        "] ";
         total_entries += fd.file_metadata->num_entries;
       }
       levels_state += " = " + std::to_string(total_entries);

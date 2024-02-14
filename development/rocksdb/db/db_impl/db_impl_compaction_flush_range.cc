@@ -186,6 +186,7 @@ Status DBImpl::FlushPartialOrRangeFile(
           column_family_name.c_str(), blob_files.front()->GetBlobFileNumber(),
           blob_files.back()->GetBlobFileNumber());
     }
+    flush_job.SetFlushJobInfo();
   }
 
   if (!s.ok() && !s.IsShutdownInProgress() && !s.IsColumnFamilyDropped()) {

@@ -1147,6 +1147,11 @@ PartialOrRangeFlushJob::~PartialOrRangeFlushJob() {
   ThreadStatusUtil::ResetThreadStatus();
 }
 
+void PartialOrRangeFlushJob::SetFlushJobInfo() {
+  std::unique_ptr<FlushJobInfo> info = GetFlushJobInfo();
+  committed_flush_jobs_info_.emplace_back(std::move(info));
+}
+
 void PartialOrRangeFlushJob::InitNewTable() {
   // TODO: (shubham) initiate new table here
   db_mutex_->AssertHeld();

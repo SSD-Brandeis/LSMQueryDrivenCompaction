@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
+#include <sstream>
 
 #include "config_options.h"
 #include "emu_environment.h"
@@ -25,19 +26,30 @@ bool compaction_complete = false;
 
 void printExperimentalSetup(EmuEnv* _env);
 
-class CompactionsListner : public rocksdb::EventListener {
+/*
+ * The compactions can run in background even after the workload is completely
+ * executed so, we have to wait for them to complete. Compaction Listener gets
+ * notified by the rocksdb API for every compaction that just finishes off.
+ * After every compaction we check, if more compactions are required with
+ * `WaitForCompaction` function, if not then it signals to close the db
+ */
+class CompactionsListner : public EventListener {
  public:
   explicit CompactionsListner() {}
 
-  void OnCompactionCompleted(
-      rocksdb::DB* /*db*/, const rocksdb::CompactionJobInfo& /*ci*/) override {
+  void OnCompactionCompleted(DB* /*db*/,
+                             const CompactionJobInfo& /*ci*/) override {
     std::lock_guard<std::mutex> lock(mtx);
     compaction_complete = true;
     cv.notify_one();
   }
 };
 
-void WaitForCompactions(rocksdb::DB* db) {
+/*
+ * Wait for compactions that are running (or will run) to make the
+ * LSM tree in its shape. Check `CompactionListner` for more details.
+ */
+void WaitForCompactions(DB* db) {
   std::unique_lock<std::mutex> lock(mtx);
   uint64_t num_running_compactions;
   uint64_t pending_compaction_bytes;
@@ -58,6 +70,87 @@ void WaitForCompactions(rocksdb::DB* db) {
   }
 }
 
+class PartialAndFullRangeFlushListner : public EventListener {
+ public:
+  PartialAndFullRangeFlushListner()
+      : udata_bytes_written_(0),
+        uestimated_total_bytes_written_(0),
+        uentries_count_(0),
+        undata_bytes_written_(0),
+        unestimated_total_bytes_written_(0),
+        unentries_count_(0) {}
+
+  void reset() {
+    // in-range files
+    udata_bytes_written_ = 0;
+    uestimated_total_bytes_written_ = 0;
+    uentries_count_ = 0;
+    // Partial files
+    undata_bytes_written_ = 0;
+    unestimated_total_bytes_written_ = 0;
+    unentries_count_ = 0;
+  }
+
+  uint64_t udata_bytes_written() { return udata_bytes_written_; }
+  uint64_t utotal_bytes_written() { return uestimated_total_bytes_written_; }
+  uint64_t uentries_count() { return uentries_count_; }
+  uint64_t undata_bytes_written() { return undata_bytes_written_; }
+  uint64_t untotal_bytes_written() { return unestimated_total_bytes_written_; }
+  uint64_t unentries_count() { return unentries_count_; }
+
+  void OnFlushCompleted(DB* /*db*/,
+                        const FlushJobInfo& flush_job_info) override {
+    if (flush_job_info.flush_reason == FlushReason::kRangeFlush) {
+      TableProperties tp = flush_job_info.table_properties;
+      uestimated_total_bytes_written_ +=
+          tp.data_size + tp.index_size + tp.filter_size;
+      udata_bytes_written_ += tp.data_size;
+      uentries_count_ += tp.num_entries;
+    } else if (flush_job_info.flush_reason == FlushReason::kPartialFlush) {
+      TableProperties tp = flush_job_info.table_properties;
+      unestimated_total_bytes_written_ +=
+          tp.data_size + tp.index_size + tp.filter_size;
+      undata_bytes_written_ += tp.data_size;
+      unentries_count_ += tp.num_entries;
+    }
+  }
+
+ private:
+  // useful (in-range) bytes and entries
+  uint64_t udata_bytes_written_;
+  uint64_t uestimated_total_bytes_written_;
+  uint64_t uentries_count_;
+  // partial un-useful bytes and entries
+  uint64_t undata_bytes_written_;
+  uint64_t unestimated_total_bytes_written_;
+  uint64_t unentries_count_;
+};
+
+// class FileReadListner : public EventListener {
+//   public:
+//     FileReadListner(DB* db) : total_bytes_read_(0), db_(db) {}
+
+//   void reset() {
+//     total_bytes_read_ = 0;
+//   }
+
+//   uint64_t total_bytes_read() {
+//     return total_bytes_read_;
+//   }
+
+//   void OnFileReadFinish(const FileOperationInfo& file_op_info) override {
+//     total_bytes_read_ += file_op_info.length;
+//   }
+
+//   bool ShouldBeNotifiedOnFileIO() override {
+//     return ;
+//   }
+
+//   private:
+//     DB* db_;
+//     uint64_t total_bytes_read_;
+// };
+
 int runWorkload(EmuEnv* _env) {
   DB* db;
   Options options;
@@ -75,9 +168,13 @@ int runWorkload(EmuEnv* _env) {
   }
 
   // options.info_log_level = InfoLogLevel::DEBUG_LEVEL;
-  std::shared_ptr<CompactionsListner> listener =
+  std::shared_ptr<CompactionsListner> compaction_listener =
       std::make_shared<CompactionsListner>();
-  options.listeners.emplace_back(listener);
+  std::shared_ptr<PartialAndFullRangeFlushListner>
+      partial_range_flush_listener =
+          std::make_shared<PartialAndFullRangeFlushListner>();
+  options.listeners.emplace_back(compaction_listener);
+  options.listeners.emplace_back(partial_range_flush_listener);
 
   printExperimentalSetup(_env);  // !YBS-sep07-XX!
   std::cout << "Maximum #OpenFiles = " << options.max_open_files
@@ -104,7 +201,6 @@ int runWorkload(EmuEnv* _env) {
 #ifdef PROFILE
   // number of epochs to run the experiment
   int num_epochs = 10;
-  bool done_with_loading_db = false;
   int num_instructions_for_one_epoch =
       (_env->num_updates / num_epochs) + (_env->num_range_queries / num_epochs);
   int num_instructions_executed_for_one_epoch = 0;
@@ -147,15 +243,21 @@ int runWorkload(EmuEnv* _env) {
   uint32_t counter = 0;                       // for progress bar
 
 #ifdef TIMER
-  unsigned long long operations_execution_time = 0;
-  unsigned long long workload_execution_time = 0;
-  unsigned long long all_inserts_time = 0;
-  unsigned long long all_updates_time = 0;
-  unsigned long long all_range_queries_time = 0;
+  unsigned long operations_execution_time = 0;
+  unsigned long workload_execution_time = 0;
+  unsigned long all_inserts_time = 0;
+  unsigned long all_updates_time = 0;
+  unsigned long all_range_queries_time = 0;
   auto workload_start = std::chrono::high_resolution_clock::now();
-  std::vector<unsigned long long> range_queries_time(_env->num_range_queries,
-                                                     0);
-  long rq_count = 0;
+  std::vector<std::tuple<unsigned long /*total execution time*/,
+                         unsigned long /*data ubytes written back*/,
+                         unsigned long /*total ubytes written back*/,
+                         unsigned long /*entries ucount written back*/,
+                         unsigned long /*entries count read for RQ*/,
+                         unsigned long /*data unbytes written back*/,
+                         unsigned long /*total unbytes written back*/,
+                         unsigned long /*entries uncount written back*/>>
+      range_queries_;
 #endif  // TIMER
 
   while (!workload_file.eof()) {
@@ -192,9 +294,6 @@ int runWorkload(EmuEnv* _env) {
         break;
 
       case 'U':  // update
-#ifdef PROFILE
-        done_with_loading_db = true;
-#endif  // PROFILE
         workload_file >> key >> value;
 
         {
@@ -271,14 +370,15 @@ int runWorkload(EmuEnv* _env) {
         {
 #ifdef TIMER
           auto start = std::chrono::high_resolution_clock::now();
+          partial_range_flush_listener->reset();
 #endif  // TIMER
 
+          uint64_t entries_count_read = 0;
+
           if (lexico_valid) {
-            if (_env->enable_range_query_compaction) {
-              it->Refresh(to_string(start_key), to_string(end_key));
-            } else {
-              it->Refresh();
-            }
+            it->Refresh(to_string(start_key), to_string(end_key),
+                    entries_count_read,
+                    _env->enable_range_query_compaction);
           }
 
           assert(it->status().ok());
@@ -302,7 +402,16 @@ int runWorkload(EmuEnv* _env) {
               stop - start);
           operations_execution_time += duration.count();
           all_range_queries_time += duration.count();
-          range_queries_time.at(rq_count++) = duration.count();
+          range_queries_.emplace_back(std::make_tuple(
+              duration.count(),
+              partial_range_flush_listener->udata_bytes_written(),
+              partial_range_flush_listener->utotal_bytes_written(),
+              partial_range_flush_listener->uentries_count(),
+              entries_count_read,
+              partial_range_flush_listener->undata_bytes_written(),
+              partial_range_flush_listener->untotal_bytes_written(),
+              partial_range_flush_listener->unentries_count()));
+          partial_range_flush_listener->reset();
 #endif  // TIMER
         }
 
@@ -318,8 +427,8 @@ int runWorkload(EmuEnv* _env) {
     }
 
 #ifdef PROFILE
-    if (done_with_loading_db) {
-      if (counter == _env->num_inserts + 1) {
+    if (counter >= _env->num_inserts) {
+      if (counter == _env->num_inserts) {
         std::cout << "=====================" << std::endl;
         std::cout << "Inserts are completed ..." << std::endl;
 
@@ -402,27 +511,45 @@ int runWorkload(EmuEnv* _env) {
 
         ColumnFamilyMetaData metadata;
         db->GetColumnFamilyMetaData(&metadata);
+        std::stringstream cfd_details;
+        std::stringstream all_level_details;
+        unsigned long long total_entries_in_cfd = 0;
+
         // Print column family metadata
-        std::cout << "Column Family Name: " << metadata.name
-                  << ", Size: " << metadata.size
-                  << " bytes, Files Count: " << metadata.file_count
-                  << std::endl;
+        cfd_details << "Column Family Name: " << metadata.name
+                    << ", Size: " << metadata.size
+                    << " bytes, Files Count: " << metadata.file_count;
 
         // Print metadata for each level
         for (const auto& level : metadata.levels) {
-          std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-                    << " bytes, Files Count: " << level.files.size()
-                    << std::endl;
-          std::cout << "\t\t";
+          std::stringstream level_details;
+          level_details << "\tLevel: " << level.level
+                        << ", Size: " << level.size
+                        << " bytes, Files Count: " << level.files.size();
+
+          unsigned long long total_entries_in_one_level = 0;
+          std::stringstream level_sst_file_details;
 
           // Print metadata for each file in the level
           for (const auto& file : level.files) {
-            std::cout << "[#" << file.file_number << ":" << file.size << " ("
-                      << file.smallestkey << ", " << file.largestkey << ") "
-                      << file.num_entries << "], ";
+            total_entries_in_one_level += file.num_entries;
+            level_sst_file_details << "[#" << file.file_number << ":"
+                                   << file.size << " (" << file.smallestkey
+                                   << ", " << file.largestkey << ") "
+                                   << file.num_entries << "], ";
           }
-          std::cout << std::endl;
+          total_entries_in_cfd += total_entries_in_one_level;
+          level_details << ", Entries Count: " << total_entries_in_one_level
+                        << "\n\t\t";
+          all_level_details << level_details.str()
+                            << level_sst_file_details.str() << std::endl;
         }
+
+        std::cout << cfd_details.str()
+                  << ", Entries Count: " << total_entries_in_cfd
+                  << ", Invalid Entries Count: "
+                  << total_entries_in_cfd - _env->num_inserts << std::endl
+                  << all_level_details.str() << std::endl;
 
       } else if (num_instructions_executed_for_one_epoch ==
                  num_instructions_for_one_epoch) {
@@ -457,27 +584,45 @@ int runWorkload(EmuEnv* _env) {
 
         ColumnFamilyMetaData metadata;
         db->GetColumnFamilyMetaData(&metadata);
+        std::stringstream cfd_details;
+        std::stringstream all_level_details;
+        unsigned long long total_entries_in_cfd = 0;
+
         // Print column family metadata
-        std::cout << "Column Family Name: " << metadata.name
-                  << ", Size: " << metadata.size
-                  << " bytes, Files Count: " << metadata.file_count
-                  << std::endl;
+        cfd_details << "Column Family Name: " << metadata.name
+                    << ", Size: " << metadata.size
+                    << " bytes, Files Count: " << metadata.file_count;
 
         // Print metadata for each level
         for (const auto& level : metadata.levels) {
-          std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-                    << " bytes, Files Count: " << level.files.size()
-                    << std::endl;
-          std::cout << "\t\t";
+          std::stringstream level_details;
+          level_details << "\tLevel: " << level.level
+                        << ", Size: " << level.size
+                        << " bytes, Files Count: " << level.files.size();
+
+          unsigned long long total_entries_in_one_level = 0;
+          std::stringstream level_sst_file_details;
 
           // Print metadata for each file in the level
           for (const auto& file : level.files) {
-            std::cout << "[#" << file.file_number << ":" << file.size << " ("
-                      << file.smallestkey << ", " << file.largestkey << ") "
-                      << file.num_entries << "], ";
+            total_entries_in_one_level += file.num_entries;
+            level_sst_file_details << "[#" << file.file_number << ":"
+                                   << file.size << " (" << file.smallestkey
+                                   << ", " << file.largestkey << ") "
+                                   << file.num_entries << "], ";
           }
-          std::cout << std::endl;
+          total_entries_in_cfd += total_entries_in_one_level;
+          level_details << ", Entries Count: " << total_entries_in_one_level
+                        << "\n\t\t";
+          all_level_details << level_details.str()
+                            << level_sst_file_details.str() << std::endl;
         }
+
+        std::cout << cfd_details.str()
+                  << ", Entries Count: " << total_entries_in_cfd
+                  << ", Invalid Entries Count: "
+                  << total_entries_in_cfd - _env->num_inserts << std::endl
+                  << all_level_details.str() << std::endl;
 
         std::cout << "Rocksdb Statistics: " << std::endl;
         std::cout << "rocksdb.compact.read.bytes: "
@@ -543,25 +688,43 @@ int runWorkload(EmuEnv* _env) {
 
   ColumnFamilyMetaData metadata;
   db->GetColumnFamilyMetaData(&metadata);
+  std::stringstream cfd_details;
+  std::stringstream all_level_details;
+  unsigned long long total_entries_in_cfd = 0;
+
   // Print column family metadata
-  std::cout << "Column Family Name: " << metadata.name
-            << ", Size: " << metadata.size
-            << " bytes, Files Count: " << metadata.file_count << std::endl;
+  cfd_details << "Column Family Name: " << metadata.name
+              << ", Size: " << metadata.size
+              << " bytes, Files Count: " << metadata.file_count;
 
   // Print metadata for each level
   for (const auto& level : metadata.levels) {
-    std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-              << " bytes, Files Count: " << level.files.size() << std::endl;
-    std::cout << "\t\t";
+    std::stringstream level_details;
+    level_details << "\tLevel: " << level.level << ", Size: " << level.size
+                  << " bytes, Files Count: " << level.files.size();
+
+    unsigned long long total_entries_in_one_level = 0;
+    std::stringstream level_sst_file_details;
 
     // Print metadata for each file in the level
     for (const auto& file : level.files) {
-      std::cout << "[#" << file.file_number << ":" << file.size << " ("
-                << file.smallestkey << ", " << file.largestkey << ") "
-                << file.num_entries << "], ";
+      total_entries_in_one_level += file.num_entries;
+      level_sst_file_details << "[#" << file.file_number << ":" << file.size
+                             << " (" << file.smallestkey << ", "
+                             << file.largestkey << ") " << file.num_entries
+                             << "], ";
     }
-    std::cout << std::endl;
+    total_entries_in_cfd += total_entries_in_one_level;
+    level_details << ", Entries Count: " << total_entries_in_one_level
+                  << "\n\t\t";
+    all_level_details << level_details.str() << level_sst_file_details.str()
+                      << std::endl;
   }
+
+  std::cout << cfd_details.str() << ", Entries Count: " << total_entries_in_cfd
+            << ", Invalid Entries Count: "
+            << total_entries_in_cfd - _env->num_inserts << std::endl
+            << all_level_details.str() << std::endl;
 
   std::cout << "Rocksdb Statistics: " << std::endl;
   std::cout << "rocksdb.compact.read.bytes: "
@@ -587,85 +750,6 @@ int runWorkload(EmuEnv* _env) {
             << std::endl;
   std::cout << "rocksdb.compaction.times.micros: "
             << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
-#endif  // PROFILE
-
-  {
-    // Get live files and manifest size
-    std::vector<std::string> live_files;
-    uint64_t manifest_size;
-    db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
-    WaitForCompactions(db);
-  }
-
-#ifdef PROFILE
-  {
-    std::cout << "=====================" << std::endl;
-    std::cout << "Flushed memory buffers ..." << std::endl;
-    printProperty("rocksdb.obsolete-sst-files-size");
-    printProperty("rocksdb.live-sst-files-size");
-    printProperty("rocksdb.total-sst-files-size");
-    // printProperty("rocksdb.estimate-live-data-size");
-    // printProperty("rocksdb.estimate-table-readers-mem");
-    printProperty("rocksdb.estimate-num-keys");
-    printProperty("rocksdb.num-entries-active-mem-table");
-    printProperty("rocksdb.num-entries-imm-mem-tables");
-    // printProperty("rocksdb.size-all-mem-tables");
-    // printProperty("rocksdb.cur-size-all-mem-tables");
-    // printProperty("rocksdb.cur-size-active-mem-table");
-    // printProperty("rocksdb.levelstats");
-    // printProperty("rocksdb.sstables");
-    // printProperty("rocksdb.stats");
-
-    std::cout << std::endl;
-
-    ColumnFamilyMetaData metadata;
-    db->GetColumnFamilyMetaData(&metadata);
-    // Print column family metadata
-    std::cout << "Column Family Name: " << metadata.name
-              << ", Size: " << metadata.size
-              << " bytes, Files Count: " << metadata.file_count << std::endl;
-
-    // Print metadata for each level
-    for (const auto& level : metadata.levels) {
-      std::cout << "\tLevel: " << level.level << ", Size: " << level.size
-                << " bytes, Files Count: " << level.files.size() << std::endl;
-      std::cout << "\t\t";
-
-      // Print metadata for each file in the level
-      for (const auto& file : level.files) {
-        std::cout << "[#" << file.file_number << ":" << file.size << " ("
-                  << file.smallestkey << ", " << file.largestkey << ") "
-                  << file.num_entries << "], ";
-      }
-      std::cout << std::endl;
-    }
-
-    std::cout << "Rocksdb Statistics: " << std::endl;
-    std::cout << "rocksdb.compact.read.bytes: "
-              << options.statistics->getTickerCount(COMPACT_READ_BYTES)
-              << std::endl;
-    std::cout << "rocksdb.compact.write.bytes: "
-              << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
-              << std::endl;
-    std::cout << "rocksdb.flush.write.bytes: "
-              << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
-              << std::endl;
-    std::cout << "rocksdb.partial.file.flush.count: "
-              << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
-              << std::endl;
-    std::cout << "rocksdb.partial.file.flush.bytes: "
-              << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
-              << std::endl;
-    std::cout << "rocksdb.full.file.flush.count: "
-              << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
-              << std::endl;
-    std::cout << "rocksdb.full.file.flush.bytes: "
-              << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
-              << std::endl;
-    std::cout << "rocksdb.compaction.times.micros: "
-              << options.statistics->getTickerCount(COMPACTION_TIME)
-              << std::endl;
-  }
 #endif  // PROFILE
 
   {
@@ -727,11 +811,21 @@ int runWorkload(EmuEnv* _env) {
   std::ofstream rq_time_file("range_queries.csv");
 
   // Write header
-  rq_time_file << "Number, Time" << std::endl;
+  rq_time_file << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
+                  "uBytes Written Back, uEntries Count Written Back, Total "
+                  "Entries Read, Data unBytes Written Back, Total unBytes "
+                  "Written Back, unEntries Count Written Back"
+               << std::endl;
 
   // Write data from range_queries_time to CSV
-  for (int i = 0; i < range_queries_time.size(); ++i) {
-    rq_time_file << i + 1 << ", " << range_queries_time[i] << std::endl;
+  for (int i = 0; i < range_queries_.size(); ++i) {
+    std::tuple<unsigned long, unsigned long, unsigned long, unsigned long,
+               unsigned long, unsigned long, unsigned long, unsigned long>
+        rq = range_queries_[i];
+    rq_time_file << i + 1 << ", " << std::get<0>(rq) << ", " << std::get<1>(rq)
+                 << ", " << std::get<2>(rq) << ", " << std::get<3>(rq) << ", "
+                 << std::get<4>(rq) << ", " << std::get<5>(rq) << ", "
+                 << std::get<6>(rq) << ", " << std::get<7>(rq) << std::endl;
   }
 
   // Close the file

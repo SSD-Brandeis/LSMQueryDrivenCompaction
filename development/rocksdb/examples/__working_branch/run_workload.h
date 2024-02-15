@@ -377,8 +377,8 @@ int runWorkload(EmuEnv* _env) {
 
           if (lexico_valid) {
             it->Refresh(to_string(start_key), to_string(end_key),
-                    entries_count_read,
-                    _env->enable_range_query_compaction);
+                        entries_count_read,
+                        _env->enable_range_query_compaction);
           }
 
           assert(it->status().ok());
@@ -550,6 +550,34 @@ int runWorkload(EmuEnv* _env) {
                   << ", Invalid Entries Count: "
                   << total_entries_in_cfd - _env->num_inserts << std::endl
                   << all_level_details.str() << std::endl;
+
+        std::cout << "Rocksdb Statistics: " << std::endl;
+        std::cout << "rocksdb.compact.read.bytes: "
+                  << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.compact.write.bytes: "
+                  << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.flush.write.bytes: "
+                  << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.partial.file.flush.count: "
+                  << options.statistics->getTickerCount(
+                         PARTIAL_FILE_FLUSH_COUNT)
+                  << std::endl;
+        std::cout << "rocksdb.partial.file.flush.bytes: "
+                  << options.statistics->getTickerCount(
+                         PARTIAL_FILE_FLUSH_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.full.file.flush.count: "
+                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+                  << std::endl;
+        std::cout << "rocksdb.full.file.flush.bytes: "
+                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+                  << std::endl;
+        std::cout << "rocksdb.compaction.times.micros: "
+                  << options.statistics->getTickerCount(COMPACTION_TIME)
+                  << std::endl;
 
       } else if (num_instructions_executed_for_one_epoch ==
                  num_instructions_for_one_epoch) {

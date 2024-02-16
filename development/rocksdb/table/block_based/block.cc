@@ -465,9 +465,9 @@ std::tuple<uint64_t, Slice> IndexBlockIter::SeekAndReturnSkipCount(
     Slice last_key;
 
     while (this->Valid() && CompareCurrentKey(target) <= 0) {
+      last_key = this->key();
       this->Next();
       InternalKey next_ikey;
-      last_key = this->key();
       next_ikey.DecodeFrom(this->key());
       offset = this->value().handle.offset();
     }

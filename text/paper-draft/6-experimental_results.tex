@@ -49,46 +49,45 @@ we used is as follows.
     \item Selectivity for Range Queries \-- 0.2, 0.4, 0.8
 \end{enumerate}
 
-\begin{figure}
-    \centering
-    \includegraphics[scale=0.45]{Figures/Compaction Times.png}
-    \caption{Comparison of the number of compactions triggered between RQDC and vanilla. 
-    The results illustrate that RQDC exhibits a significantly lower number of compactions.}\label{fig:compaction_times}
-\end{figure}
+% \begin{figure}
+%     \centering
+%     \includegraphics[scale=0.45]{Figures/Compaction Times.png}
+%     \caption{Comparison of the number of compactions triggered between RQDC and vanilla. 
+%     The results illustrate that RQDC exhibits a significantly lower number of compactions.}\label{fig:compaction_times}
+% \end{figure}
 
-\begin{figure}
-    \centering
-    \includegraphics[scale=0.45]{Figures/Range Query Flush Write Bytes.png}
-    \caption{Experiments that shows 10 times more writes with query-driven compaction approach probably because of not 
-    considering the percentage of overlaps between levels}\label{fig:range_query_flush_write_bytes}
-\end{figure}
+% \begin{figure}
+%     \centering
+%     \includegraphics[scale=0.45]{Figures/Range Query Flush Write Bytes.png}
+%     \caption{Experiments that shows 10 times more writes with query-driven compaction approach probably because of not 
+%     considering the percentage of overlaps between levels}\label{fig:range_query_flush_write_bytes}
+% \end{figure}
 
 The results show that the number of compactions triggered during the execution of the entire workload was significantly 
-lower in the query-driven compaction than the vanilla approach (shown in Figure~\ref{fig:compaction_times}). This is 
+lower in the query-driven compaction than the vanilla approach. This is 
 expected since the RQDC approach performed these compactions during the range query executions. Additionally, 
 the bytes written during background compactions are comparatively less in RQDC than in vanilla for the same reason. 
-The Figure~\ref{fig:range_query_flush_write_bytes} 
-shows the total number of bytes written during the ingestions and the bytes written during the query-driven compaction, 
-which is almost 10x higher than the vanilla approach. The positive aspect is that this factor can be tuned by pre-computing 
+The total number of bytes written during the ingestions and the bytes written during the query-driven compaction
+is almost 10x higher than the vanilla approach. The positive aspect is that this factor can be tuned by pre-computing 
 the overlapping entries between the adjacent levels before performing the range query. If the lower levels have fewer entries 
 that overlap with the higher level, then we can perform the vanilla fashion range query. However, if the overlap is more, 
 then we can opt for query-driven compaction. These first set of experiments gave us a clear indication that we cannot 
 use the query-driven approach for each range query blindly.
 
-\begin{figure}
-    \includegraphics[scale=0.34]{Figures/utl_ltu_approach.png}
-    \caption{Comparison of total write amplification between Vanilla and RQDC using informative compaction approach 
-    (This includes fluhes, compactions, ingestion and RQ writes)}\label{fig:utl_ltu_approach}
-\end{figure}
+% \begin{figure}
+%     \includegraphics[scale=0.34]{Figures/utl_ltu_approach.png}
+%     \caption{Comparison of total write amplification between Vanilla and RQDC using informative compaction approach 
+%     (This includes fluhes, compactions, ingestion and RQ writes)}\label{fig:utl_ltu_approach}
+% \end{figure}
 
 We ran our second set of experiments using more informative compaction approach that we dicussed in section 4.3. The 
-observations are as follows: the new approach has nearly the same write amplification as we have for vanilla but 
-it provides a benefit of reduced space amplification. The experiments were conducted several time for a 25\% selectivity 
-of range queries using \textit{lower\_bound} and \textit{upper\_bound} as 0.4 and 0.8 respectively (shown in 
-Figure~\ref{fig:utl_ltu_approach}). The ``Approach-1'' shows the total bytes written for our first approach where it 
-performs compaction for every range query without thinking about the ovalapping entires.
-
-Our third set of experimental design was as follows: we ran our each experiment in 11 epochs. The first epoch consisted only 
+observations are as follows: the new approach has nearly the same write amplification as we have for vanilla and 
+it provides a benefit of reduced space amplification. 
+% The experiments were conducted several time for a 25\% selectivity 
+% of range queries using \textit{lower\_bound} and \textit{upper\_bound} as 0.4 and 0.8 respectively (shown in 
+% Figure~\ref{fig:utl_ltu_approach}). The ``Approach-1'' shows the total bytes written for our first approach where it 
+% performs compaction for every range query without thinking about the ovalapping entires.
+Our third set of experimental design was as follows: we ran each experiment in 11 epochs. The first epoch consisted only 
 of inserts, set at 1 million to ensure our database is fully loaded. Subsequently, we ran 10 epochs with each epoch having 
 25\% updates and 10 range queries with specific selectivity (10\% results are shown here).The size ratio we choose randomly as 4 \textit{(T)}. 
 After each epoch, we recorded the total number of bytes written up to that point, the time taken by each range query for 
@@ -97,8 +96,9 @@ that epoch, and the total number of files and keys in our database.
 The Figure~\ref{fig:epoch_experiments} reveals insights into the performance of Vanilla and Query-Driven 
 Compaction (RQDC) in this experimental setting. In the Vanilla approach, the total number of files are 1551, containing 
 a sum of 1,196,758 entries. In contrast, RQDC demonstrates its efficiency with 982 files and a total of 1,025,110 entries. 
-This significant reduction in the number of files, along with a slightly decreased total entry count comes with a cost 
-of more write amplification. This showcases the effectiveness of RQDC in optimizing space utilization.
+This reduction in the number of files, along with a slightly decreased total entry count comes with a cost 
+of more write amplification. 
+% This showcases the effectiveness of RQDC in optimizing space utilization.
 
 \begin{figure}
     \includegraphics[scale=0.3]{Figures/epoch-experiment-size-ratio-4.png}

@@ -13,7 +13,7 @@ making room for new data in lower levels.
 
 \Paragraph{Range queries} The LSM design is optimized for write-heavy workloads, but it also supports range queries. The
 range queries are performed by merging the sorted runs from multiple levels and filtering out the keys that have been
-logically invalided. This process is also called \textbf{sort-merge}, which is similar to the compaction~\cite{Sarkar2021}.
+logically invalided. This process is also called \textbf{sort-merge}, which is similar to the compaction.
 
 \Paragraph{Problem} When executing a range query, the sort-merge operation is performed on sorted runs from multiple 
 levels that retrieves both valid and invalid keys from those levels. Consequently, more data is read than 
@@ -47,7 +47,7 @@ write, and space amplification.
 
 % Contributions
 \subsection{Contributions}
-In this paper, we present a query-driven compaction strategy that involves writing the valid keys back to the higher 
+In this project, we present a query-driven compaction strategy that involves writing the valid keys back to the higher 
 levels of the LSM tree. While this approach may slightly increase the flush write bytes during a range query, it 
 substantially reduces the presence of invalid keys in the LSM tree. As a result, there is a notable reduction in read, 
 write, and space amplification during both compaction processes and future range queries. We have also implemented our
@@ -74,7 +74,7 @@ to 0 and 6, it compact more data for a specific range query than it does for 0.2
 \Paragraph{Improved Range Query Performance}
 RQDC significantly enhances the efficiency of range queries, as evidenced by findings from a workload scenario same as 
 above. In the vanilla approach, there was a continuous increase in the 
-percentage of invalid keys read by range queries (shown in Figure~\ref{fig:increased_invalid_keys}), reaching up to 2\% of unique inserts by the end of the workload run. 
+percentage of invalid keys read by range queries (show in Figure~\ref{fig:increased_invalid_keys}), reaching up to 2\% of unique inserts by the end of the workload run. 
 However, when the experiment was conducted with RQDC, specifically with lower and upper bounds set at 0 and 6, 
 respectively, the percentage of invalid keys read by range queries came down to 0.7\% with a cost of a 30\% increase in 
 average range query time (shown in Figure~\ref{fig:reduced_invalid_keys} and Figure~\ref{fig:increased_range_queries_time}). 

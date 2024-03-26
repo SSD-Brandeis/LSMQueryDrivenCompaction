@@ -22,7 +22,6 @@ are as follows (shown in Figure~\ref{fig:file_range_overlaps}).
     \caption{Illustration of the problem of increased writes in query-driven compaction caused by reduced overlap. This scenario arises when there is less overlap between levels that are compacted during range query, leading to a higher number of writes.}\label{fig:query-driven_compaction_with_increased_writes}
 \end{figure*}
 
-% \subhadeep{For enumerate, always use the following options.}
 \begin{enumerate}[leftmargin=*,labelindent=0mm, itemsep=0.2\baselineskip]
     \item \textbf{No overlap} In this scenario, the partial file flush will not happen as the file does not overlap. 
     Figure~\ref{fig:file_range_overlaps} (e)
@@ -83,9 +82,6 @@ and the remaining 10\% is evenly distributed across the entire range. In this sc
 retrieved from the level where the previous query stored valid keys, while the remaining 10\% will be read from other 
 levels. If a query-driven compaction is performed, it will result in writing more valid keys at the same level, leading 
 to increased writes, as illustrated in Figure~\ref{fig:query-driven_compaction_with_increased_writes}.
-%  \subhadeep{sample Figure~caption.}
-
-% #TODO (shubham): Update the Figure~to make it uniformly distribute on full range
 
 % % decision making meta data table %
 
@@ -136,6 +132,56 @@ query and can be moved down from lower ($L_i$) level to higher ($L_{i+1..}$) lev
 If all the entries from the choosen SST file\(s\) from the lower level does not fall in the range of range query than the remaining entries 
 will be written to the same level in smaller (partial) files, as discussed earlier.
 
+Once we have this \textit{Useful entries} data for each level (shown in Table~\ref{table:decision-making-meta-data}), we create a decision matrix, as shown in Table-\ref{table:decision-matrix}. 
+In this matrix, each cell corresponds to the boolean value of $L_{[start, end]}$. Here, $L_{[start, end]}$ signifies the 
+range of levels where we can initiate the compaction process, extending up to the level where we can conclude the 
+compaction for a specific range query. 
+
+When a cell is true, it signifies that the query-driven compaction will use the result of the sort-merge operation for 
+levels within the specified range from \textit{start} to \textit{end}, inclusive, and then store it on the \textit{end} level.
+There are specific conditions for the truth value of a cell: 
+\begin{enumerate}[leftmargin=*,labelindent=0mm, itemsep=0.2\baselineskip]
+    \item It is always true on the diagonal of the decision matrix.
+    \item It is always false when \textit{end} is less than \textit{start}.
+    \item It will only be true when \textit{end} is greater than \textit{start}, and it satisfies below two conditions:
+    \begin{enumerate}[leftmargin=*,labelindent=0mm, itemsep=0.2\baselineskip]
+        \item The $\frac{E_{useful(end-1)}}{E_{useful(end)}}$ must be in between \textit{lower\_bound} (lb) and 
+        \textit{upper\_bound} (ub) thresholds, inclusively.
+        \item The cell value at $L_{start, end-1}$ must be true.        
+    \end{enumerate}
+\end{enumerate}
+
+\begin{flalign}
+    \label{eq:full_matrix}
+    &L_{[start, end]} =
+    \begin{cases}
+        \text{False}, & \text{if } \text{end} < \text{start}, \\
+        \text{True}, & \text{if } \text{start} = \text{end}, \\
+        R_{(start, end)}, & \text{if } \text{end} > \text{start}
+    \end{cases} &
+\end{flalign}
+% where 
+\begin{flalign}
+    \label{eq:decision_matrix}
+    &R_{(start, end)} =
+    \begin{cases}
+        \text{True}, 
+        & \begin{aligned}
+            & \text{if } L_{[start, \text{end}-1]} = \text{True}\\
+            & \text{ } \land lb \leq \frac{E_{\text{useful(end-1)}}}{E_{\text{useful(end)}}} \leq ub
+        \end{aligned}\\
+        \text{False}, & \text{otherwise}
+    \end{cases} &
+\end{flalign}\\
+
+Equation~\eqref{eq:decision_matrix} asserts that \(L_{[start, end]}\) is true only when \(R_{ij}\) is true for all 
+\(i\) in the range from \(\text{start}\) to \(\text{end}-1\), where \(j = i+1\). In this context, the 
+\textit{lower\_bound (lb)} threshold represents the minimum percentage of entries that should roughly overlap from 
+level \(i\) to level \(i+1\) to trigger compaction, and the \textit{upper\_bound (ub)} sets the maximum allowed 
+percentage of overlap. If the ratio of overlapping entries falls within the \textit{lower\_bound} and \textit{upper\_bound} 
+for all levels from \textit{start} to \textit{end} (\(L_{[start\ end]}\)), the system will choose query-driven 
+compaction; otherwise, it will proceed with the vanilla range query.
+
 \begin{figure}
     \includegraphics[scale=0.2]{Figures/first-state-lsm.jpg}
     \caption{Example demonstrating the query-driven compaction in a four-level LSM tree. The 
@@ -143,45 +189,19 @@ will be written to the same level in smaller (partial) files, as discussed earli
     2 MB, and 4 levels in the current state.}\label{fig:first-state-lsm}
 \end{figure}
 
-\begin{table}
-    % \resizebox{\linewidth}{!}{%
-    \begin{tabular}{|c|c|}
-        \hline
-        \textbf{Level} & \textbf{Number of Entries} \\
-        \hline
-        L-0 & \-- \\
-        \hline
-        L-1 & 2K \\
-        \hline
-        L-2 & 5K \\
-        \hline
-        L-3 & 6.5K \\
-        \hline
-    \end{tabular}
-    % }
-    \caption{Illustration of the \textit{$E_{useful}$} entries count for each level in the LSM tree for
-    the example presented in Figure~\ref{fig:first-state-lsm}}
-    \label{table:ex-decision-making-meta-data}
-\end{table}
+Let's try to understand this with an example. Consider we have an LSM with a \textit{size ratio} of 2 (T), a number
+of pages of 512 (P), a number of entries per page of 4 (B), and an entry size of 1024 B (E). Assume we have 4 levels in 
+the current LSM state (see Figure~\ref{fig:first-state-lsm}).
 
-\begin{table}
-    % \captionsetup{justification=centering,margin=2cm}
-    \begin{tabular}{ |c|c|c|c| }
-        \hline
-        \textbf{Level} & \textbf{L-1} & \hspace*{4.1mm}\textbf{L-2}\hspace*{4.1mm} & \hspace*{4.1mm}\textbf{L-3}\hspace*{4.1mm} \\
-        \hline
-        \textbf{L-1} & [-] = T & [-, 0.4] = T & [-, 0.4, 0.76] = T \\
-        \hline
-        \textbf{L-2} & $\times$ & [-] = T & [-, 0.76] = T \\
-        \hline
-        \textbf{L-3} &  $\times$ &  $\times$ & [-] = T \\
-        \hline
-    \end{tabular}
-    \caption{Decision matrix generated from the data in Table~\ref{table:ex-decision-making-meta-data}. Helps in 
-    decision-making process for compaction, providing insights into the selection of levels based on \textit{lb} and \textit{ub}.}
-    \label{table:ex-decision-matrix}
-\end{table}
+\begin{itemize}
+    \item Page size $\colon B * E \approx 4 KB$
+    \item File size $\colon P * B * E \approx 2 MB$
+    \item Total entries in a file $\colon P * B \approx 2 K$
+    \item $lower\_bound \colon 0.4\ \&\ upper\_bound \colon 1$ 
+\end{itemize}
 
+All the levels up to L2 are full, and L3 has 6 files. This means we have approximately 4K entries in L1 (2 SSTs), 8K in 
+L2 (4 SSTs), and 12K in L3 (6 SSTs) as shown in Figure~\ref{fig:first-state-lsm}.
 
 \begin{table*}
     \centering
@@ -241,69 +261,44 @@ will be written to the same level in smaller (partial) files, as discussed earli
     \label{table:ex-not-performing-compaction}
 \end{table*}
 
-Once we have this \textit{Useful entries} data for each level (shown in Table~\ref{table:decision-making-meta-data}), we create a decision matrix, as shown in Table-\ref{table:decision-matrix}. 
-In this matrix, each cell corresponds to the boolean value of $L_{[start, end]}$. Here, $L_{[start, end]}$ signifies the 
-range of levels where we can initiate the compaction process, extending up to the level where we can conclude the 
-compaction for a specific range query. 
+\begin{table}
+    % \resizebox{\linewidth}{!}{%
+    \begin{tabular}{|c|c|}
+        \hline
+        \textbf{Level} & \textbf{Number of Entries} \\
+        \hline
+        L-0 & \-- \\
+        \hline
+        L-1 & 2K \\
+        \hline
+        L-2 & 5K \\
+        \hline
+        L-3 & 6.5K \\
+        \hline
+    \end{tabular}
+    % }
+    \caption{Illustration of the \textit{$E_{useful}$} entries count for each level in the LSM tree for
+    the example presented in Figure~\ref{fig:first-state-lsm}}
+    \label{table:ex-decision-making-meta-data}
+\end{table}
 
-When a cell is true, it signifies that the query-driven compaction will use the result of the sort-merge operation for 
-levels within the specified range from \textit{start} to \textit{end}, inclusive, and then store it on the \textit{end} level.
-There are specific conditions for the truth value of a cell: 
-\begin{enumerate}[leftmargin=*,labelindent=0mm, itemsep=0.2\baselineskip]
-    \item It is always true on the diagonal of the decision matrix.
-    \item It is always false when \textit{end} is less than \textit{start}.
-    \item It will only be true when \textit{end} is greater than \textit{start}, and it satisfies below two conditions:
-    \begin{enumerate}[leftmargin=*,labelindent=0mm, itemsep=0.2\baselineskip]
-        \item The $\frac{E_{useful(end-1)}}{E_{useful(end)}}$ must be in between \textit{lower\_bound} (lb) and 
-        \textit{upper\_bound} (ub) thresholds, inclusively.
-        \item The cell value at $L_{start, end-1}$ must be true.        
-    \end{enumerate}
-\end{enumerate}
-
-\begin{flalign}
-    \label{eq:full_matrix}
-    &L_{[start, end]} =
-    \begin{cases}
-        \text{False}, & \text{if } \text{end} < \text{start}, \\
-        \text{True}, & \text{if } \text{start} = \text{end}, \\
-        R_{(start, end)}, & \text{if } \text{end} > \text{start}
-    \end{cases} &
-\end{flalign}
-% where 
-\begin{flalign}
-    \label{eq:decision_matrix}
-    &R_{(start, end)} =
-    \begin{cases}
-        \text{True}, 
-        & \begin{aligned}
-            & \text{if } L_{[start, \text{end}-1]} = \text{True}\\
-            & \text{ } \land lb \leq \frac{E_{\text{useful(end-1)}}}{E_{\text{useful(end)}}} \leq ub
-        \end{aligned}\\
-        \text{False}, & \text{otherwise}
-    \end{cases} &
-\end{flalign}\\
-
-Equation~\eqref{eq:decision_matrix} asserts that \(L_{[start, end]}\) is true only when \(R_{ij}\) is true for all 
-\(i\) in the range from \(\text{start}\) to \(\text{end}-1\), where \(j = i+1\). In this context, the 
-\textit{lower\_bound (lb)} threshold represents the minimum percentage of entries that should roughly overlap from 
-level \(i\) to level \(i+1\) to trigger compaction, and the \textit{upper\_bound (ub)} sets the maximum allowed 
-percentage of overlap. If the ratio of overlapping entries falls within the \textit{lower\_bound} and \textit{upper\_bound} 
-for all levels from \textit{start} to \textit{end} (\(L_{[start\ end]}\)), the system will choose query-driven 
-compaction; otherwise, it will proceed with the vanilla range query.
-
-Let's try to understand this with an example. Consider we have an LSM with a \textit{size ratio} of 2 (T), a number
-of pages of 512 (P), a number of entries per page of 4 (B), and an entry size of 1024 B (E). Assume we have 4 levels in 
-the current LSM state (see Figure~\ref{fig:first-state-lsm}).
-
-\begin{itemize}
-    \item Page size $\colon B * E \approx 4 KB$
-    \item File size $\colon P * B * E \approx 2 MB$
-    \item Total entries in a file $\colon P * B \approx 2 K$
-    \item $lower\_bound \colon 0.4\ \&\ upper\_bound \colon 1$ 
-\end{itemize}
-
-All the levels up to L2 are full, and L3 has 6 files. This means we have approximately 4K entries in L1 (2 SSTs), 8K in 
-L2 (4 SSTs), and 12K in L3 (6 SSTs) as shown in Figure~\ref{fig:first-state-lsm}.
+\begin{table}
+    % \captionsetup{justification=centering,margin=2cm}
+    \begin{tabular}{ |c|c|c|c| }
+        \hline
+        \textbf{Level} & \textbf{L-1} & \hspace*{4.1mm}\textbf{L-2}\hspace*{4.1mm} & \hspace*{4.1mm}\textbf{L-3}\hspace*{4.1mm} \\
+        \hline
+        \textbf{L-1} & [-] = T & [-, 0.4] = T & [-, 0.4, 0.76] = T \\
+        \hline
+        \textbf{L-2} & $\times$ & [-] = T & [-, 0.76] = T \\
+        \hline
+        \textbf{L-3} &  $\times$ &  $\times$ & [-] = T \\
+        \hline
+    \end{tabular}
+    \caption{Decision matrix generated from the data in Table~\ref{table:ex-decision-making-meta-data}. Helps in 
+    decision-making process for compaction, providing insights into the selection of levels based on \textit{lb} and \textit{ub}.}
+    \label{table:ex-decision-matrix}
+\end{table}
 
 Now, consider a range query that will read entries from L1, L2, and L3 (shaded portion in Figure~\ref{fig:first-state-lsm}).
 The $E_{useful}$ for $L_1$ would be $2K$, as $50\%$ entries from both the SST files falls in the range of the range query.

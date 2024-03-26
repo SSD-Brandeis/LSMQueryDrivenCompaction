@@ -3,11 +3,6 @@
     \caption{Possible file overlaps with range-query}\label{fig:file_range_overlaps}
 \end{figure}
 
-\begin{figure*}
-    \includegraphics[scale=0.10]{Figures/RQ-driven numeric key sorting.png}
-    \caption{Flow diagram of query-driven compaction in LSM. This outlines the steps involved in compaction during range query.}\label{fig:query-driven_compaction}
-\end{figure*}
-
 LSM-based data stores are designed to efficiently manage write-heavy workloads. The data is ingested through 
 an in-memory buffer (a.k.a memtable in Rocksdb), a data structure that stores keys and their corresponding values. 
 Once an in-memory buffer reaches its capacity, it is flushed to the disk in the form of an immutable sorted file (a.k.a Sorted Strings Table, SSTable or SST). 
@@ -39,3 +34,8 @@ overlapping files from the higher level. Invalid keys are filtered out during th
 written to the higher level. The compaction process will always occurs between adjacent levels. Once a file is compacted, 
 it is removed from the lower level, and the new compacted file is written to the higher level. This process can repeat
 multiple times until the level size falls below a specified threshold.
+
+\begin{figure*}
+    \includegraphics[scale=0.10]{Figures/RQ-driven numeric key sorting.png}
+    \caption{Flow diagram of query-driven compaction in LSM. This outlines the steps involved in compaction during range query.}\label{fig:query-driven_compaction}
+\end{figure*}

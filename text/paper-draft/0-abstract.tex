@@ -4,7 +4,7 @@ invalidate keys that may exists on multiple levels, helps LSM-trees excel for wr
 LSM-tree designs do not capitalize on the sort-merge operations performed for the range queries, which leads to carrying 
 out almost the same amount of work for each range query, even when they are same or overlapping. This inefficiency can 
 result in the wastage of CPU cycles and unnecessary I/O operations in worst-case scenarios due to presence of logically 
-invalid keys.
+invalid keys. \cite{sarkar22}
 
 In this paper, we present a query-driven compaction strategy that removes the invalid (logically deleted) keys from the 
 LSM-tree and flushes back the valid keys filtered by sort-merge performed during a range query. We conduct performance 

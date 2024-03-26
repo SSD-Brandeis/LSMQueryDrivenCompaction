@@ -74,7 +74,7 @@ to 0 and 6, it compact more data for a specific range query than it does for 0.2
 \Paragraph{Improved Range Query Performance}
 RQDC significantly enhances the efficiency of range queries, as evidenced by findings from a workload scenario same as 
 above. In the vanilla approach, there was a continuous increase in the 
-percentage of invalid keys read by range queries (show in Figure~\ref{fig:increased_invalid_keys}), reaching up to 2\% of unique inserts by the end of the workload run. 
+percentage of invalid keys read by range queries (shown in Figure~\ref{fig:increased_invalid_keys}), reaching up to 2\% of unique inserts by the end of the workload run. 
 However, when the experiment was conducted with RQDC, specifically with lower and upper bounds set at 0 and 6, 
 respectively, the percentage of invalid keys read by range queries came down to 0.7\% with a cost of a 30\% increase in 
 average range query time (shown in Figure~\ref{fig:reduced_invalid_keys} and Figure~\ref{fig:increased_range_queries_time}). 

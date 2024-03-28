@@ -1,0 +1,3 @@
+[submodule "text/paper-draft"]
+	path = text/paper-draft
+	url = https://github.com/SSD-Brandeis/LSMQueryDrivenCompactionText.git

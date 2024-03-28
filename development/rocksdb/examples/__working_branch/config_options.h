@@ -15,7 +15,7 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   op->statistics = CreateDBStatistics();
   op->write_buffer_size = _env->buffer_size;
   op->max_write_buffer_number = _env->max_write_buffer_number;
-  op->enable_thread_tracking = true;
+  // op->enable_thread_tracking = true;
 
   switch (_env->memtable_factory) {
     case 1:
@@ -119,7 +119,9 @@ void configOptions(EmuEnv *_env, Options *op, BlockBasedTableOptions *t_op,
   op->target_file_size_multiplier = _env->target_file_size_multiplier;
   op->max_background_jobs = _env->max_background_jobs;
   op->max_compaction_bytes = _env->max_compaction_bytes;
-  op->max_bytes_for_level_base = _env->buffer_size;  // * _env->size_ratio;
+  op->max_bytes_for_level_base = _env->buffer_size * _env->size_ratio;
+  //below is to keep only one file at level 0
+  // op->max_bytes_for_level_base = _env->buffer_size;  // * _env->size_ratio;
   if (_env->merge_operator == 0) {
     ;  // do nothing
   } else {

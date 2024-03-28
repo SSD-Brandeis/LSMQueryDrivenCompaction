@@ -156,16 +156,14 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
   _env->enable_rocksdb_perf_iostat =
       enable_rocksdb_perf_iostat_cmd ? args::get(enable_rocksdb_perf_iostat_cmd)
                                      : 0;
+  _env->max_background_jobs = 0;
+  _env->target_file_size_base = _env->buffer_size;
+  _env->max_bytes_for_level_base = _env->buffer_size * _env->size_ratio;
 
   _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
   _env->num_updates = num_updates_cmd ? args::get(num_updates_cmd) : 0;
   _env->num_range_queries =
       num_range_queries_cmd ? args::get(num_range_queries_cmd) : 0;
-
-  _env->max_background_jobs = 0;
-
-  _env->target_file_size_base = _env->buffer_size;
-  _env->max_bytes_for_level_base = _env->buffer_size * _env->size_ratio;
 
   // Range Query Driven Compaction Options
   _env->enable_range_query_compaction =

@@ -221,7 +221,8 @@ int runWorkload(EmuEnv* _env) {
   // Clearing the system cache
   if (_env->clear_system_cache) {
     std::cout << "Clearing system cache ..." << std::endl;
-    system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'");
+    std::cout << system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'")
+              << std::endl;
   }
   // START stat collection
   if (_env->enable_rocksdb_perf_iostat == 1) {
@@ -248,15 +249,32 @@ int runWorkload(EmuEnv* _env) {
   unsigned long all_inserts_time = 0;
   unsigned long all_updates_time = 0;
   unsigned long all_range_queries_time = 0;
+  std::chrono::_V2::system_clock::time_point refresh_time;
+  unsigned long refresh_duration;
+  unsigned long reset_duration = 0;
+  unsigned long actual_range_time = 0;
+
+  unsigned long inserts_time_for_one_epoch = 0;
+  unsigned long updates_time_for_one_epoch = 0;
+  unsigned long range_queries_time_for_one_epoch = 0;
+
   auto workload_start = std::chrono::high_resolution_clock::now();
-  std::vector<std::tuple<unsigned long /*total execution time*/,
-                         unsigned long /*data ubytes written back*/,
-                         unsigned long /*total ubytes written back*/,
-                         unsigned long /*entries ucount written back*/,
-                         unsigned long /*entries count read for RQ*/,
-                         unsigned long /*data unbytes written back*/,
-                         unsigned long /*total unbytes written back*/,
-                         unsigned long /*entries uncount written back*/>>
+  std::vector<
+      std::tuple<unsigned long /*total execution time for RQ*/,
+                 unsigned long /*useful data bytes flushed to level*/,
+                 unsigned long /*useful total bytes (data + index + filter)
+                                  flushed to level*/
+                 ,
+                 unsigned long /*useful entries count flushed to level*/,
+                 unsigned long /*total entries read for RQ*/,
+                 unsigned long /*un-useful data bytes flushed to level*/,
+                 unsigned long /*un-useful total bytes (data + index + filter)
+                                  flushed to level*/
+                 ,
+                 unsigned long /*un-useful entries count flushed to level*/,
+                 unsigned long /*refresh time for range query*/,
+                 unsigned long /*reset time for range query*/,
+                 unsigned long /*actual range query time*/>>
       range_queries_;
 #endif  // TIMER
 
@@ -285,6 +303,7 @@ int runWorkload(EmuEnv* _env) {
               stop - start);
           operations_execution_time += duration.count();
           all_inserts_time += duration.count();
+          inserts_time_for_one_epoch += duration.count();
 #endif  // TIMER
         }
 
@@ -309,6 +328,7 @@ int runWorkload(EmuEnv* _env) {
               stop - start);
           operations_execution_time += duration.count();
           all_updates_time += duration.count();
+          updates_time_for_one_epoch += duration.count();
 #endif  // TIMER
         }
 
@@ -376,10 +396,132 @@ int runWorkload(EmuEnv* _env) {
           uint64_t entries_count_read = 0;
 
           if (lexico_valid) {
+            //             std::cout << "\nRangeQuery startkey: " << start_key
+            //                       << " endkey: " << end_key << std::endl;
+            //             {
+            // #ifdef PROFILE
+            //               ColumnFamilyMetaData metadata;
+            //               db->GetColumnFamilyMetaData(&metadata);
+            //               std::stringstream cfd_details;
+            //               std::stringstream all_level_details;
+            //               unsigned long long total_entries_in_cfd = 0;
+
+            //               // Print column family metadata
+            //               cfd_details << "Column Family Name: " <<
+            //               metadata.name
+            //                           << ", Size: " << metadata.size
+            //                           << " bytes, Files Count: " <<
+            //                           metadata.file_count;
+
+            //               // Print metadata for each level
+            //               for (const auto& level : metadata.levels) {
+            //                 std::stringstream level_details;
+            //                 level_details << "\tLevel: " << level.level
+            //                               << ", Size: " << level.size
+            //                               << " bytes, Files Count: " <<
+            //                               level.files.size();
+
+            //                 unsigned long long total_entries_in_one_level =
+            //                 0; std::stringstream level_sst_file_details;
+
+            //                 // Print metadata for each file in the level
+            //                 for (const auto& file : level.files) {
+            //                   total_entries_in_one_level += file.num_entries;
+            //                   level_sst_file_details
+            //                       << "[#" << file.file_number << ":" <<
+            //                       file.size << " ("
+            //                       << file.smallestkey << ", " <<
+            //                       file.largestkey << ") "
+            //                       << file.num_entries << "], ";
+            //                 }
+            //                 total_entries_in_cfd +=
+            //                 total_entries_in_one_level; level_details
+            //                     << ", Entries Count: " <<
+            //                     total_entries_in_one_level
+            //                     << "\n\t\t";
+            //                 all_level_details << level_details.str()
+            //                                   << level_sst_file_details.str()
+            //                                   << std::endl;
+            //               }
+
+            //               std::cout << cfd_details.str()
+            //                         << ", Entries Count: " <<
+            //                         total_entries_in_cfd
+            //                         << ", Invalid Entries Count: "
+            //                         << total_entries_in_cfd -
+            //                         _env->num_inserts << std::endl
+            //                         << all_level_details.str() << std::endl;
+
+            // #endif  // PROFILE
+            //             }
+
             it->Refresh(to_string(start_key), to_string(end_key),
                         entries_count_read,
                         _env->enable_range_query_compaction);
+
+            //             {
+            // #ifdef PROFILE
+            //               ColumnFamilyMetaData metadata;
+            //               db->GetColumnFamilyMetaData(&metadata);
+            //               std::stringstream cfd_details;
+            //               std::stringstream all_level_details;
+            //               unsigned long long total_entries_in_cfd = 0;
+
+            //               // Print column family metadata
+            //               cfd_details << "Column Family Name: " <<
+            //               metadata.name
+            //                           << ", Size: " << metadata.size
+            //                           << " bytes, Files Count: " <<
+            //                           metadata.file_count;
+
+            //               // Print metadata for each level
+            //               for (const auto& level : metadata.levels) {
+            //                 std::stringstream level_details;
+            //                 level_details << "\tLevel: " << level.level
+            //                               << ", Size: " << level.size
+            //                               << " bytes, Files Count: " <<
+            //                               level.files.size();
+
+            //                 unsigned long long total_entries_in_one_level =
+            //                 0; std::stringstream level_sst_file_details;
+
+            //                 // Print metadata for each file in the level
+            //                 for (const auto& file : level.files) {
+            //                   total_entries_in_one_level += file.num_entries;
+            //                   level_sst_file_details
+            //                       << "[#" << file.file_number << ":" <<
+            //                       file.size << " ("
+            //                       << file.smallestkey << ", " <<
+            //                       file.largestkey << ") "
+            //                       << file.num_entries << "], ";
+            //                 }
+            //                 total_entries_in_cfd +=
+            //                 total_entries_in_one_level; level_details
+            //                     << ", Entries Count: " <<
+            //                     total_entries_in_one_level
+            //                     << "\n\t\t";
+            //                 all_level_details << level_details.str()
+            //                                   << level_sst_file_details.str()
+            //                                   << std::endl;
+            //               }
+
+            //               std::cout << cfd_details.str()
+            //                         << ", Entries Count: " <<
+            //                         total_entries_in_cfd
+            //                         << ", Invalid Entries Count: "
+            //                         << total_entries_in_cfd -
+            //                         _env->num_inserts << std::endl
+            //                         << all_level_details.str() << std::endl;
+            // #endif  // PROFILE
+            //             }
           }
+#ifdef TIMER
+          refresh_time = std::chrono::high_resolution_clock::now();
+          refresh_duration =
+              std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  refresh_time - start)
+                  .count();
+#endif  // TIMER
 
           assert(it->status().ok());
           for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
@@ -392,9 +534,22 @@ int runWorkload(EmuEnv* _env) {
             std::cerr << it->status().ToString() << std::endl << std::flush;
           }
 
+#ifdef TIMER
+          auto reset_start = std::chrono::high_resolution_clock::now();
+#endif  // TIMER
           if (_env->enable_range_query_compaction && lexico_valid) {
             it->Reset();
           }
+#ifdef TIMER
+          auto reset_end = std::chrono::high_resolution_clock::now();
+          actual_range_time =
+              std::chrono::duration_cast<std::chrono::nanoseconds>(reset_start -
+                                                                   refresh_time)
+                  .count();
+          reset_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                               reset_end - reset_start)
+                               .count();
+#endif  // TIMER
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -402,6 +557,7 @@ int runWorkload(EmuEnv* _env) {
               stop - start);
           operations_execution_time += duration.count();
           all_range_queries_time += duration.count();
+          range_queries_time_for_one_epoch += duration.count();
           range_queries_.emplace_back(std::make_tuple(
               duration.count(),
               partial_range_flush_listener->udata_bytes_written(),
@@ -410,7 +566,8 @@ int runWorkload(EmuEnv* _env) {
               entries_count_read,
               partial_range_flush_listener->undata_bytes_written(),
               partial_range_flush_listener->untotal_bytes_written(),
-              partial_range_flush_listener->unentries_count()));
+              partial_range_flush_listener->unentries_count(), refresh_duration,
+              reset_duration, actual_range_time));
           partial_range_flush_listener->reset();
 #endif  // TIMER
         }
@@ -509,6 +666,8 @@ int runWorkload(EmuEnv* _env) {
         // //      described by kCFStats followed by the data described by
         // kDBStats. printProperty("rocksdb.stats");
 
+        std::cout << std::endl;
+
         ColumnFamilyMetaData metadata;
         db->GetColumnFamilyMetaData(&metadata);
         std::stringstream cfd_details;
@@ -578,6 +737,29 @@ int runWorkload(EmuEnv* _env) {
         std::cout << "rocksdb.compaction.times.micros: "
                   << options.statistics->getTickerCount(COMPACTION_TIME)
                   << std::endl;
+        // std::cout << "rocksdb.bytes.read: "
+        //           << options.statistics->getTickerCount(BYTES_READ)
+        //           << std::endl;
+        // std::cout << "rocksdb.bytes.written: "
+        //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+        //           << std::endl;
+        // std::cout << "rocksdb.db.iter.bytes.read: "
+        //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+        //           << std::endl;
+        // std::cout << "rocksdb.number.multiget.bytes.read: "
+        //           <<
+        //           options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+        //           << std::endl;
+
+        std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
+                  << std::endl;
+        std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
+                  << std::endl;
+        std::cout << "Time spent in Range Queries: "
+                  << range_queries_time_for_one_epoch << std::endl;
+        inserts_time_for_one_epoch = 0;
+        updates_time_for_one_epoch = 0;
+        range_queries_time_for_one_epoch = 0;
 
       } else if (num_instructions_executed_for_one_epoch ==
                  num_instructions_for_one_epoch) {
@@ -679,6 +861,30 @@ int runWorkload(EmuEnv* _env) {
         std::cout << "rocksdb.compaction.times.micros: "
                   << options.statistics->getTickerCount(COMPACTION_TIME)
                   << std::endl;
+        // std::cout << "rocksdb.bytes.read: "
+        //           << options.statistics->getTickerCount(BYTES_READ)
+        //           << std::endl;
+        // std::cout << "rocksdb.bytes.written: "
+        //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+        //           << std::endl;
+        // std::cout << "rocksdb.db.iter.bytes.read: "
+        //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+        //           << std::endl;
+        // std::cout << "rocksdb.number.multiget.bytes.read: "
+        //           <<
+        //           options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+        //           << std::endl;
+
+        std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
+                  << std::endl;
+        std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
+                  << std::endl;
+        std::cout << "Time spent in Range Queries: "
+                  << range_queries_time_for_one_epoch << std::endl;
+        inserts_time_for_one_epoch = 0;
+        updates_time_for_one_epoch = 0;
+        range_queries_time_for_one_epoch = 0;
+
         num_instructions_executed_for_one_epoch = 0;
       }
     }
@@ -778,6 +984,29 @@ int runWorkload(EmuEnv* _env) {
             << std::endl;
   std::cout << "rocksdb.compaction.times.micros: "
             << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
+  // std::cout << "rocksdb.bytes.read: "
+  //           << options.statistics->getTickerCount(BYTES_READ)
+  //           << std::endl;
+  // std::cout << "rocksdb.bytes.written: "
+  //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+  //           << std::endl;
+  // std::cout << "rocksdb.db.iter.bytes.read: "
+  //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+  //           << std::endl;
+  // std::cout << "rocksdb.number.multiget.bytes.read: "
+  //           << options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+  //           << std::endl;
+
+  std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
+            << std::endl;
+  std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
+            << std::endl;
+  std::cout << "Time spent in Range Queries: "
+            << range_queries_time_for_one_epoch << std::endl;
+  inserts_time_for_one_epoch = 0;
+  updates_time_for_one_epoch = 0;
+  range_queries_time_for_one_epoch = 0;
+
 #endif  // PROFILE
 
   {
@@ -839,21 +1068,26 @@ int runWorkload(EmuEnv* _env) {
   std::ofstream rq_time_file("range_queries.csv");
 
   // Write header
-  rq_time_file << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
-                  "uBytes Written Back, uEntries Count Written Back, Total "
-                  "Entries Read, Data unBytes Written Back, Total unBytes "
-                  "Written Back, unEntries Count Written Back"
-               << std::endl;
+  rq_time_file
+      << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
+         "uBytes Written Back, uEntries Count Written Back, Total "
+         "Entries Read, Data unBytes Written Back, Total unBytes "
+         "Written Back, unEntries Count Written Back, RQ Refresh Time, "
+         "RQ Reset Time, Actual RQ Time"
+      << std::endl;
 
   // Write data from range_queries_time to CSV
   for (int i = 0; i < range_queries_.size(); ++i) {
     std::tuple<unsigned long, unsigned long, unsigned long, unsigned long,
-               unsigned long, unsigned long, unsigned long, unsigned long>
+               unsigned long, unsigned long, unsigned long, unsigned long,
+               unsigned long, unsigned long, unsigned long>
         rq = range_queries_[i];
     rq_time_file << i + 1 << ", " << std::get<0>(rq) << ", " << std::get<1>(rq)
                  << ", " << std::get<2>(rq) << ", " << std::get<3>(rq) << ", "
                  << std::get<4>(rq) << ", " << std::get<5>(rq) << ", "
-                 << std::get<6>(rq) << ", " << std::get<7>(rq) << std::endl;
+                 << std::get<6>(rq) << ", " << std::get<7>(rq) << ", "
+                 << std::get<8>(rq) << ", " << std::get<9>(rq) << ", "
+                 << std::get<10>(rq) << std::endl;
   }
 
   // Close the file

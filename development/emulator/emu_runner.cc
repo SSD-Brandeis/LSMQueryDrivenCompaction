@@ -257,6 +257,10 @@ int parse_arguments2(int argc, char *argvx[], EmuEnv *_env)
   args::ValueFlag<long> num_point_queries_cmd(group1, "#point_queries", "The number of point queries to issue in the experiment [def: 0]", {'Q', "num_point_queries"});
   args::ValueFlag<long> num_range_queries_cmd(group1, "#range_queries", "The number of range queries to issue in the experiment [def: 0]", {'S', "num_range_queries"});
   args::ValueFlag<float> range_query_selectivity_cmd(group1, "#selectivity", "The range query selectivity to issue range queries [def: 0]", {'Y', "range_query_selectivity"});
+
+  args::ValueFlag<long> same_range_query_count_cmd(group1, "SRQC", "Same range query count [def: 0]", {"SRQC", "same_range_query_count"});
+  args::ValueFlag<float> same_range_query_overlap_selectivity_cmd(group1, "SRQOS", "Same range query overlap selectivity [def: 0]", {"SRQOS", "same_range_query_overlap_selectivity"});
+
   args::ValueFlag<int> cor_cmd(group1, "#correlation", "Correlation between sort key and delete key [def: 0]", {'c', "correlation"});
   args::ValueFlag<int> verbosity_cmd(group1, "verbosity", "The verbosity level of execution [0,1,2; def:0]", {'V', "verbosity"});
   args::ValueFlag<int> lethe_new_cmd(group1, "lethe_new", "Specific h across tree(0), Optimal h across tree(1) or different optimal h in each levels(2) [0, 1, 2; def:0]", {'X', "lethe_new"});

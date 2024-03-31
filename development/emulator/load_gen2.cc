@@ -19,7 +19,6 @@
 #include "Generator.h"
 #include "Key.h"
 
-// #define U_THRESHOLD 0.1   // U_THRESHOLD*insert_count number of inserts must be made before Updates may take place (applicable when an empty database is being populated)
 #define U_THRESHOLD 1.0   // U_THRESHOLD*insert_count number of inserts must be made before Updates may take place (applicable when an empty database is being populated)
 #define PD_THRESHOLD 0.1  // PD_THRESHOLD*insert_count number of inserts must be made before Point Deletes may take place (applicable when an empty database is being populated)
 #define RD_THRESHOLD 0.75 // RD_THRESHOLD*insert_count number of inserts must be made before Range Deletes may take place (applicable when an empty database is being populated)
@@ -32,7 +31,6 @@
 // using namespace std;
 
 // temporary global variables -- are to be programmed as commandline args
-// std::string file_path = "/Users/shubham/LSMQueryDrivenCompaction/development/emulator/";
 std::string file_path = "";
 long insert_count = 0;
 long update_count = 0;
@@ -49,9 +47,6 @@ long previous_start_index = 0;
 std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_real_distribution<> dis(0.0, 0.01);
-// std::vector<float> range_query_selectivity = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
-// std::string range_query_selectivity_string = "[";
-
 float range_query_selectivity = 0;
 float zero_result_point_delete_proportion = 0;
 float zero_result_point_lookup_proportion = 0;
@@ -127,14 +122,6 @@ Key get_key(int _key_size){
     return s;
 }*/
 
-// float getRandomSelectivity() {
-//     if (range_query_selectivity.empty()) {
-//         return 0.0;
-//     }
-//     int randomIndex = rand() % range_query_selectivity.size();
-//     return range_query_selectivity[randomIndex];
-// }
-
 std::string get_value(int _value_size)
 {
     // std::cout << key_size << std::endl;
@@ -159,25 +146,8 @@ std::vector<std::string> StringSplit(const std::string &arg, char delim)
     return splits;
 }
 
-void generate_workload(int argc, char *argv[])
+void generate_workload()
 {
-    // for (size_t i = 0; i < range_query_selectivity.size(); ++i) {
-    //         range_query_selectivity_string += std::to_string(range_query_selectivity[i]);
-    //         if (i < range_query_selectivity.size() - 1) {
-    //             range_query_selectivity_string += ", ";
-    //         }
-    //     }
-    // range_query_selectivity_string += "]";
-
-    if (parse_arguments2(argc, argv))
-    {
-        exit(1);
-    }
-    if (!entry_size)
-    {
-        std::cout << "\033[1;31m ERROR:\033[0m entry_size = 0" << std::endl;
-        exit(0);
-    }
 
     // std::cout << "Generating workload ..." << std::endl;
     long total_operation_count = insert_count + update_count + point_delete_count + range_delete_count + point_query_count + range_query_count;
@@ -224,7 +194,7 @@ void generate_workload(int argc, char *argv[])
     {
 
         fp.open(file_path + FILENAME);
-        //   std::cout << "WL_GEN ::  file = " << file_path << FILENAME << std::endl;
+        //   std::cout << "WL_GEN :: output file = " << file_path << FILENAME << std::endl;
     }
     else
     {
@@ -351,6 +321,12 @@ void generate_workload(int argc, char *argv[])
         scaling_ratio = num_char;
     nonExistingPointLookupIndexGenerator = new Generator(non_existing_point_lookup_dist, 0, global_non_existing_key_pool.size() - 1, non_existing_point_lookup_norm_mean_percentile * global_non_existing_key_pool.size(), non_existing_point_lookup_norm_stddev * global_non_existing_key_pool.size() / scaling_ratio, non_existing_point_lookup_beta_alpha, non_existing_point_lookup_beta_beta, non_existing_point_lookup_zipf_alpha, global_non_existing_key_pool.size());
 
+    std::vector<int> update_global_index_mapping;
+    if (update_count > 0)
+    {
+        updateIndexGenerator = new Generator(update_dist, 0, global_insert_pool.size() - 1, update_norm_mean_percentile * global_insert_pool.size(), update_norm_stddev * global_insert_pool.size() / scaling_ratio, update_beta_alpha, update_beta_beta, update_zipf_alpha, global_insert_pool.size(), update_global_index_mapping);
+    }
+
     while (_total_operation_count < total_operation_count)
     {
         int choice = get_choice(insert_pool.size(), insert_count, update_count, point_delete_count, range_delete_count, point_query_count, range_query_count, _insert_count, _update_count, _point_delete_count, _range_delete_count, _point_query_count, _range_query_count);
@@ -381,19 +357,6 @@ void generate_workload(int argc, char *argv[])
             }
             global_insert_pool_set.insert(key);
             // std::cout << "I " << key << " " << value << std::endl;
-
-            // NOTE (shubham)
-            // Rocksdb don't care about the integers in the workload file
-            // below will make sure the size of key + value is equal
-            // to the entry_size in characters
-            size_t len_of_key = std::to_string(key.key_int32_).size();
-            size_t len_of_value = value.key_str_.size();
-
-            if (len_of_key + len_of_value > entry_size)
-            {
-                value = value.key_str_.substr(0, entry_size - len_of_key);
-            }
-
             fp << "I " << key << " " << value << std::endl;
             _insert_count++;
             _effective_ingestion_count++;
@@ -407,49 +370,56 @@ void generate_workload(int argc, char *argv[])
             {
                 if (existing_point_lookup_dist == 1)
                 {
+                    std::cout << "sort here" << std::endl;
                     sort(insert_pool.begin(), insert_pool.end());
                     double scaling_ratio = 1.0;
                     sorted = true;
 
                     if (STRING_KEY_ENABLED)
                         scaling_ratio = num_char;
-                }
 
-                if (updateIndexGenerator != nullptr)
-                {
-                    index_mapping = updateIndexGenerator->index_mapping;
-                    delete updateIndexGenerator;
-                    updateIndexGenerator = nullptr;
+                    if (updateIndexGenerator != nullptr)
+                    {
+                        std::cout << "renew update generator" << std::endl;
+                        index_mapping = updateIndexGenerator->index_mapping;
+                        delete updateIndexGenerator;
+                        updateIndexGenerator = new Generator(update_dist, 0, global_insert_pool.size() - 1, update_norm_mean_percentile * global_insert_pool.size(), update_norm_stddev * global_insert_pool.size() / scaling_ratio, update_beta_alpha, update_beta_beta, update_zipf_alpha, global_insert_pool.size(), update_global_index_mapping);
+                    }
                 }
             }
 
-            if (updateIndexGenerator == nullptr)
-            {
-                updateIndexGenerator = new Generator(update_dist, 0, insert_pool.size() - 1, update_norm_mean_percentile * insert_pool.size(), update_norm_stddev * insert_pool.size() / scaling_ratio, update_beta_alpha, update_beta_beta, update_zipf_alpha, insert_pool.size(), index_mapping);
-            }
-
-            long insert_pool_size = insert_pool.size();
             long index = updateIndexGenerator->getNext();
-            Key key = insert_pool[index];
-            // std::cout << key << std::endl;
-            Key value = get_value(entry_size - key_size);
-            // std::cout << value << std::endl;
-            // std::cout << "U " << key << " " << value << std::endl;
-
-            // NOTE (shubham)
-            // Rocksdb don't care about the integers in the workload file
-            // below will make sure the size of key + value is equal
-            // to the entry_size in characters
-            size_t len_of_key = std::to_string(key.key_int32_).size();
-            size_t len_of_value = value.key_str_.size();
-
-            if (len_of_key + len_of_value > entry_size)
+            if (index >= insert_pool.size())
+            { // Generate an insert instead here
+                Key key = global_insert_pool[index];
+                global_insert_pool[index] = global_insert_pool[_insert_count];
+                global_insert_pool[_insert_count] = key;
+                Key value = get_value(entry_size - key_size);
+                if (sorted)
+                {
+                    std::vector<Key>::iterator it = std::upper_bound(insert_pool.begin(), insert_pool.end(), key);
+                    insert_pool.insert(it, key);
+                }
+                else
+                {
+                    insert_pool.push_back(key);
+                }
+                global_insert_pool_set.insert(key);
+                fp << "I " << key << " " << value << std::endl;
+                _insert_count++;
+                _effective_ingestion_count++;
+            }
+            else
             {
-                value = value.key_str_.substr(0, entry_size - len_of_key);
+                Key key = insert_pool[index];
+                // std::cout << key << std::endl;
+                Key value = get_value(entry_size - key_size);
+                // std::cout << value << std::endl;
+                // std::cout << "U " << key << " " << value << std::endl;
+                fp << "U " << key << " " << value << std::endl;
+                _update_count++;
             }
 
-            fp << "U " << key << " " << value << std::endl;
-            _update_count++;
             _total_operation_count++;
         }
 
@@ -470,14 +440,14 @@ void generate_workload(int argc, char *argv[])
                 global_insert_pool_set.erase(key);
                 insert_pool.erase(insert_pool.begin() + index);
                 std::vector<int> index_mapping;
-                if (updateIndexGenerator != nullptr)
+                if (updateIndexGenerator != nullptr && update_count > 0)
                 {
                     index_mapping = updateIndexGenerator->index_mapping;
                     delete updateIndexGenerator;
-                    updateIndexGenerator = new Generator(update_dist, 0, insert_pool.size() - 1, update_norm_mean_percentile * insert_pool.size(), update_norm_stddev * insert_pool.size() / scaling_ratio, update_beta_alpha, update_beta_beta, update_zipf_alpha, insert_pool.size(), index_mapping);
+                    updateIndexGenerator = new Generator(update_dist, 0, global_insert_pool.size() - 1, update_norm_mean_percentile * global_insert_pool.size(), update_norm_stddev * global_insert_pool.size() / scaling_ratio, update_beta_alpha, update_beta_beta, update_zipf_alpha, global_insert_pool.size(), update_global_index_mapping);
                 }
                 index_mapping.clear();
-                if (existingPointLookupIndexGenerator != nullptr)
+                if (existingPointLookupIndexGenerator != nullptr && point_query_count > 0)
                 {
                     index_mapping = existingPointLookupIndexGenerator->index_mapping;
 
@@ -666,8 +636,6 @@ void generate_workload(int argc, char *argv[])
 
             // for now we use the hardcoded range selectivity
             long insert_pool_size = insert_pool.size();
-            // float random_selectivity = getRandomSelectivity();
-            // long entries_in_range_query = floor(random_selectivity * insert_pool_size); // computed on the current size of insert pool
             long entries_in_range_query = floor(range_query_selectivity * insert_pool_size); // computed on the current size of insert pool
             long start_index = (long)(rand() % insert_pool_size);
             long end_index = -1;
@@ -752,7 +720,6 @@ void print_workload_parameters(int _insert_count, int _update_count, int _point_
               << "effective_ingestion_count = " << _effective_ingestion_count << ", "
               << "point_query_count = " << point_query_count << ", "
               << "range_query_count = " << range_query_count << ", "
-              //   << "range_query_selectivity = " << range_query_selectivity_string << ", "
               << "range_query_selectivity = " << range_query_selectivity << ", "
               << "zero_result_point_lookup_proportion= " << zero_result_point_lookup_proportion << ", "
               << "existing_point_query_count = " << existing_point_query_count << ", "
@@ -855,79 +822,82 @@ int get_choice(long insert_pool_size, long insert_count, long update_count, long
     return choice;
 }
 
-// int main(int argc, char *argv[]) {
-//     /*{
-//         std::cout << "Size of int = " << sizeof(int) << std::endl;
-//         std::cout << "Size of long = " << sizeof(long) << std::endl;
-//         std::cout << "Size of char = " << sizeof(char) << std::endl;
-//         std::cout << "Size of \"1234567890\" = " << sizeof("1234567890") << std::endl;
-//         int a[0] = {};
-//         std::cout << "Size of int a[0] = " << sizeof(a) << std::endl;
-//         int *b;
-//         std::cout << "Size of int *b = " << sizeof(b) << std::endl;
-//         long c[0] = {};
-//         std::cout << "Size of long a[0] = " << sizeof(c) << std::endl;
-//         long *d;
-//         std::cout << "Size of long *d = " << sizeof(d) << std::endl;
-//         char *e;
-//         std::cout << "Size of long *d = " << sizeof(d) << std::endl;
-//         e = new char[2];
-//         e[0] = 's'; e[1] = 'e';
-//         std::cout << "Size of long *e after instering two elements = " << sizeof(e) << std::endl;
+int main(int argc, char *argv[])
+{
+    /*{
+        std::cout << "Size of int = " << sizeof(int) << std::endl;
+        std::cout << "Size of long = " << sizeof(long) << std::endl;
+        std::cout << "Size of char = " << sizeof(char) << std::endl;
+        std::cout << "Size of \"1234567890\" = " << sizeof("1234567890") << std::endl;
+        int a[0] = {};
+        std::cout << "Size of int a[0] = " << sizeof(a) << std::endl;
+        int *b;
+        std::cout << "Size of int *b = " << sizeof(b) << std::endl;
+        long c[0] = {};
+        std::cout << "Size of long a[0] = " << sizeof(c) << std::endl;
+        long *d;
+        std::cout << "Size of long *d = " << sizeof(d) << std::endl;
+        char *e;
+        std::cout << "Size of long *d = " << sizeof(d) << std::endl;
+        e = new char[2];
+        e[0] = 's'; e[1] = 'e';
+        std::cout << "Size of long *e after instering two elements = " << sizeof(e) << std::endl;
 
-//         std::vector<long> vint;
-//         vint.push_back(6);
-//         std::cout << "Size of vint = " << sizeof(vint) << std::endl;
-//         std::cout << "Size of vint.size() = " << vint.size() << std::endl;
-//         std::cout << "Size of vint.max_size() = " << vint.max_size() << std::endl;
-//         std::cout << "Size of vint.capacity() = " << vint.capacity() << std::endl;
-//         std::cout << "Size of vint.empty() = " << vint.empty() << std::endl;
-//     }*/
-//     //std::srand((unsigned int)std::time(NULL));
+        std::vector<long> vint;
+        vint.push_back(6);
+        std::cout << "Size of vint = " << sizeof(vint) << std::endl;
+        std::cout << "Size of vint.size() = " << vint.size() << std::endl;
+        std::cout << "Size of vint.max_size() = " << vint.max_size() << std::endl;
+        std::cout << "Size of vint.capacity() = " << vint.capacity() << std::endl;
+        std::cout << "Size of vint.empty() = " << vint.empty() << std::endl;
+    }*/
+    // std::srand((unsigned int)std::time(NULL));
 
-//     if (parse_arguments2(argc, argv)){
-//         exit(1);
-//     }
+    if (parse_arguments2(argc, argv))
+    {
+        exit(1);
+    }
 
-//     if(!entry_size) {
-//         std::cout << "\033[1;31m ERROR:\033[0m entry_size = 0" << std::endl;
-//         exit(0);
-//     }
+    if (!entry_size)
+    {
+        std::cout << "\033[1;31m ERROR:\033[0m entry_size = 0" << std::endl;
+        exit(0);
+    }
 
-//     /*
-// >>>>>>> 084785aa2e580ba6a054ed624ad772a6ba060ff9
-//     if (log(insert_count*num_insert_key_prefix)/log(62) > lambda*entry_size - 2) {
-//         std::cout << "\033[1;31m ERROR:\033[0m too small key size to support sufficient unique inserts" << std::endl;
-//         exit(0);
-//     }*/
+    /*
+>>>>>>> 084785aa2e580ba6a054ed624ad772a6ba060ff9
+    if (log(insert_count*num_insert_key_prefix)/log(62) > lambda*entry_size - 2) {
+        std::cout << "\033[1;31m ERROR:\033[0m too small key size to support sufficient unique inserts" << std::endl;
+        exit(0);
+    }*/
 
-//     generate_workload();
+    generate_workload();
 
-//     /*
-//     if (lambda == -1) { // this means, the size of the key is equal to the size of uint32_t, i.e., 4 bytes
-//         generate_workload_with_key_as_uint32_t();
-//     }
+    /*
+    if (lambda == -1) { // this means, the size of the key is equal to the size of uint32_t, i.e., 4 bytes
+        generate_workload_with_key_as_uint32_t();
+    }
 
-//     else { // this means, we want to vary the key length. So we change the datatype of key from uint32_t to string
-//         generate_workload_with_key_as_string();
+    else { // this means, we want to vary the key length. So we change the datatype of key from uint32_t to string
+        generate_workload_with_key_as_string();
 
-//     }*/
+    }*/
 
-//     // std::cout << "End of main() ..." << std::endl;
+    // std::cout << "End of main() ..." << std::endl;
 
-//     // if(!STRING_KEY_ENABLED && (lambda > 0 && lambda < 1)){
-//     //     std::cerr << "\033[0;33m Warning:\033[0m STRING_ENABLED is false, lambda is invalid in this case and key_size is set as " << sizeof(uint32_t) << "Bytes by default." << std::endl;
-//     // }
+    // if(!STRING_KEY_ENABLED && (lambda > 0 && lambda < 1)){
+    //     std::cerr << "\033[0;33m Warning:\033[0m STRING_ENABLED is false, lambda is invalid in this case and key_size is set as " << sizeof(uint32_t) << "Bytes by default." << std::endl;
+    // }
 
-//     // if(load_from_existing_workload){
-//     //     std::cerr << "\033[0;33m Warning:\033[0m Remember to keep key size and key type consistent when you enable preloading." << std::endl;
-//     // }
+    // if(load_from_existing_workload){
+    //     std::cerr << "\033[0;33m Warning:\033[0m Remember to keep key size and key type consistent when you enable preloading." << std::endl;
+    // }
 
-//     // if(load_from_existing_workload && out_filename.compare("") == 0){
-//     //     std::cerr << "\033[0;33m Warning:\033[0m workload.txt will be overwritten ! " << std::endl;
-//     // }
-//     return 1;
-// }
+    // if(load_from_existing_workload && out_filename.compare("") == 0){
+    //     std::cerr << "\033[0;33m Warning:\033[0m workload.txt will be overwritten ! " << std::endl;
+    // }
+    return 1;
+}
 
 int parse_arguments2(int argc, char *argv[])
 {
@@ -942,7 +912,7 @@ int parse_arguments2(int argc, char *argv[])
       args::Group group5(parser, "Optional less frequent switches and parameters:", args::Group::Validators::DontCare);
     */
 
-    args::ValueFlag<long> insert_cmd(group1, "I", "Number of inserts [def: 1]", {'I', "insert"});
+    args::ValueFlag<long> insert_cmd(group1, "I", "Number of inserts [def: 0]", {'I', "insert"});
     args::ValueFlag<long> update_cmd(group1, "U", "Number of updates [def: 0]", {'U', "update"});
     args::ValueFlag<long> point_delete_cmd(group1, "D", "Number of point deletes [def: 0]", {'D', "point_delete"});
     args::ValueFlag<long> range_delete_cmd(group1, "R", "Number of range deletes [def: 0]", {'R', "range_delete"});
@@ -993,35 +963,6 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<float> non_existing_point_lookup_dist_beta_alpha_cmd(group1, "ZD_Beta_Alpha", ", def: 1.0]", {"ZD_BALPHA", "non_existing_point_lookup_distribution_beta_alpha"});
     args::ValueFlag<float> non_existing_point_lookup_dist_beta_beta_cmd(group1, "ZD_Beta_Beta", ", def: 1.0]", {"ZD_BBETA", "non_existing_point_lookup_distribution_beta_beta"});
     args::ValueFlag<float> non_existing_point_lookup_dist_zipf_alpha_cmd(group1, "ZD_Zipf_Alpha", ", def: 1.0]", {"ZD_ZALPHA", "non_existing_point_lookup_distribution_zipf_alpha"});
-
-    // Copying other stuff which is not required but necessary for parser
-    args::ValueFlag<int> size_ratio_cmd(group1, "T", "The size ratio of the tree [def: 2]", {'T', "size_ratio"});
-    args::ValueFlag<int> buffer_size_in_pages_cmd(group1, "P", "Size of the memory buffer in terms of pages [def: 128]", {'P', "buffer_size_in_pages"});
-    args::ValueFlag<int> entries_per_page_cmd(group1, "B", "No of entries in one page [def: 128]", {'B', "entries_per_page"});
-    args::ValueFlag<long> buffer_size_cmd(group1, "M", "Memory size (PBE) [def: 2 MB]", {'M', "memory_size"});
-    args::ValueFlag<int> delete_tile_size_in_pages_cmd(group1, "delete_tile_size_in_pages", "Size of a delete tile in terms of pages [def: -1]", {'h', "delete_tile_size_in_pages"});
-    args::ValueFlag<long> file_size_cmd(group1, "file_size", "file size [def: 256 KB]", {"file_size"});
-    args::ValueFlag<long> num_inserts_cmd(group1, "#inserts", "The number of unique inserts to issue in the experiment [def: 0]", {'I', "num_inserts"});
-    args::ValueFlag<long> num_updates_cmd(group1, "#updates", "The number of updates to issue in the experiment [def: 0]", {'U', "num_updates"});
-    args::ValueFlag<long> num_point_deletes_cmd(group1, "#point_deletes", "The number of point deletes to issue in the experiment [def: 0]", {'D', "num_point_deletes"});
-    args::ValueFlag<long> num_point_queries_cmd(group1, "#point_queries", "The number of point queries to issue in the experiment [def: 0]", {'Q', "num_point_queries"});
-    args::ValueFlag<long> num_range_queries_cmd(group1, "#range_queries", "The number of range queries to issue in the experiment [def: 0]", {'S', "num_range_queries"});
-    args::ValueFlag<int> cor_cmd(group1, "#correlation", "Correlation between sort key and delete key [def: 0]", {'c', "correlation"});
-    args::ValueFlag<int> verbosity_cmd(group1, "verbosity", "The verbosity level of execution [0,1,2; def:0]", {'V', "verbosity"});
-    args::ValueFlag<int> lethe_new_cmd(group1, "lethe_new", "Specific h across tree(0), Optimal h across tree(1) or different optimal h in each levels(2) [0, 1, 2; def:0]", {'X', "lethe_new"});
-    args::ValueFlag<int> SRD_cmd(group1, "SRD", "Count of secondary range delete [def:1]", {'I', "SRD"});
-    args::ValueFlag<int> EPQ_cmd(group1, "EPQ", "Count of empty point queries [def:1000000]", {'J', "EPQ"});
-    args::ValueFlag<int> PQ_cmd(group1, "PQ", "Count of non-empty point queries [def:1000000]", {'K', "PQ"});
-    args::ValueFlag<int> SRQ_cmd(group1, "SRQ", "Count of short range queries [def:1]", {'L', "SRQ"});
-    args::ValueFlag<int> enable_rq_compaction_cmd(group1, "rc-on", "Enable Range Query Compaction [def:1]", {"rc-on", "enable_rq_compaction"});
-    args::ValueFlag<int> enable_level_shifting_cmd(group1, "level-shift-on", "Enable level shifting upon saturation [def:0]", {"level-shift-on", "enable_level_shifting"});
-
-    args::ValueFlag<int> delete_key_cmd(group1, "delete_key", "Delete all keys less than DK [def:700]", {'D', "delete_key"});
-    args::ValueFlag<int> range_start_key_cmd(group1, "range_start_key", "Starting key of the range query [def:2000]", {'S', "range_start_key"});
-    args::ValueFlag<int> range_end_key_cmd(group1, "range_end_key", "Ending key of the range query [def:5000]", {'F', "range_end_key"});
-    args::ValueFlag<int> sec_range_start_key_cmd(group1, "sec_range_start_key", "Starting key of the secondary range query [def:200]", {'s', "sec_range_start_key"});
-    args::ValueFlag<int> sec_range_end_key_cmd(group1, "sec_range_end_key", "Ending key of the secondary range query [def:500]", {'f', "sec_range_end_key"});
-    args::ValueFlag<int> iterations_point_query_cmd(group1, "iterations_point_query", "Number of point queries to be performed [def:100000]", {'N', "iterations_point_query"});
 
     try
     {

@@ -108,7 +108,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     size_t file_index_ = FindFile(cfd_->internal_comparator(),
                                   storage_info->LevelFilesBrief(lvl),
                                   Slice(read_options_.range_start_key));
-    
+
     for (; file_index_ < num_files; file_index_++) {
       auto fd = storage_info->LevelFilesBrief(lvl).files[file_index_];
 
@@ -147,6 +147,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
         E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
             "", read_options_.range_end_key, lvl, fd.file_metadata,
             useful_min_key, useful_max_key);
+        // std::cout << "FileNumber: " << fd.fd.GetNumber() << " E_useful_entries_in_level: " << E_useful_entries_in_level << " " __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
         break;
       }
       // 2 & 3. tail of a file overlap
@@ -164,6 +165,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
         E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
             read_options_.range_start_key, "", lvl, fd.file_metadata,
             useful_min_key, useful_max_key);
+        // std::cout << "FileNumber: " << fd.fd.GetNumber() << " E_useful_entries_in_level: " << E_useful_entries_in_level << " " __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       }
       // 6. Range fits inside file overlap
       else if (user_comparator_->Compare(
@@ -183,7 +185,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     entries_count += E_useful_entries_in_level;
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
-    if (num_files_are_overlapping > 1) {
+    if (num_files_are_overlapping > 0) {
       num_levels_are_overlapping += 1;
     }
   }
@@ -197,6 +199,14 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     db_impl_->decision_cell_ = best_decision_cell;
     return false;
   }
+
+  // if (db_impl_->immutable_db_options().verbosity > 1) {
+  //   std::cout << "\nDecision Matrix Meta: " << std::endl;
+  //   for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
+  //     std::cout << "Level: " << i + 1 << " --> Total in-range entries: "
+  //               << decision_matrix_meta_data[i] << std::endl;
+  //   }
+  // }
 
   std::vector<std::vector<DecisionCell>> decision_matrix(
       decision_matrix_meta_data.size(),
@@ -222,8 +232,32 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     }
   }
 
+  // if (db_impl_->immutable_db_options().verbosity > 1) {
+  //   std::cout << "\nDecision Matrix Flat: " << std::endl;
+  //   for (size_t i = 0; i < decision_matrix.size(); i++) {
+  //     for (size_t j = i; j < decision_matrix.size(); j++) {
+  //       std::cout << "StartLevel: " << decision_matrix[i][j].GetStartLevel() << " EndLevel: " << decision_matrix[i][j].GetEndLevel() << " OverlappingRatios: ";
+  //       for (float val : decision_matrix[i][j].overlapping_entries_ratio_) {
+  //         std::cout << val << ", ";
+  //       }
+  //       std::cout << std::endl;
+  //     }
+  //   }
+
+  //   std::cout << "\nDecision Matrix: " << std::endl;
+  //   for (size_t i = 0; i < decision_matrix.size(); i++) {
+  //     for (size_t j = 0; j < decision_matrix.size(); j++) {
+  //       for (float val : decision_matrix[i][j].overlapping_entries_ratio_) {
+  //         std::cout << val << ", ";
+  //       }
+  //       std::cout << " | ";
+  //     }
+  //     std::cout << std::endl;
+  //   }
+  // }
+
   DecisionCell best_decision_cell;
-  
+
   for (size_t col = decision_matrix.size() - 1; col > 0; col--) {
     for (size_t row = 0; row < col; row++) {
       if (decision_matrix[row][col].GetDecision()) {
@@ -234,11 +268,10 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
       // if (db_impl_->immutable_db_options().verbosity > 0) {
-      // std::cout << "\n[Verbosity]: Best decision cell: ("
-      //           << best_decision_cell.GetStartLevel() << ", "
-      //           << best_decision_cell.GetEndLevel() << ") " << __FILE__ <<
-      //           ":"
-      //           << __LINE__ << " " << __FUNCTION__ << std::endl;
+      //   std::cout << "\n[Verbosity]: Best decision cell: ("
+      //             << best_decision_cell.GetStartLevel() << ", "
+      //             << best_decision_cell.GetEndLevel() << ")\n\n"
+      //             << std::endl;
       // }
       break;
     }

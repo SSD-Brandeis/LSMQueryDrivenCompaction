@@ -2,6 +2,7 @@
 // It would be quite similar to db_impl_compaction_flush.cc
 
 #include <fstream>
+#include <iostream>
 
 #include "db/builder.h"
 #include "db/compaction/compaction_outputs.h"
@@ -50,6 +51,13 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
   if (s.ok()) {
     const ReadOptions read_options;
+    auto table_properties = table_reader->GetTableProperties();
+    auto num_entries = table_properties->num_entries;
+    uint64_t raw_key_size = table_properties->raw_key_size;
+    uint64_t raw_value_size = table_properties->raw_value_size;
+    uint64_t avg_raw_key_size = num_entries != 0 ? 1.0 * raw_key_size / num_entries : 0.0;
+    uint64_t avg_raw_value_size = num_entries != 0 ? 1.0 * raw_value_size / num_entries : 0.0;
+
     if (given_start_key != "" && given_end_key == "") {
       // start key comes when tail is overlapping
       //
@@ -62,8 +70,9 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice target = Slice(given_start_key);
       auto skip_count_with_key =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
+      // std::cout << "Tail Overlapp: " << (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size)) << " SKIPCOUNT: " << std::get<0>(skip_count_with_key) << " LASTKEY: " << std::get<1>(skip_count_with_key).data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       overlapping_count =
-          file_meta->num_entries - (std::get<0>(skip_count_with_key) / read_options_.entry_size);
+          file_meta->num_entries - (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size));
       useful_min_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key == "" && given_end_key != "") {
       // end key comes when head is overlapping
@@ -77,7 +86,8 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice target = Slice(given_end_key);
       auto skip_count_with_key =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
-      overlapping_count = (std::get<0>(skip_count_with_key) / read_options_.entry_size);
+      // std::cout << "Head Overlapp: " << (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size)) << " SKIPCOUNT: " << std::get<0>(skip_count_with_key) << " LASTKEY: " << std::get<1>(skip_count_with_key).data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+      overlapping_count = (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size));
       useful_max_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key != "" && given_end_key != "") {
       // both start and end key comes when file middle portion is overlapping
@@ -95,7 +105,7 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       auto end_overlapping =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, end);
       overlapping_count =
-          ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) / read_options_.entry_size);
+          ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) / (avg_raw_key_size + avg_raw_value_size));
       useful_min_key = std::get<1>(start_overlapping);
       useful_max_key = std::get<1>(end_overlapping);
     }

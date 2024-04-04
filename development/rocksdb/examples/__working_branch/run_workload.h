@@ -200,7 +200,7 @@ int runWorkload(EmuEnv* _env) {
 
 #ifdef PROFILE
   // number of epochs to run the experiment
-  int num_epochs = 10;
+  int num_epochs = 1;
   int num_instructions_for_one_epoch =
       (_env->num_updates / num_epochs) + (_env->num_range_queries / num_epochs);
   int num_instructions_executed_for_one_epoch = 0;

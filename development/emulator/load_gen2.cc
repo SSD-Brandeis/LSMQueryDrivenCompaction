@@ -655,8 +655,10 @@ void generate_workload()
                 start_index -= (start_index + entries_in_range_query - insert_pool_size);
                 // std::cout << "start index (= " << start_index << ") + entries_in_range_query (= " << entries_in_range_query << ") > insert_pool_size (= " << insert_pool_size << ")" << std::endl;
             }
-            if (_range_query_count == 0 || _range_query_count % unique_range_queries == 0) {
-                previous_start_index = start_index;
+            if (same_range_query_count > 0) {
+                if (_range_query_count == 0 || _range_query_count % unique_range_queries == 0) {
+                    previous_start_index = start_index;
+                }
             }
             // std::cout << "ELSE: start index (= " << start_index << ") + entries_in_range_query (= " << entries_in_range_query << ") > insert_pool_size (= " << insert_pool_size << ")" << std::endl;
             end_index = start_index + entries_in_range_query - 1;
@@ -1016,7 +1018,10 @@ int parse_arguments2(int argc, char *argv[])
 
     same_range_query_count = same_range_query_count_cmd ? args::get(same_range_query_count_cmd) : 0;
     same_range_query_overlap_selectivity = same_range_query_overlap_selectivity_cmd ? args::get(same_range_query_overlap_selectivity_cmd) : 0;
-    unique_range_queries = floor(range_query_count / same_range_query_count);
+
+    if (same_range_query_count > 0) {
+        unique_range_queries = floor(range_query_count / same_range_query_count);
+    }
 
     lambda = lambda_cmd ? args::get(lambda_cmd) : 0.5;
     if (lambda <= 0 || lambda > 1)

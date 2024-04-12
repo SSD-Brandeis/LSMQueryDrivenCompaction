@@ -48,9 +48,9 @@ def run_workload(params, dir_name, log):
     process_output = os.popen(f"../../working_version {args} > workload.log").read()
     log.write(f"{process_output}\n")
 
-    # if os.path.exists(db_dir):
-    #     log.write("removing db_working_home\n")
-    #     shutil.rmtree(db_dir)
+    if os.path.exists(db_dir):
+        log.write("removing db_working_home\n")
+        shutil.rmtree(db_dir)
     
     if os.path.exists(workload_txt):
         log.write("removing workload.txt\n")
@@ -77,6 +77,8 @@ def get_bounds(lowest, highest, num_points):
     return sorted(points) + [highest]
 
 
+DONE = []
+
 if __name__ == "__main__":
     size_ratio = [2]
     inserts = 5000000
@@ -87,8 +89,8 @@ if __name__ == "__main__":
     number_of_entries_per_page = 128  # (B)
     number_of_pages = 128  # (P)
 
-    lower_bounds = get_bounds(0, size_ratio[0]/2, 2)
-    upper_bounds = get_bounds(0, 2 * size_ratio[0], 4)
+    lower_bounds = get_bounds(0, size_ratio[0]/2, 10)
+    upper_bounds = get_bounds(0, 2 * size_ratio[0], 20)
 
     buffer_size = entry_size * number_of_entries_per_page * number_of_pages
     log = open(LOG_FILE, "a")
@@ -110,7 +112,7 @@ if __name__ == "__main__":
 
         for lb in lower_bounds:
             for ub in upper_bounds:
-                if lb < ub:
+                if lb < ub and (lb, ub) not in DONE:
                     lower_upper_bounds.append((lb, ub))
 
         directory_name = (

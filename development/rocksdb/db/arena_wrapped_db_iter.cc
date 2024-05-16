@@ -10,7 +10,8 @@
 #include "db/arena_wrapped_db_iter.h"
 
 // #include <iomanip>
-// #include <iostream>
+#include <chrono>
+#include <iostream>
 
 #include "logging/logging.h"
 #include "memory/arena.h"
@@ -20,6 +21,8 @@
 #include "table/internal_iterator.h"
 #include "table/iterator_wrapper.h"
 #include "util/user_comparator_wrapper.h"
+
+#define TIMEBREAK
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -59,24 +62,27 @@ void ArenaWrappedDBIter::Init(
 }
 
 long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
-    const std::string given_start_key, const std::string given_end_key,
+    const std::string& given_start_key, const std::string& given_end_key,
     int level, FileMetaData* file_meta, Slice& useful_min_key,
     Slice& useful_max_key) {
-  // Let's guess the lexicographic difference between two strings
   return db_impl_->GetRoughOverlappingEntries(given_start_key, given_end_key,
                                               level, file_meta, cfd_,
                                               useful_min_key, useful_max_key);
 }
 
+// long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
+//     const std::string given_start_key, const std::string given_end_key,
+//     int level, FileMetaData* file_meta, Slice& useful_min_key,
+//     Slice& useful_max_key) {
+//   // Let's guess the lexicographic difference between two strings
+//   return db_impl_->GetRoughOverlappingEntries(given_start_key, given_end_key,
+//                                               level, file_meta, cfd_,
+//                                               useful_min_key,
+//                                               useful_max_key);
+// }
+
 bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     uint64_t& entries_count) {
-  // Let's see how many levels >= 1 have data
-  // for the requested range query and then
-  // see how many files in each level have
-  // data from that range query
-  //
-  // Lastly compute the ratio of useful entries
-
   auto storage_info = cfd_->current()->storage_info();
 
   if (storage_info->num_non_empty_levels() <= 2) {
@@ -84,101 +90,68 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   }
 
   auto user_comparator_ = cfd_->internal_comparator().user_comparator();
-
-  // if num files overlapping from a level > 1, increase this
   int num_levels_are_overlapping = 0;
-
-  // vec[tuple<E_useful_count>]
   std::vector<float> decision_matrix_meta_data;
 
   for (int lvl = 1; lvl < storage_info->num_non_empty_levels(); lvl++) {
-    // num_files_are_overlapping will be used
-    // to stop doing the compaction when only
-    // one level is included in the compaction.
-    // This will also be used to break before
-    // computing the decision matrix
     int num_files_are_overlapping = 0;
-    auto num_files = storage_info->LevelFilesBrief(lvl).num_files;
+    auto level_files = storage_info->LevelFilesBrief(lvl);
+    auto num_files = level_files.num_files;
     long long E_useful_entries_in_level = 0;
-
-    // Right now, the below two keys are not used
     Slice useful_min_key = "";
     Slice useful_max_key = "";
 
-    size_t file_index_ = FindFile(cfd_->internal_comparator(),
-                                  storage_info->LevelFilesBrief(lvl),
+    size_t file_index_ = FindFile(cfd_->internal_comparator(), level_files,
                                   Slice(read_options_.range_start_key));
 
     for (; file_index_ < num_files; file_index_++) {
-      auto fd = storage_info->LevelFilesBrief(lvl).files[file_index_];
+      auto& fd = level_files.files[file_index_];
+      const Slice& smallest_key = fd.file_metadata->smallest.user_key();
+      const Slice& largest_key = fd.file_metadata->largest.user_key();
+      long long num_entries = fd.file_metadata->num_entries;
 
-      // refer to NOTE in LevelIterator::Seek function
-      //  4 & 5. range_start <= fd.smallest and range_end >= fd.largest
-      if (user_comparator_->Compare(Slice(read_options_.range_start_key),
-                                    fd.file_metadata->smallest.user_key()) <=
-              0 &&
+      bool start_key_in_range =
+          user_comparator_->Compare(Slice(read_options_.range_start_key),
+                                    smallest_key) <= 0;
+      bool end_key_in_range =
           user_comparator_->Compare(Slice(read_options_.range_end_key),
-                                    fd.file_metadata->largest.user_key()) >=
-              0) {
-        // 100 % overlap
-        num_files_are_overlapping += 1;
-        E_useful_entries_in_level += fd.file_metadata->num_entries;
+                                    largest_key) >= 0;
 
+      if (start_key_in_range && end_key_in_range) {
+        num_files_are_overlapping++;
+        E_useful_entries_in_level += num_entries;
         if (useful_min_key.empty()) {
-          useful_min_key = fd.file_metadata->smallest.user_key();
-          useful_max_key = fd.file_metadata->largest.user_key();
-        } else {
-          useful_max_key = fd.file_metadata->largest.user_key();
+          useful_min_key = smallest_key;
         }
-      }
-      // 2 & 3. head of a file overlap
-      else if (  // 3. starts here
-          (user_comparator_->Compare(Slice(read_options_.range_start_key),
-                                     fd.file_metadata->smallest.user_key()) <=
-               0 &&
-           user_comparator_->Compare(Slice(read_options_.range_end_key),
-                                     fd.file_metadata->largest.user_key()) <
-               0 &&
-           user_comparator_->Compare(Slice(read_options_.range_end_key),
-                                     fd.file_metadata->smallest.user_key()) >=
-               0)) {
-        // head overlap
-        num_files_are_overlapping += 1;
-        E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
-            "", read_options_.range_end_key, lvl, fd.file_metadata,
-            useful_min_key, useful_max_key);
-        // std::cout << "FileNumber: " << fd.fd.GetNumber() << " E_useful_entries_in_level: " << E_useful_entries_in_level << " " __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-        break;
-      }
-      // 2 & 3. tail of a file overlap
-      else if ((user_comparator_->Compare(
-                    Slice(read_options_.range_start_key),
-                    fd.file_metadata->smallest.user_key()) > 0 &&
-                user_comparator_->Compare(
-                    Slice(read_options_.range_start_key),
-                    fd.file_metadata->largest.user_key()) <= 0 &&
-                user_comparator_->Compare(
-                    Slice(read_options_.range_end_key),
-                    fd.file_metadata->largest.user_key()) >= 0)) {
-        // tail overlap
-        num_files_are_overlapping += 1;
-        E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
-            read_options_.range_start_key, "", lvl, fd.file_metadata,
-            useful_min_key, useful_max_key);
-        // std::cout << "FileNumber: " << fd.fd.GetNumber() << " E_useful_entries_in_level: " << E_useful_entries_in_level << " " __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
-      }
-      // 6. Range fits inside file overlap
-      else if (user_comparator_->Compare(
-                   Slice(read_options_.range_start_key),
-                   fd.file_metadata->smallest.user_key()) > 0 &&
-               user_comparator_->Compare(Slice(read_options_.range_end_key),
-                                         fd.file_metadata->largest.user_key()) <
-                   0) {
-        num_files_are_overlapping += 1;
-        E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
-            read_options_.range_start_key, read_options_.range_end_key, lvl,
-            fd.file_metadata, useful_min_key, useful_max_key);
-        break;
+        useful_max_key = largest_key;
+      } else if (start_key_in_range && !end_key_in_range) {
+        if (user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                      smallest_key) >= 0) {
+          num_files_are_overlapping++;
+          E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
+              "", read_options_.range_end_key, lvl, fd.file_metadata,
+              useful_min_key, useful_max_key);
+          break;
+        }
+      } else if (!start_key_in_range && end_key_in_range) {
+        if (user_comparator_->Compare(Slice(read_options_.range_start_key),
+                                      largest_key) <= 0) {
+          num_files_are_overlapping++;
+          E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
+              read_options_.range_start_key, "", lvl, fd.file_metadata,
+              useful_min_key, useful_max_key);
+        }
+      } else if (!start_key_in_range && !end_key_in_range) {
+        if (user_comparator_->Compare(Slice(read_options_.range_start_key),
+                                      smallest_key) > 0 &&
+            user_comparator_->Compare(Slice(read_options_.range_end_key),
+                                      largest_key) < 0) {
+          num_files_are_overlapping++;
+          E_useful_entries_in_level += GuessTheNumberOfKeysBWStartAndEnd(
+              read_options_.range_start_key, read_options_.range_end_key, lvl,
+              fd.file_metadata, useful_min_key, useful_max_key);
+          break;
+        }
       }
     }
 
@@ -186,12 +159,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
     if (num_files_are_overlapping > 0) {
-      num_levels_are_overlapping += 1;
+      num_levels_are_overlapping++;
     }
-  }
-
-  if (!read_options_.range_query_compaction_enabled) {
-    return false;
   }
 
   if (num_levels_are_overlapping <= 1) {
@@ -236,8 +205,10 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   //   std::cout << "\nDecision Matrix Flat: " << std::endl;
   //   for (size_t i = 0; i < decision_matrix.size(); i++) {
   //     for (size_t j = i; j < decision_matrix.size(); j++) {
-  //       std::cout << "StartLevel: " << decision_matrix[i][j].GetStartLevel() << " EndLevel: " << decision_matrix[i][j].GetEndLevel() << " OverlappingRatios: ";
-  //       for (float val : decision_matrix[i][j].overlapping_entries_ratio_) {
+  //       std::cout << "StartLevel: " << decision_matrix[i][j].GetStartLevel()
+  //       << " EndLevel: " << decision_matrix[i][j].GetEndLevel() << "
+  //       OverlappingRatios: "; for (float val :
+  //       decision_matrix[i][j].overlapping_entries_ratio_) {
   //         std::cout << val << ", ";
   //       }
   //       std::cout << std::endl;
@@ -280,52 +251,99 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   return best_decision_cell.GetStartLevel() != 0;
 }
 
-Status ArenaWrappedDBIter::Refresh(const std::string start_key,
-                                   const std::string end_key,
+Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
+                                   const std::string& end_key,
                                    uint64_t& entries_count, bool rqdc_enabled) {
-  db_impl_->num_entries_skipped = 0;
-  db_impl_->num_entries_compacted = 0;
-  read_options_.range_end_key = end_key;
-  read_options_.range_start_key = start_key;
-  read_options_.range_query_compaction_enabled =
-      rqdc_enabled;  // making it default for this refresh func
-  db_impl_->read_options_ = read_options_;
-
-  if (read_options_.range_query_compaction_enabled) {
-    db_impl_->PauseBackgroundWork();
+  read_options_.range_query_options->is_range_query_running = true;
+  if (!rqdc_enabled) {
+    // db_impl_->PauseBackgroundWork();
+    return Refresh();
   }
 
+  db_impl_->num_entries_skipped = 0;
+  db_impl_->num_entries_compacted = 0;
+
+  // Assign read options once to avoid multiple assignments
+  read_options_.range_end_key = end_key;
+  read_options_.range_start_key = start_key;
+  read_options_.range_query_compaction_enabled = rqdc_enabled;
+  db_impl_->read_options_ = read_options_;
+
+#ifdef TIMEBREAK
+  auto tp1 = std::chrono::high_resolution_clock::now();
+#endif
+
+  db_impl_->PauseBackgroundWork();
+
+#ifdef TIMEBREAK
+  auto tp2 = std::chrono::high_resolution_clock::now();
+  std::cout
+      << "pauseTime: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
+      << std::endl
+      << std::flush;
+#endif
+
   if (!CanPerformRangeQueryCompaction(entries_count)) {
-    if (read_options_.range_query_compaction_enabled) {
-      db_impl_->ContinueBackgroundWork();
-    }
+    db_impl_->ContinueBackgroundWork();
     read_options_.range_query_compaction_enabled = false;
-    read_options_.range_start_key = "";
-    read_options_.range_end_key = "";
+    read_options_.range_start_key.clear();
+    read_options_.range_end_key.clear();
     db_impl_->read_options_ = read_options_;
   } else {
     db_impl_->was_decision_true = true;
     db_impl_->added_last_table = false;
   }
 
+#ifdef TIMEBREAK
+  auto tp3 = std::chrono::high_resolution_clock::now();
+  std::cout
+      << "decisionMakingTime: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp3 - tp2).count()
+      << std::endl
+      << std::flush;
+#endif
+
   return Refresh();
 }
 
-Status ArenaWrappedDBIter::Reset() {
+Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
+                                 uint64_t& entries_to_compact) {
   // Check if the last table is added to the queue
-  if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
-      cfd_->mem_range()->num_entries() > 0) {
-    MemTable* imm_range = cfd_->mem_range();
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                imm_range);
-    db_impl_->added_last_table = true;
+
+  if (!read_options_.range_query_compaction_enabled) {
+    read_options_.range_query_options->is_range_query_running = false;
+    read_options_.range_query_options->reset();
+    // db_impl_->ContinueBackgroundWork();
+    return Status::OK();
   }
-  while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
-         db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
-         db_impl_->bg_partial_or_range_flush_running_ > 0) {
-    db_impl_->SchedulePartialOrRangeFileFlush();
-    db_impl_->range_queries_complete_cv_.Wait();
+#ifdef TIMEBREAK
+  auto tp1 = std::chrono::high_resolution_clock::now();
+#endif  // TIMEBREAK
+  if (db_impl_->read_options_.range_query_compaction_enabled) {
+    if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
+        cfd_->mem_range()->num_entries() > 0) {
+      MemTable* imm_range = cfd_->mem_range();
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
+                                                  cfd_, imm_range);
+      db_impl_->added_last_table = true;
+    }
+    while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
+           db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
+           db_impl_->bg_partial_or_range_flush_running_ > 0) {
+      db_impl_->SchedulePartialOrRangeFileFlush();
+      db_impl_->range_queries_complete_cv_.Wait();
+    }
   }
+
+#ifdef TIMEBREAK
+  auto tp2 = std::chrono::high_resolution_clock::now();
+  std::cout
+      << "waitForFinishingCompactionTime: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
+      << std::endl
+      << std::flush;
+#endif  // TIMEBREAK
 
   // std::ofstream compacted_vs_skipped;
   // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv",
@@ -334,10 +352,14 @@ Status ArenaWrappedDBIter::Reset() {
   //                      << db_impl_->num_entries_skipped;
   // compacted_vs_skipped.close();
 
+  entries_skipped = db_impl_->num_entries_skipped;
+  entries_to_compact = db_impl_->num_entries_read_to_compact;
   std::string levels_state_before =
       "Range Query Complete: Compacted << " +
       std::to_string(db_impl_->num_entries_compacted) +
-      " Skipped: " + std::to_string(db_impl_->num_entries_skipped);
+      " Skipped: " + std::to_string(db_impl_->num_entries_skipped) +
+      " Read to Compact: " +
+      std::to_string(db_impl_->num_entries_read_to_compact);
   auto storage_info_before = cfd_->current()->storage_info();
   for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
     uint64_t total_entries = 0;
@@ -357,6 +379,8 @@ Status ArenaWrappedDBIter::Reset() {
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
 
+  read_options_.range_query_options->is_range_query_running = false;
+  read_options_.range_query_options->reset();
   // check if range query compaction was enabled, set to true
   // otherwise background compaction is already running
   if (db_impl_->read_options_.range_query_compaction_enabled) {
@@ -368,11 +392,15 @@ Status ArenaWrappedDBIter::Reset() {
   db_impl_->was_decision_true = false;
   db_impl_->num_entries_skipped = 0;
   db_impl_->num_entries_compacted = 0;
+  db_impl_->num_entries_read_to_compact = 0;
   db_impl_->ContinueBackgroundWork();
   return Status::OK();
 }
 
 Status ArenaWrappedDBIter::Refresh() {
+#ifdef TIMEBREAK
+  auto tp1 = std::chrono::high_resolution_clock::now();
+#endif  // TIMEBREAK
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
   }
@@ -483,6 +511,15 @@ Status ArenaWrappedDBIter::Refresh() {
       break;
     }
   }
+
+#ifdef TIMEBREAK
+  auto tp2 = std::chrono::high_resolution_clock::now();
+  std::cout
+      << "refreshingIteratorTime: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
+      << std::endl
+      << std::flush;
+#endif  // TIMER
   return Status::OK();
 }
 

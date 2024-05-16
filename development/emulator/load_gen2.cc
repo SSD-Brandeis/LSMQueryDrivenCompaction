@@ -23,7 +23,7 @@
 #define PD_THRESHOLD 0.1  // PD_THRESHOLD*insert_count number of inserts must be made before Point Deletes may take place (applicable when an empty database is being populated)
 #define RD_THRESHOLD 0.75 // RD_THRESHOLD*insert_count number of inserts must be made before Range Deletes may take place (applicable when an empty database is being populated)
 #define PQ_THRESHOLD 0.1  // PQ_THRESHOLD*insert_count number of inserts must be made before Point Queries may take place (applicable when an empty database is being populated)
-// #define RQ_THRESHOLD 0.1  // RQ_THRESHOLD*insert_count number of inserts must be made before Range Queries may take place (applicable when an empty database is being populated)   # HACK: .... SET TO 1 For TESTING
+// #define RQ_THRESHOLD 0.75  // RQ_THRESHOLD*insert_count number of inserts must be made before Range Queries may take place (applicable when an empty database is being populated)   # HACK: .... SET TO 1 For TESTING
 #define RQ_THRESHOLD 1.0 // RQ_THRESHOLD*insert_count number of inserts must be made before Range Queries may take place (applicable when an empty database is being populated)   # HACK: .... SET TO 1 For TESTING
 #define STRING_KEY_ENABLED false
 #define FILENAME "workload.txt"
@@ -39,9 +39,9 @@ long range_delete_count = 0;
 float range_delete_selectivity = 0;
 long point_query_count = 0;
 long range_query_count = 0;
-long same_range_query_count = 0;
-float same_range_query_overlap_selectivity = 0;
-long unique_range_queries = 0;
+// long same_range_query_count = 0;
+// float same_range_query_overlap_selectivity = 0;
+// long unique_range_queries = 0;
 
 long previous_start_index = 0;
 std::random_device rd;
@@ -640,14 +640,14 @@ void generate_workload()
             long start_index = (long)(rand() % insert_pool_size);
             long end_index = -1;
 
-            if (same_range_query_count > 0)
-            {
-                if (_range_query_count != 0 && _range_query_count % unique_range_queries != 0)
-                {
-                    start_index = previous_start_index;
-                    start_index -= floor(entries_in_range_query * (1 - same_range_query_overlap_selectivity + dis(gen)));
-                }
-            }
+            // if (same_range_query_count > 0)
+            // {
+            //     if (_range_query_count != 0 && _range_query_count % unique_range_queries != 0)
+            //     {
+            //         start_index = previous_start_index;
+            //         start_index -= floor(entries_in_range_query * (1 - same_range_query_overlap_selectivity + dis(gen)));
+            //     }
+            // }
 
             if (start_index + entries_in_range_query > insert_pool_size)
             {
@@ -655,11 +655,11 @@ void generate_workload()
                 start_index -= (start_index + entries_in_range_query - insert_pool_size);
                 // std::cout << "start index (= " << start_index << ") + entries_in_range_query (= " << entries_in_range_query << ") > insert_pool_size (= " << insert_pool_size << ")" << std::endl;
             }
-            if (same_range_query_count > 0) {
-                if (_range_query_count == 0 || _range_query_count % unique_range_queries == 0) {
-                    previous_start_index = start_index;
-                }
-            }
+            // if (same_range_query_count > 0) {
+            //     if (_range_query_count == 0 || _range_query_count % unique_range_queries == 0) {
+            //         previous_start_index = start_index;
+            //     }
+            // }
             // std::cout << "ELSE: start index (= " << start_index << ") + entries_in_range_query (= " << entries_in_range_query << ") > insert_pool_size (= " << insert_pool_size << ")" << std::endl;
             end_index = start_index + entries_in_range_query - 1;
             if (start_index < 0 || entries_in_range_query == 0)
@@ -928,8 +928,8 @@ int parse_arguments2(int argc, char *argv[])
     args::ValueFlag<float> maximum_unique_existing_point_lookup_proportion_cmd(group1, "UE", "Proportion of maximum unique exising point lookups [def: 0.5]", {"UE", "maximum_unique_existing_point_lookup_proportion"});
 
 
-    args::ValueFlag<long> same_range_query_count_cmd(group1, "SRQC", "Same range query count [def: 0]", {"SRQC", "same_range_query_count"});
-    args::ValueFlag<float> same_range_query_overlap_selectivity_cmd(group1, "SRQOS", "Same range query overlap selectivity [def: 0]", {"SRQOS", "same_range_query_overlap_selectivity"});
+    // args::ValueFlag<long> same_range_query_count_cmd(group1, "SRQC", "Same range query count [def: 0]", {"SRQC", "same_range_query_count"});
+    // args::ValueFlag<float> same_range_query_overlap_selectivity_cmd(group1, "SRQOS", "Same range query overlap selectivity [def: 0]", {"SRQOS", "same_range_query_overlap_selectivity"});
 
 
     args::ValueFlag<uint32_t> entry_size_cmd(group1, "E", "Entry size (in bytes) [def: 8]", {'E', "entry_size"});
@@ -1016,12 +1016,12 @@ int parse_arguments2(int argc, char *argv[])
     float maximum_unique_existing_point_query_proportion = maximum_unique_existing_point_lookup_proportion_cmd ? args::get(maximum_unique_existing_point_lookup_proportion_cmd) : 0.5;
     maximum_unique_existing_point_query_count = round(existing_point_query_count * maximum_unique_existing_point_query_proportion);
 
-    same_range_query_count = same_range_query_count_cmd ? args::get(same_range_query_count_cmd) : 0;
-    same_range_query_overlap_selectivity = same_range_query_overlap_selectivity_cmd ? args::get(same_range_query_overlap_selectivity_cmd) : 0;
+    // same_range_query_count = same_range_query_count_cmd ? args::get(same_range_query_count_cmd) : 0;
+    // same_range_query_overlap_selectivity = same_range_query_overlap_selectivity_cmd ? args::get(same_range_query_overlap_selectivity_cmd) : 0;
 
-    if (same_range_query_count > 0) {
-        unique_range_queries = floor(range_query_count / same_range_query_count);
-    }
+    // if (same_range_query_count > 0) {
+    //     unique_range_queries = floor(range_query_count / same_range_query_count);
+    // }
 
     lambda = lambda_cmd ? args::get(lambda_cmd) : 0.5;
     if (lambda <= 0 || lambda > 1)

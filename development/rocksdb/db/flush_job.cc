@@ -9,6 +9,8 @@
 
 #include "db/flush_job.h"
 
+#include <iostream>
+
 #include <algorithm>
 #include <cinttypes>
 #include <vector>
@@ -1506,6 +1508,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   AutoThreadOperationStageUpdater stage_updater(
       ThreadStatus::STAGE_FLUSH_WRITE_PARTIAL);
   db_mutex_->AssertHeld();
+  uint64_t number_of_entries = file_meta_->num_entries;
   const uint64_t start_micros = clock_->NowMicros();
   const uint64_t start_cpu_micros = clock_->CPUMicros();
   Status s;
@@ -1746,6 +1749,12 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
                    memtable_garbage_bytes);
       }
       LogFlush(db_options_.info_log);
+
+      if (db_options_.verbosity > 1) {
+        std::cout  << "{\"FileNumber\": " << file_meta_->fd.GetNumber() << ", \"Level\": " << level_ << ", \"extraEntriesCount\": " << num_input_entries << "}," << std::endl << std::flush;
+        std::cout  << "{\"FileNumber\": " << file_meta_->fd.GetNumber() << ", \"Level\": " << level_ << ", \"ToCompactAccurate\": " << (number_of_entries - num_input_entries) << "}," << std::endl << std::flush;
+        number_of_entries -= num_input_entries;
+      }
     }
   }
 
@@ -1896,6 +1905,11 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
                    memtable_garbage_bytes);
       }
       LogFlush(db_options_.info_log);
+
+      if (db_options_.verbosity > 1) {
+        std::cout  << "{\"FileNumber\": " << file_meta_->fd.GetNumber() << ", \"Level\": " << level_ << ", \"extraEntriesCount\": " << num_input_entries << "}," << std::endl << std::flush;
+        std::cout  << "{\"FileNumber\": " << file_meta_->fd.GetNumber() << ", \"Level\": " << level_ << ", \"ToCompactAccurate\": " << (number_of_entries - num_input_entries) << "}," << std::endl << std::flush;
+      }
     }
   }
 

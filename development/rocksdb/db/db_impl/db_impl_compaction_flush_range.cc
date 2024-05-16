@@ -70,7 +70,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice target = Slice(given_start_key);
       auto skip_count_with_key =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
-      // std::cout << "Tail Overlapp: " << (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size)) << " SKIPCOUNT: " << std::get<0>(skip_count_with_key) << " LASTKEY: " << std::get<1>(skip_count_with_key).data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       overlapping_count =
           file_meta->num_entries - (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size));
       useful_min_key = std::get<1>(skip_count_with_key);
@@ -86,7 +85,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice target = Slice(given_end_key);
       auto skip_count_with_key =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
-      // std::cout << "Head Overlapp: " << (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size)) << " SKIPCOUNT: " << std::get<0>(skip_count_with_key) << " LASTKEY: " << std::get<1>(skip_count_with_key).data() << " " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
       overlapping_count = (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size));
       useful_max_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key != "" && given_end_key != "") {
@@ -317,6 +315,9 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
       // if reason is kPartialFlush and just_delete is true
       // add this file to the edits Delete and we are done!
       if (flush_reason == FlushReason::kPartialFlush && just_delete) {
+        if (immutable_db_options().verbosity > 1) {
+          std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber() << ", \"Level\": " << level << ", \"ToCompactAccurate\": " << file_meta->num_entries << "}," << std::endl << std::flush;
+        }
         assert(file_meta != nullptr);
         VersionEdit* edit_ = new VersionEdit();
         // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since LogandApply will set it anyway
@@ -576,6 +577,14 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
         *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber()));
     this->num_entries_compacted += memtable_to_flush->num_entries();
     mutex_.Unlock();
+    if (immutable_db_options().verbosity > 1) {
+      std::cout << "{\"MemtableId\": " << memtable_to_flush->GetID() << ", \"Level\": " << decision_cell_.end_level_ << ", \"entriesCompacted\": " << memtable_to_flush->num_entries() << "}," << std::endl << std::flush;
+    }
+  } else {
+    if (immutable_db_options().verbosity > 1) {
+      std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber() << ", \"Level\": " << level << ", \"entriesToCompact\": " << file_meta->num_entries << "}," << std::endl << std::flush;
+    }
+    this->num_entries_read_to_compact += file_meta->num_entries;
   }
 
   FlushRequest req{flush_reason, {{cfd, 0}},  memtable_to_flush,

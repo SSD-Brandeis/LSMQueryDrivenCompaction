@@ -1459,6 +1459,38 @@ enum ReadTier {
   kMemtableTier = 0x3     // data in memtable. used for memtable-only iterators.
 };
 
+// Options that collect range query stats
+struct RangeQueryOptions{
+  bool is_range_query_running = false;
+  uint64_t count_of_entries = 0;  // total entries that fall in range query
+  uint64_t count_of_total_invalid = 0;  // invalid entries that exists in entries that fall in range
+  uint64_t count_of_entries_to_compact = 0; // this includes both valid and logically invalid entries that were selected for compaction
+  uint64_t count_of_entries_compacted = 0;  // entries that were selected for compaction
+  uint64_t count_of_entries_removed = 0;  // entries removed from the entries that were selected for compaction
+  uint64_t count_of_extra_write_for_partial = 0;  // extra write for partial files
+
+  void reset() {
+    // reset all variables
+    is_range_query_running = false;
+    count_of_entries = 0;
+    count_of_total_invalid = 0;
+    count_of_entries_to_compact = 0;
+    count_of_entries_compacted = 0;
+    count_of_entries_removed = 0;
+    count_of_extra_write_for_partial = 0;
+  }
+
+  void initiate() {
+    is_range_query_running = false;
+    count_of_entries = 0;
+    count_of_total_invalid = 0;
+    count_of_entries_to_compact = 0;
+    count_of_entries_compacted = 0;
+    count_of_entries_removed = 0;
+    count_of_extra_write_for_partial = 0;
+  }
+};
+
 // Options that control read operations
 struct ReadOptions {
   // *** BEGIN options relevant to point lookups as well as scans ***
@@ -1619,6 +1651,7 @@ struct ReadOptions {
 
   // Used to check if the range query compaction is enabled
   bool range_query_compaction_enabled = false;
+  RangeQueryOptions *range_query_options = new RangeQueryOptions();
 
   // number of entries overlap from lower to upper level 
   float upper_threshold = 0;  // default: [inf]

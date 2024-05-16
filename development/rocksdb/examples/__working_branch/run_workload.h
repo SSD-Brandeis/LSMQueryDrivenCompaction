@@ -162,9 +162,11 @@ int runWorkload(EmuEnv* _env) {
   configOptions(_env, &options, &table_options, &w_options, &r_options,
                 &f_options);
 
+  r_options.range_query_options->initiate();
+
   if (_env->destroy_database) {
     DestroyDB(kDBPath, options);
-    std::cout << "Destroying database ..." << std::endl;
+    // std::cout << "Destroying database ..." << std::endl;
   }
 
   // options.info_log_level = InfoLogLevel::DEBUG_LEVEL;
@@ -177,10 +179,10 @@ int runWorkload(EmuEnv* _env) {
   options.listeners.emplace_back(partial_range_flush_listener);
 
   printExperimentalSetup(_env);  // !YBS-sep07-XX!
-  std::cout << "Maximum #OpenFiles = " << options.max_open_files
-            << std::endl;  // !YBS-sep07-XX!
-  std::cout << "Maximum #ThreadsUsedToOpenFiles = "
-            << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
+  // std::cout << "Maximum #OpenFiles = " << options.max_open_files
+  //           << std::endl;  // !YBS-sep07-XX!
+  // std::cout << "Maximum #ThreadsUsedToOpenFiles = "
+  //           << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
 
   Status s = DB::Open(options, kDBPath, &db);
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
@@ -200,7 +202,7 @@ int runWorkload(EmuEnv* _env) {
 
 #ifdef PROFILE
   // number of epochs to run the experiment
-  int num_epochs = 1;
+  int num_epochs = 11;
   int num_instructions_for_one_epoch =
       (_env->num_updates / num_epochs) + (_env->num_range_queries / num_epochs);
   int num_instructions_executed_for_one_epoch = 0;
@@ -220,9 +222,9 @@ int runWorkload(EmuEnv* _env) {
 
   // Clearing the system cache
   if (_env->clear_system_cache) {
-    std::cout << "Clearing system cache ..." << std::endl;
-    std::cout << system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'")
-              << std::endl;
+    // std::cout << "Clearing system cache ..." << std::endl;
+    // std::cout << system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'")
+    //           << std::endl;
   }
   // START stat collection
   if (_env->enable_rocksdb_perf_iostat == 1) {
@@ -388,132 +390,76 @@ int runWorkload(EmuEnv* _env) {
         lexico_valid = to_string(start_key).compare(to_string(end_key)) < 0;
 
         {
+          uint64_t entries_count_read = 0;
+          uint64_t entries_count_skipped = 0;
+          uint64_t entries_read_to_compact = 0;
+          uint64_t ideal_entries_count = 0;
+//           {
+// #ifdef PROFILE
+//             ColumnFamilyMetaData metadata;
+//             db->GetColumnFamilyMetaData(&metadata);
+//             std::stringstream cfd_details;
+//             std::stringstream all_level_details;
+//             unsigned long long total_entries_in_cfd = 0;
+
+//             // Print column family metadata
+//             cfd_details << "Column Family Name: " << metadata.name
+//                         << ", Size: " << metadata.size
+//                         << " bytes, Files Count: " << metadata.file_count;
+
+//             // Print metadata for each level
+//             for (const auto& level : metadata.levels) {
+//               std::stringstream level_details;
+//               level_details << "\tLevel: " << level.level
+//                             << ", Size: " << level.size
+//                             << " bytes, Files Count: " << level.files.size();
+
+//               unsigned long long total_entries_in_one_level = 0;
+//               std::stringstream level_sst_file_details;
+
+//               // Print metadata for each file in the level
+//               for (const auto& file : level.files) {
+//                 total_entries_in_one_level += file.num_entries;
+//                 level_sst_file_details << "[#" << file.file_number << ":"
+//                                        << file.size << " (" << file.smallestkey
+//                                        << ", " << file.largestkey << ") "
+//                                        << file.num_entries << "], ";
+//               }
+//               total_entries_in_cfd += total_entries_in_one_level;
+//               level_details << ", Entries Count: " << total_entries_in_one_level
+//                             << "\n\t\t";
+//               all_level_details << level_details.str()
+//                                 << level_sst_file_details.str() << std::endl;
+//             }
+
+//             std::cout << cfd_details.str()
+//                       << ", Entries Count: " << total_entries_in_cfd
+//                       << ", Invalid Entries Count: "
+//                       << total_entries_in_cfd - _env->num_inserts << std::endl
+//                       << all_level_details.str() << std::endl;
+
+// #endif  // PROFILE
+//           }
+
+  // {
+  //   std::cout << "\nwaiting for compactions to finish ..." << std::endl;
+  //   std::vector<std::string> live_files;
+  //   uint64_t manifest_size;
+  //   db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+  //   WaitForCompactions(db);
+  // }
+
 #ifdef TIMER
           auto start = std::chrono::high_resolution_clock::now();
-          partial_range_flush_listener->reset();
+          // partial_range_flush_listener->reset();
 #endif  // TIMER
 
-          uint64_t entries_count_read = 0;
-
           if (lexico_valid) {
-            //             std::cout << "\nRangeQuery startkey: " << start_key
-            //                       << " endkey: " << end_key << std::endl;
-            //             {
-            // #ifdef PROFILE
-            //               ColumnFamilyMetaData metadata;
-            //               db->GetColumnFamilyMetaData(&metadata);
-            //               std::stringstream cfd_details;
-            //               std::stringstream all_level_details;
-            //               unsigned long long total_entries_in_cfd = 0;
-
-            //               // Print column family metadata
-            //               cfd_details << "Column Family Name: " <<
-            //               metadata.name
-            //                           << ", Size: " << metadata.size
-            //                           << " bytes, Files Count: " <<
-            //                           metadata.file_count;
-
-            //               // Print metadata for each level
-            //               for (const auto& level : metadata.levels) {
-            //                 std::stringstream level_details;
-            //                 level_details << "\tLevel: " << level.level
-            //                               << ", Size: " << level.size
-            //                               << " bytes, Files Count: " <<
-            //                               level.files.size();
-
-            //                 unsigned long long total_entries_in_one_level =
-            //                 0; std::stringstream level_sst_file_details;
-
-            //                 // Print metadata for each file in the level
-            //                 for (const auto& file : level.files) {
-            //                   total_entries_in_one_level += file.num_entries;
-            //                   level_sst_file_details
-            //                       << "[#" << file.file_number << ":" <<
-            //                       file.size << " ("
-            //                       << file.smallestkey << ", " <<
-            //                       file.largestkey << ") "
-            //                       << file.num_entries << "], ";
-            //                 }
-            //                 total_entries_in_cfd +=
-            //                 total_entries_in_one_level; level_details
-            //                     << ", Entries Count: " <<
-            //                     total_entries_in_one_level
-            //                     << "\n\t\t";
-            //                 all_level_details << level_details.str()
-            //                                   << level_sst_file_details.str()
-            //                                   << std::endl;
-            //               }
-
-            //               std::cout << cfd_details.str()
-            //                         << ", Entries Count: " <<
-            //                         total_entries_in_cfd
-            //                         << ", Invalid Entries Count: "
-            //                         << total_entries_in_cfd -
-            //                         _env->num_inserts << std::endl
-            //                         << all_level_details.str() << std::endl;
-
-            // #endif  // PROFILE
-            //             }
-
+            // std::cout << "\nrangeQuery startkey: " << start_key
+            //           << " endkey: " << end_key << std::endl << std::flush;
             it->Refresh(to_string(start_key), to_string(end_key),
                         entries_count_read,
                         _env->enable_range_query_compaction);
-
-            //             {
-            // #ifdef PROFILE
-            //               ColumnFamilyMetaData metadata;
-            //               db->GetColumnFamilyMetaData(&metadata);
-            //               std::stringstream cfd_details;
-            //               std::stringstream all_level_details;
-            //               unsigned long long total_entries_in_cfd = 0;
-
-            //               // Print column family metadata
-            //               cfd_details << "Column Family Name: " <<
-            //               metadata.name
-            //                           << ", Size: " << metadata.size
-            //                           << " bytes, Files Count: " <<
-            //                           metadata.file_count;
-
-            //               // Print metadata for each level
-            //               for (const auto& level : metadata.levels) {
-            //                 std::stringstream level_details;
-            //                 level_details << "\tLevel: " << level.level
-            //                               << ", Size: " << level.size
-            //                               << " bytes, Files Count: " <<
-            //                               level.files.size();
-
-            //                 unsigned long long total_entries_in_one_level =
-            //                 0; std::stringstream level_sst_file_details;
-
-            //                 // Print metadata for each file in the level
-            //                 for (const auto& file : level.files) {
-            //                   total_entries_in_one_level += file.num_entries;
-            //                   level_sst_file_details
-            //                       << "[#" << file.file_number << ":" <<
-            //                       file.size << " ("
-            //                       << file.smallestkey << ", " <<
-            //                       file.largestkey << ") "
-            //                       << file.num_entries << "], ";
-            //                 }
-            //                 total_entries_in_cfd +=
-            //                 total_entries_in_one_level; level_details
-            //                     << ", Entries Count: " <<
-            //                     total_entries_in_one_level
-            //                     << "\n\t\t";
-            //                 all_level_details << level_details.str()
-            //                                   << level_sst_file_details.str()
-            //                                   << std::endl;
-            //               }
-
-            //               std::cout << cfd_details.str()
-            //                         << ", Entries Count: " <<
-            //                         total_entries_in_cfd
-            //                         << ", Invalid Entries Count: "
-            //                         << total_entries_in_cfd -
-            //                         _env->num_inserts << std::endl
-            //                         << all_level_details.str() << std::endl;
-            // #endif  // PROFILE
-            //             }
           }
 #ifdef TIMER
           refresh_time = std::chrono::high_resolution_clock::now();
@@ -521,6 +467,7 @@ int runWorkload(EmuEnv* _env) {
               std::chrono::duration_cast<std::chrono::nanoseconds>(
                   refresh_time - start)
                   .count();
+          std::cout << "refreshTime: " << refresh_duration << std::endl << std::flush;
 #endif  // TIMER
 
           assert(it->status().ok());
@@ -528,6 +475,7 @@ int runWorkload(EmuEnv* _env) {
             if (it->key().ToString() >= to_string(end_key)) {
               break;
             }
+            ideal_entries_count++;
           }
 
           if (!it->status().ok()) {
@@ -535,11 +483,20 @@ int runWorkload(EmuEnv* _env) {
           }
 
 #ifdef TIMER
+          r_options.range_query_options->count_of_total_invalid = (r_options.range_query_options->count_of_entries - ideal_entries_count);
+          // r_options.range_query_options->count_of_entries_removed = r_options.range_query_options->count_of_entries_to_compact - r_options.range_query_options->count_of_entries_compacted;
           auto reset_start = std::chrono::high_resolution_clock::now();
+          std::cout << "entriesCount: " << r_options.range_query_options->count_of_entries << std::endl << std::flush;
+          std::cout << "idealEntriesCount: " << ideal_entries_count << std::endl << std::flush;
+          std::cout << "invalidEntriesCount: " << r_options.range_query_options->count_of_total_invalid << std::endl << std::flush;
+          // std::cout << "entriesToCompactCount: " << r_options.range_query_options->count_of_entries_to_compact << std::endl << std::flush;
+          // std::cout << "entriesCompactedCount: " << r_options.range_query_options->count_of_entries_compacted << std::endl << std::flush;
+          // std::cout << "entriesRemoved: " << r_options.range_query_options->count_of_entries_removed << std::endl << std::flush;
+          // std::cout << "extraEntriesWritten: " << r_options.range_query_options->count_of_extra_write_for_partial << std::endl << std::flush;
 #endif  // TIMER
-          if (_env->enable_range_query_compaction && lexico_valid) {
-            it->Reset();
-          }
+          // if (_env->enable_range_query_compaction && lexico_valid) {
+            it->Reset(entries_count_skipped, entries_read_to_compact);
+          // }
 #ifdef TIMER
           auto reset_end = std::chrono::high_resolution_clock::now();
           actual_range_time =
@@ -549,15 +506,18 @@ int runWorkload(EmuEnv* _env) {
           reset_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                reset_end - reset_start)
                                .count();
+          std::cout << "actualTime: " << actual_range_time << std::endl << std::flush;
+          std::cout << "resetTime: " << reset_duration << std::endl << std::flush;
 #endif  // TIMER
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
+          std::cout << "totalTime: " << duration.count() << std::endl << std::flush;
+          range_queries_time_for_one_epoch += duration.count();
           operations_execution_time += duration.count();
           all_range_queries_time += duration.count();
-          range_queries_time_for_one_epoch += duration.count();
           range_queries_.emplace_back(std::make_tuple(
               duration.count(),
               partial_range_flush_listener->udata_bytes_written(),
@@ -570,6 +530,52 @@ int runWorkload(EmuEnv* _env) {
               reset_duration, actual_range_time));
           partial_range_flush_listener->reset();
 #endif  // TIMER
+
+//           {
+// #ifdef PROFILE
+//             ColumnFamilyMetaData metadata;
+//             db->GetColumnFamilyMetaData(&metadata);
+//             std::stringstream cfd_details;
+//             std::stringstream all_level_details;
+//             unsigned long long total_entries_in_cfd = 0;
+
+//             // Print column family metadata
+//             cfd_details << "Column Family Name: " << metadata.name
+//                         << ", Size: " << metadata.size
+//                         << " bytes, Files Count: " << metadata.file_count;
+
+//             // Print metadata for each level
+//             for (const auto& level : metadata.levels) {
+//               std::stringstream level_details;
+//               level_details << "\tLevel: " << level.level
+//                             << ", Size: " << level.size
+//                             << " bytes, Files Count: " << level.files.size();
+
+//               unsigned long long total_entries_in_one_level = 0;
+//               std::stringstream level_sst_file_details;
+
+//               // Print metadata for each file in the level
+//               for (const auto& file : level.files) {
+//                 total_entries_in_one_level += file.num_entries;
+//                 level_sst_file_details << "[#" << file.file_number << ":"
+//                                        << file.size << " (" << file.smallestkey
+//                                        << ", " << file.largestkey << ") "
+//                                        << file.num_entries << "], ";
+//               }
+//               total_entries_in_cfd += total_entries_in_one_level;
+//               level_details << ", Entries Count: " << total_entries_in_one_level
+//                             << "\n\t\t";
+//               all_level_details << level_details.str()
+//                                 << level_sst_file_details.str() << std::endl;
+//             }
+
+//             std::cout << cfd_details.str()
+//                       << ", Entries Count: " << total_entries_in_cfd
+//                       << ", Invalid Entries Count: "
+//                       << total_entries_in_cfd - _env->num_inserts << std::endl
+//                       << all_level_details.str() << std::endl;
+// #endif  // PROFILE
+//           }
         }
 
 #ifdef PROFILE

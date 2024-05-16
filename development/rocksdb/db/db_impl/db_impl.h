@@ -9,6 +9,7 @@
 #pragma once
 
 #include <atomic>
+#include <cmath>
 #include <deque>
 #include <functional>
 #include <limits>
@@ -19,7 +20,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <cmath>
 
 #include "db/column_family.h"
 #include "db/compaction/compaction_iterator.h"
@@ -95,28 +95,22 @@ struct DecisionCell {
                ReadOptions read_options)
       : start_level_(start_level),
         end_level_(end_level),
-        overlapping_entries_ratio_(overlapping_entries_ratio),
+        overlapping_entries_ratio_(std::move(overlapping_entries_ratio)),
         read_options_(read_options) {}
 
-  DecisionCell() {
-    start_level_ = 0;
-    end_level_ = 0;
-    overlapping_entries_ratio_ = {};
-  }
+  DecisionCell()
+      : start_level_(0), end_level_(0), overlapping_entries_ratio_() {}
 
-  int GetStartLevel() { return start_level_; }
-  int GetEndLevel() { return end_level_; }
+  int GetStartLevel() const { return start_level_; }
+  int GetEndLevel() const { return end_level_; }
 
-  bool GetDecision() {
-    bool decision = true;
-    for (auto ratio : overlapping_entries_ratio_) {
-      if (std::isnan(ratio) || ratio < read_options_.lower_threshold ||
-          ratio > read_options_.upper_threshold) {
-        decision = false;
-        break;
-      }
-    }
-    return decision;
+  bool GetDecision() const {
+    return std::all_of(overlapping_entries_ratio_.begin(),
+                       overlapping_entries_ratio_.end(), [this](float ratio) {
+                         return !std::isnan(ratio) &&
+                                ratio >= read_options_.lower_threshold &&
+                                ratio <= read_options_.upper_threshold;
+                       });
   }
 };
 
@@ -513,15 +507,17 @@ class DBImpl : public DB {
   int bg_partial_or_range_flush_running_ = 0;
   bool added_last_table = false;
   bool was_decision_true = false;
-  DecisionCell decision_cell_;    
+  DecisionCell decision_cell_;
   // Conditional variable to coordinate the completion of range queries flush
-  InstrumentedMutex range_queries_complete_mutex_;  // TODO: (Shubham) Why this lock is even required???
+  InstrumentedMutex range_queries_complete_mutex_;  // TODO: (Shubham) Why this
+                                                    // lock is even required???
   InstrumentedCondVar range_queries_complete_cv_;
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;
   long long num_entries_compacted = 0;
   long long num_entries_skipped = 0;
+  long long num_entries_read_to_compact = 0;
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
@@ -566,8 +562,7 @@ class DBImpl : public DB {
   virtual Status GetSortedWalFiles(VectorLogPtr& files) override;
   virtual Status GetCurrentWalFile(
       std::unique_ptr<LogFile>* current_log_file) override;
-  virtual Status GetCreationTimeOfOldestFile(
-      uint64_t* creation_time) override;
+  virtual Status GetCreationTimeOfOldestFile(uint64_t* creation_time) override;
 
   virtual Status GetUpdatesSince(
       SequenceNumber seq_number, std::unique_ptr<TransactionLogIterator>* iter,
@@ -1846,8 +1841,8 @@ class DBImpl : public DB {
     const InternalKey* begin = nullptr;  // nullptr means beginning of key range
     const InternalKey* end = nullptr;    // nullptr means end of key range
     InternalKey* manual_end = nullptr;   // how far we are compacting
-    InternalKey tmp_storage;      // Used to keep track of compaction progress
-    InternalKey tmp_storage1;     // Used to keep track of compaction progress
+    InternalKey tmp_storage;   // Used to keep track of compaction progress
+    InternalKey tmp_storage1;  // Used to keep track of compaction progress
 
     // When the user provides a canceled pointer in CompactRangeOptions, the
     // above varaibe is the reference of the user-provided

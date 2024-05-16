@@ -1269,6 +1269,13 @@ class VersionSet {
                                      const FileOptions& file_options,
                                      int new_levels);
 
+  // Try to push overflowed level to one level down
+  static Status MayShiftLevel(const std::string& dbname,
+                              const Options* options,
+                              const FileOptions& file_options,
+                              const ImmutableOptions& immutable_options,
+                              int lvl_to_check);
+
   // Get the checksum information of all live files
   Status GetLiveFilesChecksumInfo(FileChecksumList* checksum_list);
 

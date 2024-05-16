@@ -46,7 +46,7 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
     if (s.ok()) {
       table_reader = cfd->table_cache()->get_cache().Value(handle);
-    } // (Shubham) What if table_reader is still null?
+    }  // (Shubham) What if table_reader is still null?
   }
 
   if (s.ok()) {
@@ -55,8 +55,10 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
     auto num_entries = table_properties->num_entries;
     uint64_t raw_key_size = table_properties->raw_key_size;
     uint64_t raw_value_size = table_properties->raw_value_size;
-    uint64_t avg_raw_key_size = num_entries != 0 ? 1.0 * raw_key_size / num_entries : 0.0;
-    uint64_t avg_raw_value_size = num_entries != 0 ? 1.0 * raw_value_size / num_entries : 0.0;
+    uint64_t avg_raw_key_size =
+        num_entries != 0 ? 1.0 * raw_key_size / num_entries : 0.0;
+    uint64_t avg_raw_value_size =
+        num_entries != 0 ? 1.0 * raw_value_size / num_entries : 0.0;
 
     if (given_start_key != "" && given_end_key == "") {
       // start key comes when tail is overlapping
@@ -69,9 +71,11 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
       Slice target = Slice(given_start_key);
       auto skip_count_with_key =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                                target);
       overlapping_count =
-          file_meta->num_entries - (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size));
+          file_meta->num_entries - (std::get<0>(skip_count_with_key) /
+                                    (avg_raw_key_size + avg_raw_value_size));
       useful_min_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key == "" && given_end_key != "") {
       // end key comes when head is overlapping
@@ -84,8 +88,10 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
       Slice target = Slice(given_end_key);
       auto skip_count_with_key =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, target);
-      overlapping_count = (std::get<0>(skip_count_with_key) / (avg_raw_key_size + avg_raw_value_size));
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                                target);
+      overlapping_count = (std::get<0>(skip_count_with_key) /
+                           (avg_raw_key_size + avg_raw_value_size));
       useful_max_key = std::get<1>(skip_count_with_key);
     } else if (given_start_key != "" && given_end_key != "") {
       // both start and end key comes when file middle portion is overlapping
@@ -99,11 +105,14 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       Slice start = Slice(given_start_key);
       Slice end = Slice(given_end_key);
       auto start_overlapping =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, start);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                                start);
       auto end_overlapping =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options, end);
+          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                                end);
       overlapping_count =
-          ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) / (avg_raw_key_size + avg_raw_value_size));
+          ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) /
+           (avg_raw_key_size + avg_raw_value_size));
       useful_min_key = std::get<1>(start_overlapping);
       useful_max_key = std::get<1>(end_overlapping);
     }
@@ -111,6 +120,18 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
 
   return overlapping_count;
 }
+
+void DBImpl::MayShiftLevel() {
+    // check if level overflowed due to range query driven compaction.
+    // If yes, shift it one level down and handle the corner cases like
+    // if next level is not empty push all the level down
+    std::cout << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
+    auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+    Options options = GetOptions(DefaultColumnFamily());
+    ColumnFamilyData* cfd = cfh->cfd();
+    Status s = GetVersionSet()->MayShiftLevel(dbname_, &options, file_options_, *cfd->ioptions(),  decision_cell_.end_level_);
+    std::cout << "Status: " << s.ToString() << " " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
+  }
 
 Status DBImpl::FlushPartialOrRangeFile(
     ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
@@ -316,12 +337,16 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
       // add this file to the edits Delete and we are done!
       if (flush_reason == FlushReason::kPartialFlush && just_delete) {
         if (immutable_db_options().verbosity > 1) {
-          std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber() << ", \"Level\": " << level << ", \"ToCompactAccurate\": " << file_meta->num_entries << "}," << std::endl << std::flush;
+          std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
+                    << ", \"Level\": " << level
+                    << ", \"ToCompactAccurate\": " << file_meta->num_entries
+                    << "}," << std::endl
+                    << std::flush;
         }
         assert(file_meta != nullptr);
         VersionEdit* edit_ = new VersionEdit();
-        // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since LogandApply will set it anyway
-        // edit_->SetLogNumber(0);
+        // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since
+        // LogandApply will set it anyway edit_->SetLogNumber(0);
         edit_->SetColumnFamily(cfd->GetID());
         uint64_t file_number = file_meta->fd.GetNumber();
         edit_->DeleteFile(level, file_number);
@@ -459,7 +484,9 @@ void DBImpl::BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri) {
     // See if there's more work to be done
     SchedulePartialOrRangeFileFlush();
 
-    if (unscheduled_partial_or_range_flushes_ == 0 && bg_partial_or_range_flush_running_ == 0 && bg_partial_or_range_flush_scheduled_ == 0) {
+    if (unscheduled_partial_or_range_flushes_ == 0 &&
+        bg_partial_or_range_flush_running_ == 0 &&
+        bg_partial_or_range_flush_scheduled_ == 0) {
       range_queries_complete_cv_.Signal();
     }
     atomic_flush_install_cv_.SignalAll();
@@ -548,7 +575,8 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
   // if FlushReason is kRangeFlush then *mem_range must be valid pointer
   // just_delete:
   //    - always False for kRangeFlush
-  //    - when True for kPartialFlush, it means the file completely overlap with range
+  //    - when True for kPartialFlush, it means the file completely overlap with
+  //    range
   //    - when False for kPartialFlush, it will write partial file to same level
   // level:
   //    - always -1 for kRangeFlush
@@ -578,11 +606,19 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     this->num_entries_compacted += memtable_to_flush->num_entries();
     mutex_.Unlock();
     if (immutable_db_options().verbosity > 1) {
-      std::cout << "{\"MemtableId\": " << memtable_to_flush->GetID() << ", \"Level\": " << decision_cell_.end_level_ << ", \"entriesCompacted\": " << memtable_to_flush->num_entries() << "}," << std::endl << std::flush;
+      std::cout << "{\"MemtableId\": " << memtable_to_flush->GetID()
+                << ", \"Level\": " << decision_cell_.end_level_
+                << ", \"entriesCompacted\": "
+                << memtable_to_flush->num_entries() << "}," << std::endl
+                << std::flush;
     }
   } else {
     if (immutable_db_options().verbosity > 1) {
-      std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber() << ", \"Level\": " << level << ", \"entriesToCompact\": " << file_meta->num_entries << "}," << std::endl << std::flush;
+      std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
+                << ", \"Level\": " << level
+                << ", \"entriesToCompact\": " << file_meta->num_entries << "},"
+                << std::endl
+                << std::flush;
     }
     this->num_entries_read_to_compact += file_meta->num_entries;
   }

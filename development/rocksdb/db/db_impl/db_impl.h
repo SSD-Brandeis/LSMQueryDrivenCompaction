@@ -502,6 +502,8 @@ class DBImpl : public DB {
                                        Slice& useful_min_key,
                                        Slice& useful_max_key);
 
+  void MayShiftLevel();
+
   int unscheduled_partial_or_range_flushes_ = 0;
   int bg_partial_or_range_flush_scheduled_ = 0;
   int bg_partial_or_range_flush_running_ = 0;

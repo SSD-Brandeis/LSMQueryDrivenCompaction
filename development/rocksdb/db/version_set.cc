@@ -6520,11 +6520,14 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
   // if the size is under the capacity
   // for this level just skip the rest
   // the execution and return
+
   vstorage->ComputeCompactionScore(immutable_options, current_version->GetMutableCFOptions());
-  if (vstorage->CompactionScore(lvl_to_check) < 1) {
-    std::cout << "Compaction score of level: " << lvl_to_check << " is not greater than 1 " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ <<  std::endl << std::flush;
-    return Status::OK();
-  }
+  // if (vstorage->CompactionScore(lvl_to_check) < 1) {
+  //   std::cout << "Compaction score of level: " << lvl_to_check << " is not greater than 1 " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ <<  std::endl << std::flush;
+  //   return Status::OK();
+  // }
+
+  std::cout << "Level to check: " << lvl_to_check << " current_levels: " << current_levels << " num_non_empty_levels: " << num_non_empty_levels << std::endl << std::flush;
 
   if (current_levels <= num_non_empty_levels) {
     current_levels = num_non_empty_levels;
@@ -6537,14 +6540,15 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
   }
 
   for (int i = lvl_to_check; i < num_non_empty_levels; i++) {
+    std::cout << "Shifting level: " << i << " to " << i+1 << std::endl << std::flush;
     new_files_list[i+1] = vstorage->LevelFiles(i);
   }
-
+  
   // update file locations
   if (lvl_to_check > 0) {
     for (int lvl = lvl_to_check; lvl < num_non_empty_levels; lvl++){
       auto& new_lvl = new_files_list[lvl+1];
-      new_lvl = vstorage->LevelFiles(lvl+1);
+      new_lvl = vstorage->LevelFiles(lvl);
 
       for (size_t i = 0; i < new_lvl.size(); ++i) {
         const FileMetaData* const meta = new_lvl[i];
@@ -6554,6 +6558,21 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
         vstorage->file_locations_[file_number] = VersionStorageInfo::FileLocation(lvl+1, i);
       }
     }
+  }
+
+  for (int i = 0; i < num_non_empty_levels+1; i++) {
+    std::cout << "New level: " << i << std::endl << std::flush;
+    std::cout << "\tFilesMeta: " << std::flush;
+
+    auto& new_lvl = new_files_list[i];
+    new_lvl = vstorage->LevelFiles(i);
+
+    for (size_t findex = 0; findex < new_lvl.size(); findex++) {
+      const FileMetaData* const meta = new_lvl[findex];
+
+      std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
+    }
+    std::cout << std::endl << std::flush;
   }
 
   delete[] vstorage->files_;

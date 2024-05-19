@@ -202,7 +202,7 @@ int runWorkload(EmuEnv* _env) {
 
 #ifdef PROFILE
   // number of epochs to run the experiment
-  int num_epochs = 11;
+  int num_epochs = 1;
   int num_instructions_for_one_epoch =
       (_env->num_updates / num_epochs) + (_env->num_range_queries / num_epochs);
   int num_instructions_executed_for_one_epoch = 0;
@@ -394,52 +394,52 @@ int runWorkload(EmuEnv* _env) {
           uint64_t entries_count_skipped = 0;
           uint64_t entries_read_to_compact = 0;
           uint64_t ideal_entries_count = 0;
-//           {
-// #ifdef PROFILE
-//             ColumnFamilyMetaData metadata;
-//             db->GetColumnFamilyMetaData(&metadata);
-//             std::stringstream cfd_details;
-//             std::stringstream all_level_details;
-//             unsigned long long total_entries_in_cfd = 0;
+          {
+#ifdef PROFILE
+            ColumnFamilyMetaData metadata;
+            db->GetColumnFamilyMetaData(&metadata);
+            std::stringstream cfd_details;
+            std::stringstream all_level_details;
+            unsigned long long total_entries_in_cfd = 0;
 
-//             // Print column family metadata
-//             cfd_details << "Column Family Name: " << metadata.name
-//                         << ", Size: " << metadata.size
-//                         << " bytes, Files Count: " << metadata.file_count;
+            // Print column family metadata
+            cfd_details << "Column Family Name: " << metadata.name
+                        << ", Size: " << metadata.size
+                        << " bytes, Files Count: " << metadata.file_count;
 
-//             // Print metadata for each level
-//             for (const auto& level : metadata.levels) {
-//               std::stringstream level_details;
-//               level_details << "\tLevel: " << level.level
-//                             << ", Size: " << level.size
-//                             << " bytes, Files Count: " << level.files.size();
+            // Print metadata for each level
+            for (const auto& level : metadata.levels) {
+              std::stringstream level_details;
+              level_details << "\tLevel: " << level.level
+                            << ", Size: " << level.size
+                            << " bytes, Files Count: " << level.files.size();
 
-//               unsigned long long total_entries_in_one_level = 0;
-//               std::stringstream level_sst_file_details;
+              unsigned long long total_entries_in_one_level = 0;
+              std::stringstream level_sst_file_details;
 
-//               // Print metadata for each file in the level
-//               for (const auto& file : level.files) {
-//                 total_entries_in_one_level += file.num_entries;
-//                 level_sst_file_details << "[#" << file.file_number << ":"
-//                                        << file.size << " (" << file.smallestkey
-//                                        << ", " << file.largestkey << ") "
-//                                        << file.num_entries << "], ";
-//               }
-//               total_entries_in_cfd += total_entries_in_one_level;
-//               level_details << ", Entries Count: " << total_entries_in_one_level
-//                             << "\n\t\t";
-//               all_level_details << level_details.str()
-//                                 << level_sst_file_details.str() << std::endl;
-//             }
+              // Print metadata for each file in the level
+              for (const auto& file : level.files) {
+                total_entries_in_one_level += file.num_entries;
+                level_sst_file_details << "[#" << file.file_number << ":"
+                                       << file.size << " (" << file.smallestkey
+                                       << ", " << file.largestkey << ") "
+                                       << file.num_entries << "], ";
+              }
+              total_entries_in_cfd += total_entries_in_one_level;
+              level_details << ", Entries Count: " << total_entries_in_one_level
+                            << "\n\t\t";
+              all_level_details << level_details.str()
+                                << level_sst_file_details.str() << std::endl;
+            }
 
-//             std::cout << cfd_details.str()
-//                       << ", Entries Count: " << total_entries_in_cfd
-//                       << ", Invalid Entries Count: "
-//                       << total_entries_in_cfd - _env->num_inserts << std::endl
-//                       << all_level_details.str() << std::endl;
+            std::cout << cfd_details.str()
+                      << ", Entries Count: " << total_entries_in_cfd
+                      << ", Invalid Entries Count: "
+                      << total_entries_in_cfd - _env->num_inserts << std::endl
+                      << all_level_details.str() << std::endl;
 
-// #endif  // PROFILE
-//           }
+#endif  // PROFILE
+          }
 
   // {
   //   std::cout << "\nwaiting for compactions to finish ..." << std::endl;
@@ -531,51 +531,51 @@ int runWorkload(EmuEnv* _env) {
           partial_range_flush_listener->reset();
 #endif  // TIMER
 
-//           {
-// #ifdef PROFILE
-//             ColumnFamilyMetaData metadata;
-//             db->GetColumnFamilyMetaData(&metadata);
-//             std::stringstream cfd_details;
-//             std::stringstream all_level_details;
-//             unsigned long long total_entries_in_cfd = 0;
+          {
+#ifdef PROFILE
+            ColumnFamilyMetaData metadata;
+            db->GetColumnFamilyMetaData(&metadata);
+            std::stringstream cfd_details;
+            std::stringstream all_level_details;
+            unsigned long long total_entries_in_cfd = 0;
 
-//             // Print column family metadata
-//             cfd_details << "Column Family Name: " << metadata.name
-//                         << ", Size: " << metadata.size
-//                         << " bytes, Files Count: " << metadata.file_count;
+            // Print column family metadata
+            cfd_details << "Column Family Name: " << metadata.name
+                        << ", Size: " << metadata.size
+                        << " bytes, Files Count: " << metadata.file_count;
 
-//             // Print metadata for each level
-//             for (const auto& level : metadata.levels) {
-//               std::stringstream level_details;
-//               level_details << "\tLevel: " << level.level
-//                             << ", Size: " << level.size
-//                             << " bytes, Files Count: " << level.files.size();
+            // Print metadata for each level
+            for (const auto& level : metadata.levels) {
+              std::stringstream level_details;
+              level_details << "\tLevel: " << level.level
+                            << ", Size: " << level.size
+                            << " bytes, Files Count: " << level.files.size();
 
-//               unsigned long long total_entries_in_one_level = 0;
-//               std::stringstream level_sst_file_details;
+              unsigned long long total_entries_in_one_level = 0;
+              std::stringstream level_sst_file_details;
 
-//               // Print metadata for each file in the level
-//               for (const auto& file : level.files) {
-//                 total_entries_in_one_level += file.num_entries;
-//                 level_sst_file_details << "[#" << file.file_number << ":"
-//                                        << file.size << " (" << file.smallestkey
-//                                        << ", " << file.largestkey << ") "
-//                                        << file.num_entries << "], ";
-//               }
-//               total_entries_in_cfd += total_entries_in_one_level;
-//               level_details << ", Entries Count: " << total_entries_in_one_level
-//                             << "\n\t\t";
-//               all_level_details << level_details.str()
-//                                 << level_sst_file_details.str() << std::endl;
-//             }
+              // Print metadata for each file in the level
+              for (const auto& file : level.files) {
+                total_entries_in_one_level += file.num_entries;
+                level_sst_file_details << "[#" << file.file_number << ":"
+                                       << file.size << " (" << file.smallestkey
+                                       << ", " << file.largestkey << ") "
+                                       << file.num_entries << "], ";
+              }
+              total_entries_in_cfd += total_entries_in_one_level;
+              level_details << ", Entries Count: " << total_entries_in_one_level
+                            << "\n\t\t";
+              all_level_details << level_details.str()
+                                << level_sst_file_details.str() << std::endl;
+            }
 
-//             std::cout << cfd_details.str()
-//                       << ", Entries Count: " << total_entries_in_cfd
-//                       << ", Invalid Entries Count: "
-//                       << total_entries_in_cfd - _env->num_inserts << std::endl
-//                       << all_level_details.str() << std::endl;
-// #endif  // PROFILE
-//           }
+            std::cout << cfd_details.str()
+                      << ", Entries Count: " << total_entries_in_cfd
+                      << ", Invalid Entries Count: "
+                      << total_entries_in_cfd - _env->num_inserts << std::endl
+                      << all_level_details.str() << std::endl;
+#endif  // PROFILE
+          }
         }
 
 #ifdef PROFILE

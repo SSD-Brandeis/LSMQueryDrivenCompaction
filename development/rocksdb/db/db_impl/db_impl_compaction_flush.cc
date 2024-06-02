@@ -8,6 +8,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #include <cinttypes>
 #include <deque>
+#include <iostream>
 
 #include "db/builder.h"
 #include "db/db_impl/db_impl.h"
@@ -3928,11 +3929,53 @@ void DBImpl::InstallSuperVersionAndScheduleWork(
                         old_sv->mutable_cf_options.max_write_buffer_number;
   }
 
+  // {
+  //   std::cout << "\n ========= BEFORE ========= " << std::endl << std::flush;
+  //   auto* vstorage = cfd->current()->storage_info();
+  //   int num_non_empty_levels = vstorage->num_levels();
+  //   for (int i = 0; i < num_non_empty_levels; i++) {
+  //   std::cout << "New level: " << i << std::endl << std::flush;
+  //   std::cout << "\tFilesMeta: " << std::flush;
+
+  //   // auto& new_lvl = new_files_list[i];
+  //   auto& new_lvl = vstorage->LevelFiles(i);
+
+  //   for (size_t findex = 0; findex < new_lvl.size(); findex++) {
+  //     const FileMetaData* const meta = new_lvl[findex];
+
+  //     std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
+  //   }
+  //   std::cout << std::endl << std::flush;
+  // }
+  //   std::cout << "Current Version Number: " << cfd->current()->GetVersionNumber() << std::endl << std::flush;
+  // }
+
   // this branch is unlikely to step in
   if (UNLIKELY(sv_context->new_superversion == nullptr)) {
     sv_context->NewSuperVersion();
   }
   cfd->InstallSuperVersion(sv_context, mutable_cf_options);
+
+  // {
+  //   std::cout << "\n ========= AFTER ========= " << std::endl << std::flush;
+  //   auto* vstorage = cfd->current()->storage_info();
+  //   int num_non_empty_levels = vstorage->num_levels();
+  //   for (int i = 0; i < num_non_empty_levels; i++) {
+  //   std::cout << "New level: " << i << std::endl << std::flush;
+  //   std::cout << "\tFilesMeta: " << std::flush;
+
+  //   // auto& new_lvl = new_files_list[i];
+  //   auto& new_lvl = vstorage->LevelFiles(i);
+
+  //   for (size_t findex = 0; findex < new_lvl.size(); findex++) {
+  //     const FileMetaData* const meta = new_lvl[findex];
+
+  //     std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
+  //   }
+  //   std::cout << std::endl << std::flush;
+  // }
+  //   std::cout << "Current Version Number: " << cfd->current()->GetVersionNumber() << std::endl << std::flush;
+  // }
 
   // There may be a small data race here. The snapshot tricking bottommost
   // compaction may already be released here. But assuming there will always be

@@ -6486,7 +6486,8 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
                                  const Options* options,
                                  const FileOptions& file_options,
                                  const ImmutableOptions& immutable_options,
-                                 int lvl_to_check) {
+                                 int lvl_to_check, Version* current_version) {
+                                 //, InstrumentedMutex *mu) 
   const ReadOptions read_options;
 
   ImmutableDBOptions db_options(*options);
@@ -6510,8 +6511,6 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
     return status;
   }
 
-  Version* current_version =
-      versions.GetColumnFamilySet()->GetDefault()->current();
   auto* vstorage = current_version->storage_info();
   int current_levels = vstorage->num_levels();
   int num_non_empty_levels = vstorage->num_non_empty_levels();
@@ -6522,12 +6521,12 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
   // the execution and return
 
   vstorage->ComputeCompactionScore(immutable_options, current_version->GetMutableCFOptions());
-  // if (vstorage->CompactionScore(lvl_to_check) < 1) {
-  //   std::cout << "Compaction score of level: " << lvl_to_check << " is not greater than 1 " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ <<  std::endl << std::flush;
-  //   return Status::OK();
-  // }
+  if (vstorage->CompactionScore(lvl_to_check) < 1) {
+    std::cout << "Compaction score of level: " << lvl_to_check << " is not greater than 1 " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ <<  std::endl << std::flush;
+    return Status::OK();
+  }
 
-  std::cout << "Level to check: " << lvl_to_check << " current_levels: " << current_levels << " num_non_empty_levels: " << num_non_empty_levels << std::endl << std::flush;
+  // std::cout << "Level to check: " << lvl_to_check << " current_levels: " << current_levels << " num_non_empty_levels: " << num_non_empty_levels << std::endl << std::flush;
 
   if (current_levels <= num_non_empty_levels) {
     current_levels = num_non_empty_levels;
@@ -6540,7 +6539,6 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
   }
 
   for (int i = lvl_to_check; i < num_non_empty_levels; i++) {
-    std::cout << "Shifting level: " << i << " to " << i+1 << std::endl << std::flush;
     new_files_list[i+1] = vstorage->LevelFiles(i);
   }
   
@@ -6560,27 +6558,26 @@ Status VersionSet::MayShiftLevel(const std::string& dbname,
     }
   }
 
-  for (int i = 0; i < num_non_empty_levels+1; i++) {
-    std::cout << "New level: " << i << std::endl << std::flush;
-    std::cout << "\tFilesMeta: " << std::flush;
-
-    auto& new_lvl = new_files_list[i];
-    new_lvl = vstorage->LevelFiles(i);
-
-    for (size_t findex = 0; findex < new_lvl.size(); findex++) {
-      const FileMetaData* const meta = new_lvl[findex];
-
-      std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
-    }
-    std::cout << std::endl << std::flush;
-  }
-
   delete[] vstorage->files_;
   vstorage->files_ = new_files_list;
-  vstorage->num_levels_ = num_non_empty_levels;
-  vstorage->ResizeCompactCursors(num_non_empty_levels);
+  vstorage->ResizeCompactCursors(num_non_empty_levels+1);
 
-  std::cout << "Actually shifting level" << std::endl << std::flush;
+  // for (int i = 0; i < num_non_empty_levels+1; i++) {
+  //   std::cout << "New level: " << i << std::endl << std::flush;
+  //   std::cout << "\tFilesMeta: " << std::flush;
+
+  //   auto& new_lvl = new_files_list[i];
+  //   new_lvl = vstorage->LevelFiles(i);
+
+  //   for (size_t findex = 0; findex < new_lvl.size(); findex++) {
+  //     const FileMetaData* const meta = new_lvl[findex];
+
+  //     std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
+  //   }
+  //   std::cout << std::endl << std::flush;
+  // }
+  // std::cout << "Current Version Number: " << current_version->version_number_ << std::endl << std::flush;
+
 
   MutableCFOptions mutable_cf_options(*options);
   VersionEdit ve;

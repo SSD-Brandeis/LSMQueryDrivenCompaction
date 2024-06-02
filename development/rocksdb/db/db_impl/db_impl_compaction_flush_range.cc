@@ -129,8 +129,9 @@ void DBImpl::MayShiftLevel() {
     auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
     Options options = GetOptions(DefaultColumnFamily());
     ColumnFamilyData* cfd = cfh->cfd();
-    Status s = GetVersionSet()->MayShiftLevel(dbname_, &options, file_options_, *cfd->ioptions(),  decision_cell_.end_level_);
-    std::cout << "Status: " << s.ToString() << " " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
+    Version* current_version = cfd->GetSuperVersion()->current;
+    Status s = GetVersionSet()->MayShiftLevel(dbname_, &options, file_options_, *cfd->ioptions(),  decision_cell_.end_level_, current_version);
+    // std::cout << "Status: " << s.ToString() << " " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
   }
 
 Status DBImpl::FlushPartialOrRangeFile(

@@ -1274,7 +1274,8 @@ class VersionSet {
                               const Options* options,
                               const FileOptions& file_options,
                               const ImmutableOptions& immutable_options,
-                              int lvl_to_check);
+                              int lvl_to_check, Version* current_version);
+                              // , InstrumentedMutex *mu);
 
   // Get the checksum information of all live files
   Status GetLiveFilesChecksumInfo(FileChecksumList* checksum_list);

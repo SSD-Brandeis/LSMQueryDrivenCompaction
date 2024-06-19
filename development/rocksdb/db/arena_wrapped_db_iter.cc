@@ -384,7 +384,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
   // check if range query compaction was enabled, set to true
   // otherwise background compaction is already running
   if (db_impl_->read_options_.range_query_compaction_enabled) {
-    db_impl_->MayShiftLevel();
+    // db_impl_->MayRenameLevel();
     read_options_.range_end_key = "";
     read_options_.range_start_key = "";
     read_options_.range_query_compaction_enabled = false;

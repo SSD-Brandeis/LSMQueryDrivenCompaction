@@ -16,8 +16,8 @@
 #include "emu_environment.h"
 #include "thread"
 
-// #define PROFILE
-// #define TIMER
+#define PROFILE
+#define TIMER
 
 std::string kDBPath = "./db_working_home";
 std::mutex mtx;
@@ -399,8 +399,8 @@ int runWorkload(EmuEnv* _env) {
             ColumnFamilyMetaData metadata;
             db->GetColumnFamilyMetaData(&metadata);
             std::stringstream cfd_details;
-            std::stringstream all_level_details;
-            unsigned long long total_entries_in_cfd = 0;
+            // std::stringstream all_level_details;
+            // unsigned long long total_entries_in_cfd = 0;
 
             // Print column family metadata
             cfd_details << "Column Family Name: " << metadata.name
@@ -408,29 +408,34 @@ int runWorkload(EmuEnv* _env) {
                         << " bytes, Files Count: " << metadata.file_count;
 
             // Print metadata for each level
-            for (const auto& level : metadata.levels) {
-              std::stringstream level_details;
-              level_details << "\tLevel: " << level.level
-                            << ", Size: " << level.size
-                            << " bytes, Files Count: " << level.files.size();
+            // for (const auto& level : metadata.levels) {
+            //   std::stringstream level_details;
+            //   level_details << "\tLevel: " << level.level
+            //                 << ", Size: " << level.size
+            //                 << " bytes, Files Count: " << level.files.size();
 
-              unsigned long long total_entries_in_one_level = 0;
-              std::stringstream level_sst_file_details;
+            //   unsigned long long total_entries_in_one_level = 0;
+            //   std::stringstream level_sst_file_details;
 
-              // Print metadata for each file in the level
-              for (const auto& file : level.files) {
-                total_entries_in_one_level += file.num_entries;
-                level_sst_file_details << "[#" << file.file_number << ":"
-                                       << file.size << " (" << file.smallestkey
-                                       << ", " << file.largestkey << ") "
-                                       << file.num_entries << "], ";
-              }
-              total_entries_in_cfd += total_entries_in_one_level;
-              level_details << ", Entries Count: " << total_entries_in_one_level
-                            << "\n\t\t";
-              all_level_details << level_details.str()
-                                << level_sst_file_details.str() << std::endl;
-            }
+            //   // Print metadata for each file in the level
+            //   for (const auto& file : level.files) {
+            //     total_entries_in_one_level += file.num_entries;
+            //     level_sst_file_details << "[#" << file.file_number << ":"
+            //                            << file.size << " (" << file.smallestkey
+            //                            << ", " << file.largestkey << ") "
+            //                            << file.num_entries << "], ";
+            //   }
+            //   total_entries_in_cfd += total_entries_in_one_level;
+            //   level_details << ", Entries Count: " << total_entries_in_one_level
+            //                 << "\n\t\t";
+            //   all_level_details << level_details.str()
+            //                     << level_sst_file_details.str() << std::endl;
+            // }
+
+            std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+
+            unsigned long long total_entries_in_cfd = std::get<0>(details);
+            std::stringstream& all_level_details = std::get<1>(details);
 
             std::cout << cfd_details.str()
                       << ", Entries Count: " << total_entries_in_cfd
@@ -677,38 +682,43 @@ int runWorkload(EmuEnv* _env) {
         ColumnFamilyMetaData metadata;
         db->GetColumnFamilyMetaData(&metadata);
         std::stringstream cfd_details;
-        std::stringstream all_level_details;
-        unsigned long long total_entries_in_cfd = 0;
+        // std::stringstream all_level_details;
+        // unsigned long long total_entries_in_cfd = 0;
 
         // Print column family metadata
         cfd_details << "Column Family Name: " << metadata.name
                     << ", Size: " << metadata.size
                     << " bytes, Files Count: " << metadata.file_count;
 
-        // Print metadata for each level
-        for (const auto& level : metadata.levels) {
-          std::stringstream level_details;
-          level_details << "\tLevel: " << level.level
-                        << ", Size: " << level.size
-                        << " bytes, Files Count: " << level.files.size();
+        // // Print metadata for each level
+        // for (const auto& level : metadata.levels) {
+        //   std::stringstream level_details;
+        //   level_details << "\tLevel: " << level.level
+        //                 << ", Size: " << level.size
+        //                 << " bytes, Files Count: " << level.files.size();
 
-          unsigned long long total_entries_in_one_level = 0;
-          std::stringstream level_sst_file_details;
+        //   unsigned long long total_entries_in_one_level = 0;
+        //   std::stringstream level_sst_file_details;
 
-          // Print metadata for each file in the level
-          for (const auto& file : level.files) {
-            total_entries_in_one_level += file.num_entries;
-            level_sst_file_details << "[#" << file.file_number << ":"
-                                   << file.size << " (" << file.smallestkey
-                                   << ", " << file.largestkey << ") "
-                                   << file.num_entries << "], ";
-          }
-          total_entries_in_cfd += total_entries_in_one_level;
-          level_details << ", Entries Count: " << total_entries_in_one_level
-                        << "\n\t\t";
-          all_level_details << level_details.str()
-                            << level_sst_file_details.str() << std::endl;
-        }
+        //   // Print metadata for each file in the level
+        //   for (const auto& file : level.files) {
+        //     total_entries_in_one_level += file.num_entries;
+        //     level_sst_file_details << "[#" << file.file_number << ":"
+        //                            << file.size << " (" << file.smallestkey
+        //                            << ", " << file.largestkey << ") "
+        //                            << file.num_entries << "], ";
+        //   }
+        //   total_entries_in_cfd += total_entries_in_one_level;
+        //   level_details << ", Entries Count: " << total_entries_in_one_level
+        //                 << "\n\t\t";
+        //   all_level_details << level_details.str()
+        //                     << level_sst_file_details.str() << std::endl;
+        // }
+
+        std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+
+        unsigned long long total_entries_in_cfd = std::get<0>(details);
+        std::stringstream& all_level_details = std::get<1>(details);
 
         std::cout << cfd_details.str()
                   << ", Entries Count: " << total_entries_in_cfd
@@ -801,8 +811,8 @@ int runWorkload(EmuEnv* _env) {
         ColumnFamilyMetaData metadata;
         db->GetColumnFamilyMetaData(&metadata);
         std::stringstream cfd_details;
-        std::stringstream all_level_details;
-        unsigned long long total_entries_in_cfd = 0;
+        // std::stringstream all_level_details;
+        // unsigned long long total_entries_in_cfd = 0;
 
         // Print column family metadata
         cfd_details << "Column Family Name: " << metadata.name
@@ -810,29 +820,34 @@ int runWorkload(EmuEnv* _env) {
                     << " bytes, Files Count: " << metadata.file_count;
 
         // Print metadata for each level
-        for (const auto& level : metadata.levels) {
-          std::stringstream level_details;
-          level_details << "\tLevel: " << level.level
-                        << ", Size: " << level.size
-                        << " bytes, Files Count: " << level.files.size();
+        // for (const auto& level : metadata.levels) {
+        //   std::stringstream level_details;
+        //   level_details << "\tLevel: " << level.level
+        //                 << ", Size: " << level.size
+        //                 << " bytes, Files Count: " << level.files.size();
 
-          unsigned long long total_entries_in_one_level = 0;
-          std::stringstream level_sst_file_details;
+        //   unsigned long long total_entries_in_one_level = 0;
+        //   std::stringstream level_sst_file_details;
 
-          // Print metadata for each file in the level
-          for (const auto& file : level.files) {
-            total_entries_in_one_level += file.num_entries;
-            level_sst_file_details << "[#" << file.file_number << ":"
-                                   << file.size << " (" << file.smallestkey
-                                   << ", " << file.largestkey << ") "
-                                   << file.num_entries << "], ";
-          }
-          total_entries_in_cfd += total_entries_in_one_level;
-          level_details << ", Entries Count: " << total_entries_in_one_level
-                        << "\n\t\t";
-          all_level_details << level_details.str()
-                            << level_sst_file_details.str() << std::endl;
-        }
+        //   // Print metadata for each file in the level
+        //   for (const auto& file : level.files) {
+        //     total_entries_in_one_level += file.num_entries;
+        //     level_sst_file_details << "[#" << file.file_number << ":"
+        //                            << file.size << " (" << file.smallestkey
+        //                            << ", " << file.largestkey << ") "
+        //                            << file.num_entries << "], ";
+        //   }
+        //   total_entries_in_cfd += total_entries_in_one_level;
+        //   level_details << ", Entries Count: " << total_entries_in_one_level
+        //                 << "\n\t\t";
+        //   all_level_details << level_details.str()
+        //                     << level_sst_file_details.str() << std::endl;
+        // }
+
+        std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+
+        unsigned long long total_entries_in_cfd = std::get<0>(details);
+        std::stringstream& all_level_details = std::get<1>(details);
 
         std::cout << cfd_details.str()
                   << ", Entries Count: " << total_entries_in_cfd
@@ -929,8 +944,8 @@ int runWorkload(EmuEnv* _env) {
   ColumnFamilyMetaData metadata;
   db->GetColumnFamilyMetaData(&metadata);
   std::stringstream cfd_details;
-  std::stringstream all_level_details;
-  unsigned long long total_entries_in_cfd = 0;
+  // std::stringstream all_level_details;
+  // unsigned long long total_entries_in_cfd = 0;
 
   // Print column family metadata
   cfd_details << "Column Family Name: " << metadata.name
@@ -938,28 +953,33 @@ int runWorkload(EmuEnv* _env) {
               << " bytes, Files Count: " << metadata.file_count;
 
   // Print metadata for each level
-  for (const auto& level : metadata.levels) {
-    std::stringstream level_details;
-    level_details << "\tLevel: " << level.level << ", Size: " << level.size
-                  << " bytes, Files Count: " << level.files.size();
+  // for (const auto& level : metadata.levels) {
+  //   std::stringstream level_details;
+  //   level_details << "\tLevel: " << level.level << ", Size: " << level.size
+  //                 << " bytes, Files Count: " << level.files.size();
 
-    unsigned long long total_entries_in_one_level = 0;
-    std::stringstream level_sst_file_details;
+  //   unsigned long long total_entries_in_one_level = 0;
+  //   std::stringstream level_sst_file_details;
 
-    // Print metadata for each file in the level
-    for (const auto& file : level.files) {
-      total_entries_in_one_level += file.num_entries;
-      level_sst_file_details << "[#" << file.file_number << ":" << file.size
-                             << " (" << file.smallestkey << ", "
-                             << file.largestkey << ") " << file.num_entries
-                             << "], ";
-    }
-    total_entries_in_cfd += total_entries_in_one_level;
-    level_details << ", Entries Count: " << total_entries_in_one_level
-                  << "\n\t\t";
-    all_level_details << level_details.str() << level_sst_file_details.str()
-                      << std::endl;
-  }
+  //   // Print metadata for each file in the level
+  //   for (const auto& file : level.files) {
+  //     total_entries_in_one_level += file.num_entries;
+  //     level_sst_file_details << "[#" << file.file_number << ":" << file.size
+  //                            << " (" << file.smallestkey << ", "
+  //                            << file.largestkey << ") " << file.num_entries
+  //                            << "], ";
+  //   }
+  //   total_entries_in_cfd += total_entries_in_one_level;
+  //   level_details << ", Entries Count: " << total_entries_in_one_level
+  //                 << "\n\t\t";
+  //   all_level_details << level_details.str() << level_sst_file_details.str()
+  //                     << std::endl;
+  // }
+
+  std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+
+  unsigned long long total_entries_in_cfd = std::get<0>(details);
+  std::stringstream& all_level_details = std::get<1>(details);
 
   std::cout << cfd_details.str() << ", Entries Count: " << total_entries_in_cfd
             << ", Invalid Entries Count: "

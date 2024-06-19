@@ -1270,7 +1270,7 @@ class VersionSet {
                                      int new_levels);
 
   // Try to push overflowed level to one level down
-  static Status MayShiftLevel(const std::string& dbname,
+  static Status MayRenameLevel(const std::string& dbname,
                               const Options* options,
                               const FileOptions& file_options,
                               const ImmutableOptions& immutable_options,

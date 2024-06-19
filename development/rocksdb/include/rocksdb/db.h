@@ -16,6 +16,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <sstream>
 
 #include "rocksdb/block_cache_trace_writer.h"
 #include "rocksdb/iterator.h"
@@ -1935,6 +1936,12 @@ class DB {
   // secondary.
   virtual Status TryCatchUpWithPrimary() {
     return Status::NotSupported("Supported only by secondary instance");
+  }
+
+  virtual std::tuple<unsigned long long, std::stringstream&> GetTreeState() {
+    // Must be implemented by the Child class
+    std::stringstream ss;
+    return std::make_tuple(0, std::ref(ss));
   }
 };
 

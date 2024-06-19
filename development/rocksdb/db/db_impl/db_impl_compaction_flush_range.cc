@@ -2,6 +2,7 @@
 // It would be quite similar to db_impl_compaction_flush.cc
 
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 #include "db/builder.h"
@@ -14,6 +15,77 @@
 #include "table/sst_file_dumper.h"
 
 namespace ROCKSDB_NAMESPACE {
+
+std::tuple<unsigned long long, std::stringstream&> DBImpl::GetTreeState() {
+  using TypedHandle = TableCache::TypedHandle;
+
+  Status s;
+  TableReader* table_reader = nullptr;
+  TypedHandle* handle = nullptr;
+
+  auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+  Options options = GetOptions(DefaultColumnFamily());
+  ColumnFamilyData* cfd = cfh->cfd();
+  auto storage_info = cfd->current()->storage_info();
+
+  std::stringstream all_level_details;
+  all_level_details.str("");
+  unsigned long long total_entries_in_cfd = 0;
+
+  for (int l = 0; l < storage_info->num_non_empty_levels(); l++) {
+    std::stringstream level_details;
+    level_details.str("");
+    auto num_files = storage_info->LevelFilesBrief(l).num_files;
+    level_details << "\tLevel: " << std::to_string(l)
+                  << ", Size: " << storage_info->NumLevelBytes(l)
+                  << " bytes, Files Count: " << num_files;
+    
+    unsigned long long total_entries_in_one_level = 0;
+    std::stringstream level_sst_file_details;
+
+    for (size_t file_index = 0; file_index < num_files; file_index++) {
+      table_reader = nullptr;
+      handle = nullptr;
+      auto fd = storage_info->LevelFilesBrief(l).files[file_index];
+      auto file_meta = fd.file_metadata;
+
+      table_reader = fd.file_metadata->fd.table_reader;
+
+      if (table_reader == nullptr) {
+        auto mutable_cf_options_ = cfd->GetLatestMutableCFOptions();
+        auto file_read_hist = cfd->internal_stats()->GetFileReadHist(0);
+        auto max_file_size_for_l0_meta_pin_ =
+            MaxFileSizeForL0MetaPin(*mutable_cf_options_);
+        s = cfd->table_cache()->FindTable(
+            read_options_, file_options_, cfd->internal_comparator(), *file_meta,
+            &(handle), mutable_cf_options_->block_protection_bytes_per_key,
+            mutable_cf_options_->prefix_extractor,
+            read_options_.read_tier == kBlockCacheTier /* no_io */, file_read_hist,
+            false, l, true, max_file_size_for_l0_meta_pin_,
+            file_meta->temperature);
+
+        if (s.ok()) {
+          table_reader = cfd->table_cache()->get_cache().Value(handle);
+        }  // (Shubham) What if table_reader is still null?
+      }
+
+      auto tp = table_reader->GetTableProperties();
+      total_entries_in_one_level += tp->num_entries;
+
+      level_sst_file_details << "[#" << std::to_string(fd.fd.GetNumber()) << ":"
+                              << std::to_string(fd.fd.file_size) << " (" << fd.file_metadata->smallest.user_key().ToString()
+                              << ", " << fd.file_metadata->largest.user_key().ToString() << ") "
+                              << tp->num_entries << "], ";
+    }
+    total_entries_in_cfd += total_entries_in_one_level;
+    level_details << ", Entries Count: " << total_entries_in_one_level
+                  << "\n\t\t";
+    all_level_details << level_details.str()
+                      << level_sst_file_details.str() << std::endl;
+  }
+
+  return std::make_tuple(total_entries_in_cfd, std::ref(all_level_details));
+}
 
 // Find the rough index of the target to find the overlap percentage
 long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
@@ -121,7 +193,7 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
   return overlapping_count;
 }
 
-void DBImpl::MayShiftLevel() {
+void DBImpl::MayRenameLevel() {
     // check if level overflowed due to range query driven compaction.
     // If yes, shift it one level down and handle the corner cases like
     // if next level is not empty push all the level down
@@ -130,7 +202,7 @@ void DBImpl::MayShiftLevel() {
     Options options = GetOptions(DefaultColumnFamily());
     ColumnFamilyData* cfd = cfh->cfd();
     Version* current_version = cfd->GetSuperVersion()->current;
-    Status s = GetVersionSet()->MayShiftLevel(dbname_, &options, file_options_, *cfd->ioptions(),  decision_cell_.end_level_, current_version);
+    Status s = GetVersionSet()->MayRenameLevel(dbname_, &options, file_options_, *cfd->ioptions(),  decision_cell_.end_level_, current_version);
     // std::cout << "Status: " << s.ToString() << " " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
   }
 

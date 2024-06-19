@@ -6482,7 +6482,7 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
                               &dummy_mutex, nullptr, true);
 }
 
-Status VersionSet::MayShiftLevel(const std::string& dbname,
+Status VersionSet::MayRenameLevel(const std::string& dbname,
                                  const Options* options,
                                  const FileOptions& file_options,
                                  const ImmutableOptions& immutable_options,

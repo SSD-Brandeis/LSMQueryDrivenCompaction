@@ -38,6 +38,10 @@ EmuEnv::EmuEnv() {
   file_size = buffer_size * file_to_memtable_size_ratio;  // F
   verbosity = 0;
 
+  // fluid LSM parameters
+  smaller_lvl_runs_count = 1;
+  larger_lvl_runs_count = 1;
+
   // adding new parameters with Guanting
   compaction_pri = 1;  // c // 1 for kMinOverlappingRatio, 2 for
                        // kByCompensatedSize, 3 for kOldestLargestSeqFirst, 4
@@ -74,7 +78,7 @@ EmuEnv::EmuEnv() {
   use_direct_io_for_flush_and_compaction = true;
   live_levels = 0;  //! YBS-sep07-XX!
   num_levels =
-      10;  // Maximum number of levels that a tree may have [RDB_default: 7]
+      1000;  // Maximum number of levels that a tree may have [RDB_default: 7]
 
   // TableOptions
   no_block_cache = false;                 // TBC
@@ -157,6 +161,9 @@ EmuEnv::EmuEnv() {
 
   // enable range query compaction
   enable_range_query_compaction = false;
+
+  level_renaming_enabled = false;
+
   // write_cost_threshold = 0.0f;
   lower_threshold = 0.0f;
   upper_threshold = std::numeric_limits<float>::max();
@@ -167,7 +174,7 @@ EmuEnv::EmuEnv() {
   // old options
 
   path = "";
-  debugging = false;
+  debugging = true;
   FPR_optimization_level = 1;
   derived_num_levels = -1;
   N = -1;

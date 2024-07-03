@@ -13,14 +13,13 @@
 #include <array>
 #include <cinttypes>
 #include <cstdio>
+#include <iostream>
 #include <list>
 #include <map>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <iostream>
 
 #include "db/blob/blob_fetcher.h"
 #include "db/blob/blob_file_cache.h"
@@ -3459,7 +3458,10 @@ void VersionStorageInfo::ComputeCompensatedSizes() {
 
 int VersionStorageInfo::MaxInputLevel() const {
   if (compaction_style_ == kCompactionStyleLevel) {
+    // FIXME: (shubham) Why do we subtract 2 from the num_levels()?
     return num_levels() - 2;
+    // } else if (compaction_style_ == kCompactionStyleTiering) {
+    //   return num_levels();
   }
   return 0;
 }
@@ -4851,10 +4853,68 @@ void VersionStorageInfo::CalculateBaseBytes(const ImmutableOptions& ioptions,
   }
   set_l0_delay_trigger_count(num_l0_count);
 
+  // // NOTE: (shubham) assuming the size ratio will always be integer
+  // int size_ratio = (int)options.max_bytes_for_level_multiplier;
+  // if (ioptions.compaction_style == kCompactionStyleTiering) {
+  //   assert(ioptions.num_levels % size_ratio != 0);
+  //   level_max_bytes_.resize((ioptions.num_levels * size_ratio) +
+  //                           1);  // +1 for level 0
+  // } else {
   level_max_bytes_.resize(ioptions.num_levels);
+  // }
+
   if (!ioptions.level_compaction_dynamic_level_bytes) {
     base_level_ = (ioptions.compaction_style == kCompactionStyleLevel) ? 1 : -1;
 
+    // // NOTE: (shubham) Formation of tiering LSM-tree is achieved by
+    // //  storing T sorted runs from a particular level to multiple levels
+    // //
+    // // For example: with size ratio 4 Level i of tiering stores 4 runs of
+    // size
+    // // level i-1 but instead of storing them in one level we store them in T
+    // // level so tree look like Assume file size be 1
+    // //
+    // // L0 : <L0 can have multiple files as per RocksDB>
+    // // L1 : 1
+    // // L2 : 1
+    // // L3 : 1
+    // // L4 : 1
+    // // L5 : 4 (4 files of size 1 i.e. L1 + L2 + L3 + L4)
+    // // L6 : 4
+    // // ......
+    // // L9 : 16
+    // // ......
+    // // L13 : 64
+    // // so on.
+    // //
+    // // to support above strucure we need T times more levels
+    // // hence we did level_max_bytes_.resize(ioptions.num_levels *
+    // size_ratio);
+    // // Now, lets define the size of each level according to tiering LSM-tree
+    // if (ioptions.compaction_style == kCompactionStyleTiering) {
+    //   for (int i = 0; i <= ioptions.num_levels; ++i) {
+    //     if (i > 1) {
+    //       auto start_tier = ((i - 1) * size_ratio) + 1;
+    //       for (int tier = start_tier; tier < start_tier + size_ratio; tier++)
+    //       {
+    //         level_max_bytes_[tier] = MultiplyCheckOverflow(
+    //             MultiplyCheckOverflow(level_max_bytes_[start_tier - 1],
+    //                                   options.max_bytes_for_level_multiplier),
+    //             1);
+    //       }
+    //     } else {
+    //       if (i == 0) {
+    //         // for level 0 we keep same as leveling style compaction
+    //         level_max_bytes_[i] = options.max_bytes_for_level_base *
+    //                               options.level0_file_num_compaction_trigger;
+    //       } else {
+    //         for (int tier = i; tier < i + size_ratio; tier++) {
+    //           level_max_bytes_[tier] = options.max_bytes_for_level_base;
+    //         }
+    //       }
+    //     }
+    //   }
+    // } else {
     // Calculate for static bytes base case
     for (int i = 0; i < ioptions.num_levels; ++i) {
       if (i == 0 && ioptions.compaction_style == kCompactionStyleUniversal) {
@@ -4865,9 +4925,17 @@ void VersionStorageInfo::CalculateBaseBytes(const ImmutableOptions& ioptions,
                                   options.max_bytes_for_level_multiplier),
             options.MaxBytesMultiplerAdditional(i - 1));
       } else {
-        level_max_bytes_[i] = options.max_bytes_for_level_base;
+        // NOTE: (shubham) updated to keep level 0 equals to
+        //  buffer size * number of files to trigger compaction
+        if (i == 0) {
+          level_max_bytes_[i] = options.write_buffer_size *
+                                options.level0_file_num_compaction_trigger;
+        } else {
+          level_max_bytes_[i] = options.max_bytes_for_level_base;
+        }
       }
     }
+    // }
   } else {
     assert(ioptions.compaction_style == kCompactionStyleLevel);
     uint64_t max_level_size = 0;
@@ -6482,110 +6550,53 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
                               &dummy_mutex, nullptr, true);
 }
 
-Status VersionSet::MayRenameLevel(const std::string& dbname,
-                                 const Options* options,
-                                 const FileOptions& file_options,
-                                 const ImmutableOptions& immutable_options,
-                                 int lvl_to_check, Version* current_version) {
-                                 //, InstrumentedMutex *mu) 
+Status VersionSet::RenameLevels(const Options* options,
+                                Version* current_version,
+                                VersionSet* versions) {
   const ReadOptions read_options;
-
-  ImmutableDBOptions db_options(*options);
-  ColumnFamilyOptions cf_options(*options);
-  std::shared_ptr<Cache> tc(NewLRUCache(options->max_open_files - 10,
-                                        options->table_cache_numshardbits));
-  WriteController wc(options->delayed_write_rate);
-  WriteBufferManager wb(options->db_write_buffer_size);
-  VersionSet versions(dbname, &db_options, file_options, tc.get(), &wb, &wc,
-                      nullptr /*BlockCacheTracer*/, nullptr /*IOTracer*/,
-                      /*db_id*/ "",
-                      /*db_session_id*/ "");
   Status status;
-
-  std::vector<ColumnFamilyDescriptor> dummy;
-  ColumnFamilyDescriptor dummy_descriptor(kDefaultColumnFamilyName,
-                                          ColumnFamilyOptions(*options));
-  dummy.push_back(dummy_descriptor);
-  status = versions.Recover(dummy);
-  if (!status.ok()) {
-    return status;
-  }
 
   auto* vstorage = current_version->storage_info();
   int current_levels = vstorage->num_levels();
   int num_non_empty_levels = vstorage->num_non_empty_levels();
 
-  // check for the size of the lvl
-  // if the size is under the capacity
-  // for this level just skip the rest
-  // the execution and return
-
-  vstorage->ComputeCompactionScore(immutable_options, current_version->GetMutableCFOptions());
-  if (vstorage->CompactionScore(lvl_to_check) < 1) {
-    std::cout << "Compaction score of level: " << lvl_to_check << " is not greater than 1 " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ <<  std::endl << std::flush;
-    return Status::OK();
-  }
-
-  // std::cout << "Level to check: " << lvl_to_check << " current_levels: " << current_levels << " num_non_empty_levels: " << num_non_empty_levels << std::endl << std::flush;
-
   if (current_levels <= num_non_empty_levels) {
     current_levels = num_non_empty_levels;
   }
 
-  std::vector<FileMetaData*>* new_files_list = new std::vector<FileMetaData*>[current_levels];
+  std::vector<FileMetaData*>* new_files_list =
+      new std::vector<FileMetaData*>[current_levels];
 
-  for (int i = 0; i < lvl_to_check; i++) {
-    new_files_list[i] = vstorage->LevelFiles(i);
+  for (int i = 0; i < num_non_empty_levels; i++) {
+    new_files_list[i + 1] = vstorage->LevelFiles(i);
   }
 
-  for (int i = lvl_to_check; i < num_non_empty_levels; i++) {
-    new_files_list[i+1] = vstorage->LevelFiles(i);
-  }
-  
   // update file locations
-  if (lvl_to_check > 0) {
-    for (int lvl = lvl_to_check; lvl < num_non_empty_levels; lvl++){
-      auto& new_lvl = new_files_list[lvl+1];
-      new_lvl = vstorage->LevelFiles(lvl);
+  for (int lvl = 0; lvl < num_non_empty_levels; lvl++) {
+    auto& new_lvl = new_files_list[lvl + 1];
+    new_lvl = vstorage->LevelFiles(lvl);
 
-      for (size_t i = 0; i < new_lvl.size(); ++i) {
-        const FileMetaData* const meta = new_lvl[i];
-        assert(meta);
+    for (size_t i = 0; i < new_lvl.size(); ++i) {
+      const FileMetaData* const meta = new_lvl[i];
+      assert(meta);
 
-        const uint64_t file_number = meta->fd.GetNumber();
-        vstorage->file_locations_[file_number] = VersionStorageInfo::FileLocation(lvl+1, i);
-      }
+      const uint64_t file_number = meta->fd.GetNumber();
+      vstorage->file_locations_[file_number] =
+          VersionStorageInfo::FileLocation(lvl + 1, i);
     }
   }
 
   delete[] vstorage->files_;
   vstorage->files_ = new_files_list;
-  vstorage->ResizeCompactCursors(num_non_empty_levels+1);
-
-  // for (int i = 0; i < num_non_empty_levels+1; i++) {
-  //   std::cout << "New level: " << i << std::endl << std::flush;
-  //   std::cout << "\tFilesMeta: " << std::flush;
-
-  //   auto& new_lvl = new_files_list[i];
-  //   new_lvl = vstorage->LevelFiles(i);
-
-  //   for (size_t findex = 0; findex < new_lvl.size(); findex++) {
-  //     const FileMetaData* const meta = new_lvl[findex];
-
-  //     std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
-  //   }
-  //   std::cout << std::endl << std::flush;
-  // }
-  // std::cout << "Current Version Number: " << current_version->version_number_ << std::endl << std::flush;
-
+  vstorage->ResizeCompactCursors(num_non_empty_levels + 1);
 
   MutableCFOptions mutable_cf_options(*options);
   VersionEdit ve;
   InstrumentedMutex dummy_mutex;
   InstrumentedMutexLock l(&dummy_mutex);
-  return versions.LogAndApply(versions.GetColumnFamilySet()->GetDefault(),
-                              mutable_cf_options, read_options, &ve,
-                              &dummy_mutex, nullptr, true);
+  return versions->LogAndApply(versions->GetColumnFamilySet()->GetDefault(),
+                               mutable_cf_options, read_options, &ve,
+                               &dummy_mutex, nullptr, true);
 }
 
 // Get the checksum information including the checksum and checksum function

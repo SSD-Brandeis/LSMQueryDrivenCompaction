@@ -834,15 +834,15 @@ class Version {
   void AddIterators(const ReadOptions& read_options,
                     const FileOptions& soptions,
                     MergeIteratorBuilder* merger_iter_builder,
-                    bool allow_unprepared_value, DBImpl *db_impl);
+                    bool allow_unprepared_value, DBImpl* db_impl);
 
   // @param read_options Must outlive any iterator built by
   // `merger_iter_builder`.
   void AddIteratorsForLevel(const ReadOptions& read_options,
                             const FileOptions& soptions,
                             MergeIteratorBuilder* merger_iter_builder,
-                            int level, bool allow_unprepared_value, 
-                            DBImpl *db_impl);
+                            int level, bool allow_unprepared_value,
+                            DBImpl* db_impl);
 
   Status OverlapWithLevelIterator(const ReadOptions&, const FileOptions&,
                                   const Slice& smallest_user_key,
@@ -1269,13 +1269,9 @@ class VersionSet {
                                      const FileOptions& file_options,
                                      int new_levels);
 
-  // Try to push overflowed level to one level down
-  static Status MayRenameLevel(const std::string& dbname,
-                              const Options* options,
-                              const FileOptions& file_options,
-                              const ImmutableOptions& immutable_options,
-                              int lvl_to_check, Version* current_version);
-                              // , InstrumentedMutex *mu);
+  // Try to push all levels to one level down
+  static Status RenameLevels(const Options* options, Version* current_version,
+                             VersionSet* versions);
 
   // Get the checksum information of all live files
   Status GetLiveFilesChecksumInfo(FileChecksumList* checksum_list);

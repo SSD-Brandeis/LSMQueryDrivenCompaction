@@ -1938,10 +1938,15 @@ class DB {
     return Status::NotSupported("Supported only by secondary instance");
   }
 
-  virtual std::tuple<unsigned long long, std::stringstream&> GetTreeState() {
-    // Must be implemented by the Child class
+  virtual std::string GetLevelsState() {
+    // Must be implemented by child class
+    return "";
+  }
+
+  virtual std::tuple<unsigned long long, std::string> GetTreeState() {
+    // Must be implemented by the child class
     std::stringstream ss;
-    return std::make_tuple(0, std::ref(ss));
+    return std::make_tuple(0, ss.str());
   }
 };
 

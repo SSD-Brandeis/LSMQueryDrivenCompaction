@@ -22,7 +22,7 @@
 #include "table/iterator_wrapper.h"
 #include "util/user_comparator_wrapper.h"
 
-#define TIMEBREAK
+// #define TIMEBREAK
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -269,20 +269,20 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
   read_options_.range_query_compaction_enabled = rqdc_enabled;
   db_impl_->read_options_ = read_options_;
 
-#ifdef TIMEBREAK
-  auto tp1 = std::chrono::high_resolution_clock::now();
-#endif
+// #ifdef TIMEBREAK
+//   auto tp1 = std::chrono::high_resolution_clock::now();
+// #endif
 
   db_impl_->PauseBackgroundWork();
 
-#ifdef TIMEBREAK
-  auto tp2 = std::chrono::high_resolution_clock::now();
-  std::cout
-      << "pauseTime: "
-      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-      << std::endl
-      << std::flush;
-#endif
+// #ifdef TIMEBREAK
+//   auto tp2 = std::chrono::high_resolution_clock::now();
+//   std::cout
+//       << "pauseTime: "
+//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
+//       << std::endl
+//       << std::flush;
+// #endif
 
   if (!CanPerformRangeQueryCompaction(entries_count)) {
     db_impl_->ContinueBackgroundWork();
@@ -295,14 +295,14 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
     db_impl_->added_last_table = false;
   }
 
-#ifdef TIMEBREAK
-  auto tp3 = std::chrono::high_resolution_clock::now();
-  std::cout
-      << "decisionMakingTime: "
-      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp3 - tp2).count()
-      << std::endl
-      << std::flush;
-#endif
+// #ifdef TIMEBREAK
+//   auto tp3 = std::chrono::high_resolution_clock::now();
+//   std::cout
+//       << "decisionMakingTime: "
+//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp3 - tp2).count()
+//       << std::endl
+//       << std::flush;
+// #endif
 
   return Refresh();
 }
@@ -317,9 +317,9 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
     // db_impl_->ContinueBackgroundWork();
     return Status::OK();
   }
-#ifdef TIMEBREAK
-  auto tp1 = std::chrono::high_resolution_clock::now();
-#endif  // TIMEBREAK
+// #ifdef TIMEBREAK
+//   auto tp1 = std::chrono::high_resolution_clock::now();
+// #endif  // TIMEBREAK
   if (db_impl_->read_options_.range_query_compaction_enabled) {
     if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
         cfd_->mem_range()->num_entries() > 0) {
@@ -336,14 +336,14 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
     }
   }
 
-#ifdef TIMEBREAK
-  auto tp2 = std::chrono::high_resolution_clock::now();
-  std::cout
-      << "waitForFinishingCompactionTime: "
-      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-      << std::endl
-      << std::flush;
-#endif  // TIMEBREAK
+// #ifdef TIMEBREAK
+//   auto tp2 = std::chrono::high_resolution_clock::now();
+//   std::cout
+//       << "waitForFinishingCompactionTime: "
+//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
+//       << std::endl
+//       << std::flush;
+// #endif  // TIMEBREAK
 
   // std::ofstream compacted_vs_skipped;
   // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv",
@@ -384,7 +384,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
   // check if range query compaction was enabled, set to true
   // otherwise background compaction is already running
   if (db_impl_->read_options_.range_query_compaction_enabled) {
-    // db_impl_->MayRenameLevel();
+    // db_impl_->RenameLevels();
     read_options_.range_end_key = "";
     read_options_.range_start_key = "";
     read_options_.range_query_compaction_enabled = false;
@@ -399,9 +399,9 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
 }
 
 Status ArenaWrappedDBIter::Refresh() {
-#ifdef TIMEBREAK
-  auto tp1 = std::chrono::high_resolution_clock::now();
-#endif  // TIMEBREAK
+// #ifdef TIMEBREAK
+//   auto tp1 = std::chrono::high_resolution_clock::now();
+// #endif  // TIMEBREAK
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
   }
@@ -513,14 +513,14 @@ Status ArenaWrappedDBIter::Refresh() {
     }
   }
 
-#ifdef TIMEBREAK
-  auto tp2 = std::chrono::high_resolution_clock::now();
-  std::cout
-      << "refreshingIteratorTime: "
-      << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-      << std::endl
-      << std::flush;
-#endif  // TIMER
+// #ifdef TIMEBREAK
+//   auto tp2 = std::chrono::high_resolution_clock::now();
+//   std::cout
+//       << "refreshingIteratorTime: "
+//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
+//       << std::endl
+//       << std::flush;
+// #endif  // TIMER
   return Status::OK();
 }
 

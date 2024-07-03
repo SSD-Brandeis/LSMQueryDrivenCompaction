@@ -106,7 +106,7 @@ FlushJob::FlushJob(
     Env::Priority thread_pri, const std::shared_ptr<IOTracer>& io_tracer,
     const SeqnoToTimeMapping& seqno_time_mapping, const std::string& db_id,
     const std::string& db_session_id, std::string full_history_ts_low,
-    BlobFileCompletionCallback* blob_callback)
+    BlobFileCompletionCallback* blob_callback, DBImpl* db_impl)
     : dbname_(dbname),
       db_id_(db_id),
       db_session_id_(db_session_id),
@@ -140,7 +140,7 @@ FlushJob::FlushJob(
       clock_(db_options_.clock),
       full_history_ts_low_(std::move(full_history_ts_low)),
       blob_callback_(blob_callback),
-      db_impl_seqno_time_mapping_(seqno_time_mapping) {
+      db_impl_seqno_time_mapping_(seqno_time_mapping), db_impl_(db_impl) {
   // Update the thread status to indicate flush.
   ReportStartedFlush();
   TEST_SYNC_POINT("FlushJob::FlushJob()");
@@ -421,7 +421,7 @@ Status FlushJob::MemPurge() {
 
   ScopedArenaIterator iter(
       NewMergingIterator(&(cfd_->internal_comparator()), memtables.data(),
-                         static_cast<int>(memtables.size()), &arena));
+                         static_cast<int>(memtables.size()), &arena, false, db_impl_));
 
   auto* ioptions = cfd_->ioptions();
 
@@ -894,7 +894,7 @@ Status FlushJob::WriteLevel0Table() {
     {
       ScopedArenaIterator iter(
           NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
-                             static_cast<int>(memtables.size()), &arena));
+                             static_cast<int>(memtables.size()), &arena, false, db_impl_));
       ROCKS_LOG_INFO(db_options_.info_log,
                      "[%s] [JOB %d] Level-0 flush table #%" PRIu64 ": started",
                      cfd_->GetName().c_str(), job_context_->job_id,
@@ -1123,7 +1123,7 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
     const ReadOptions& read_options, const std::string& db_id,
     const std::string& db_session_id, std::string full_history_ts_low,
     BlobFileCompletionCallback* blob_callback, MemTable* memtable, int level,
-    FileMetaData* file_meta)
+    FileMetaData* file_meta, DBImpl *db_impl)
     : FlushJob(dbname, cfd, db_options, mutable_cf_options, max_memtable_id,
                file_options, versions, db_mutex, shutting_down,
                existing_snapshots, earliest_write_conflict_snapshot,
@@ -1131,7 +1131,7 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
                db_directory, output_file_directory, output_compression, stats,
                event_logger, measure_io_stats, sync_output_directory,
                write_manifest, thread_pri, io_tracer, seqno_time_mapping, db_id,
-               db_session_id, full_history_ts_low, blob_callback),
+               db_session_id, full_history_ts_low, blob_callback, db_impl),
       read_options_(read_options),
       memtable_(memtable),
       level_(level),
@@ -1336,7 +1336,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
     {
       ScopedArenaIterator iter(
           NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
-                             static_cast<int>(memtables.size()), &arena));
+                             static_cast<int>(memtables.size()), &arena, false, db_impl_));
       ROCKS_LOG_INFO(db_options_.info_log,
                      "[%s] [JOB %d] Level-%d range flush table #%" PRIu64
                      ": started",
@@ -1672,7 +1672,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     {
       ScopedArenaIterator iter(
           NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
-                             static_cast<int>(memtables.size()), &arena));
+                             static_cast<int>(memtables.size()), &arena, false, db_impl_));
       ROCKS_LOG_INFO(db_options_.info_log,
                      "[%s] [JOB %d] Level-%d partial flush table #%" PRIu64
                      ": started for #%" PRIu64,
@@ -1828,7 +1828,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     {
       ScopedArenaIterator iter(
           NewMergingIterator(&cfd_->internal_comparator(), memtables.data(),
-                             static_cast<int>(memtables.size()), &arena));
+                             static_cast<int>(memtables.size()), &arena, false, db_impl_));
       ROCKS_LOG_INFO(db_options_.info_log,
                      "[%s] [JOB %d] Level-%d partial flush tail table #%" PRIu64
                      ": started for #%" PRIu64,

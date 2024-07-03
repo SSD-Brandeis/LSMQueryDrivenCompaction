@@ -804,6 +804,7 @@ Status CompactionJob::Run() {
   // Finish up all book-keeping to unify the subcompaction results
   compact_->AggregateCompactionStats(compaction_stats_, *compaction_job_stats_);
   UpdateCompactionStats();
+  RecordTick(stats_, NUM_COMPACTION_TRIGGERED, 1);
 
   RecordCompactionIOStats();
   LogFlush(db_options_.info_log);

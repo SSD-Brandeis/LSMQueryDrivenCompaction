@@ -78,7 +78,7 @@ class FlushJob {
            const SeqnoToTimeMapping& seq_time_mapping,
            const std::string& db_id = "", const std::string& db_session_id = "",
            std::string full_history_ts_low = "",
-           BlobFileCompletionCallback* blob_callback = nullptr);
+           BlobFileCompletionCallback* blob_callback = nullptr, DBImpl* db_impl = nullptr);
 
   ~FlushJob();
 
@@ -197,6 +197,7 @@ class FlushJob {
   // db mutex
   const SeqnoToTimeMapping& db_impl_seqno_time_mapping_;
   SeqnoToTimeMapping seqno_to_time_mapping_;
+  DBImpl* db_impl_;
 };
 
 class PartialOrRangeFlushJob : public FlushJob {
@@ -222,7 +223,7 @@ class PartialOrRangeFlushJob : public FlushJob {
       std::string full_history_ts_low = "",
       BlobFileCompletionCallback* blob_callback = nullptr,
       MemTable* memtable = nullptr, int level = -1,
-      FileMetaData* file_meta = nullptr);
+      FileMetaData* file_meta = nullptr, DBImpl* db_impl = nullptr);
 
   ~PartialOrRangeFlushJob();
 

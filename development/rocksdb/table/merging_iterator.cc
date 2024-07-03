@@ -1628,7 +1628,7 @@ inline void MergingIterator::FindPrevVisibleKey() {
 
 InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
                                      InternalIterator** list, int n,
-                                     Arena* arena, bool prefix_seek_mode) {
+                                     Arena* arena, bool prefix_seek_mode, DBImpl* db_impl) {
   assert(n >= 0);
   if (n == 0) {
     return NewEmptyInternalIterator<Slice>(arena);
@@ -1636,10 +1636,10 @@ InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
     return list[0];
   } else {
     if (arena == nullptr) {
-      return new MergingIterator(cmp, list, n, false, prefix_seek_mode);
+      return new MergingIterator(cmp, list, n, false, prefix_seek_mode, db_impl);
     } else {
       auto mem = arena->AllocateAligned(sizeof(MergingIterator));
-      return new (mem) MergingIterator(cmp, list, n, true, prefix_seek_mode);
+      return new (mem) MergingIterator(cmp, list, n, true, prefix_seek_mode, db_impl);
     }
   }
 }

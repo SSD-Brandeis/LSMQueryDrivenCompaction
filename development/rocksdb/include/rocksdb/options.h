@@ -472,6 +472,8 @@ struct DBOptions {
   // default to 0 (means no prints)
   int verbosity = 0;
 
+  bool level_renaming_enabled = false;
+
   // If true, the database will be created if it is missing.
   // Default: false
   bool create_if_missing = false;

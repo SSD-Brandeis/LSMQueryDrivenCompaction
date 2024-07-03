@@ -2,8 +2,8 @@
 // It would be quite similar to db_impl_compaction_flush.cc
 
 #include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
 #include "db/builder.h"
 #include "db/compaction/compaction_outputs.h"
@@ -12,19 +12,34 @@
 #include "logging/logging.h"
 #include "monitoring/iostats_context_imp.h"
 #include "monitoring/thread_status_util.h"
+#include "options/options_helper.h"
 #include "table/sst_file_dumper.h"
 
 namespace ROCKSDB_NAMESPACE {
 
-std::tuple<unsigned long long, std::stringstream&> DBImpl::GetTreeState() {
+std::string DBImpl::GetLevelsState() {
+  std::stringstream all_level_details;
+  all_level_details.str("");
+
+  auto cfh =
+      static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+  ColumnFamilyData* cfd = cfh->cfd();
+  auto storage_info = cfd->current()->storage_info();
+  for (int l = 0; l < storage_info->num_non_empty_levels(); l++) {
+    all_level_details << storage_info->LevelFilesBrief(l).num_files << ",";
+  }
+  return all_level_details.str();
+}
+
+std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
   using TypedHandle = TableCache::TypedHandle;
 
   Status s;
   TableReader* table_reader = nullptr;
   TypedHandle* handle = nullptr;
 
-  auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
-  Options options = GetOptions(DefaultColumnFamily());
+  auto cfh =
+      static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
   ColumnFamilyData* cfd = cfh->cfd();
   auto storage_info = cfd->current()->storage_info();
 
@@ -36,10 +51,9 @@ std::tuple<unsigned long long, std::stringstream&> DBImpl::GetTreeState() {
     std::stringstream level_details;
     level_details.str("");
     auto num_files = storage_info->LevelFilesBrief(l).num_files;
-    level_details << "\tLevel: " << std::to_string(l)
-                  << ", Size: " << storage_info->NumLevelBytes(l)
-                  << " bytes, Files Count: " << num_files;
-    
+    unsigned long long level_size_in_bytes = 0;
+    level_details << "\tLevel: " << std::to_string(l);
+
     unsigned long long total_entries_in_one_level = 0;
     std::stringstream level_sst_file_details;
 
@@ -57,11 +71,12 @@ std::tuple<unsigned long long, std::stringstream&> DBImpl::GetTreeState() {
         auto max_file_size_for_l0_meta_pin_ =
             MaxFileSizeForL0MetaPin(*mutable_cf_options_);
         s = cfd->table_cache()->FindTable(
-            read_options_, file_options_, cfd->internal_comparator(), *file_meta,
-            &(handle), mutable_cf_options_->block_protection_bytes_per_key,
+            read_options_, file_options_, cfd->internal_comparator(),
+            *file_meta, &(handle),
+            mutable_cf_options_->block_protection_bytes_per_key,
             mutable_cf_options_->prefix_extractor,
-            read_options_.read_tier == kBlockCacheTier /* no_io */, file_read_hist,
-            false, l, true, max_file_size_for_l0_meta_pin_,
+            read_options_.read_tier == kBlockCacheTier /* no_io */,
+            file_read_hist, false, l, true, max_file_size_for_l0_meta_pin_,
             file_meta->temperature);
 
         if (s.ok()) {
@@ -71,20 +86,25 @@ std::tuple<unsigned long long, std::stringstream&> DBImpl::GetTreeState() {
 
       auto tp = table_reader->GetTableProperties();
       total_entries_in_one_level += tp->num_entries;
+      level_size_in_bytes += fd.fd.GetFileSize();
 
-      level_sst_file_details << "[#" << std::to_string(fd.fd.GetNumber()) << ":"
-                              << std::to_string(fd.fd.file_size) << " (" << fd.file_metadata->smallest.user_key().ToString()
-                              << ", " << fd.file_metadata->largest.user_key().ToString() << ") "
-                              << tp->num_entries << "], ";
+      level_sst_file_details
+          << "[#" << std::to_string(fd.fd.GetNumber()) << ":"
+          << std::to_string(fd.fd.file_size) << " ("
+          << fd.file_metadata->smallest.user_key().ToString() << ", "
+          << fd.file_metadata->largest.user_key().ToString() << ") "
+          << tp->num_entries << "], ";
     }
     total_entries_in_cfd += total_entries_in_one_level;
-    level_details << ", Entries Count: " << total_entries_in_one_level
+    level_details << ", Size: " << level_size_in_bytes
+                  << " bytes, Files Count: " << num_files
+                  << ", Entries Count: " << total_entries_in_one_level
                   << "\n\t\t";
-    all_level_details << level_details.str()
-                      << level_sst_file_details.str() << std::endl;
+    all_level_details << level_details.str() << level_sst_file_details.str()
+                      << std::endl;
   }
 
-  return std::make_tuple(total_entries_in_cfd, std::ref(all_level_details));
+  return std::make_tuple(total_entries_in_cfd, all_level_details.str());
 }
 
 // Find the rough index of the target to find the overlap percentage
@@ -193,18 +213,20 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
   return overlapping_count;
 }
 
-void DBImpl::MayRenameLevel() {
-    // check if level overflowed due to range query driven compaction.
-    // If yes, shift it one level down and handle the corner cases like
-    // if next level is not empty push all the level down
-    std::cout << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
-    auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
-    Options options = GetOptions(DefaultColumnFamily());
-    ColumnFamilyData* cfd = cfh->cfd();
-    Version* current_version = cfd->GetSuperVersion()->current;
-    Status s = GetVersionSet()->MayRenameLevel(dbname_, &options, file_options_, *cfd->ioptions(),  decision_cell_.end_level_, current_version);
-    // std::cout << "Status: " << s.ToString() << " " << __FILE__ << " : " << __FUNCTION__ << " " << __LINE__ << std::endl << std::flush;
-  }
+void DBImpl::RenameLevels() {
+  // check if level overflowed due to range query driven compaction.
+  // If yes, shift it one level down and handle the corner cases like
+  // if next level is not empty push all the level down
+  auto cfh =
+      static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
+  Options options =
+      Options(BuildDBOptions(immutable_db_options_, mutable_db_options_),
+              cfh->cfd()->GetLatestCFOptions());
+  ColumnFamilyData* cfd = cfh->cfd();
+  Version* current_version = cfd->GetSuperVersion()->current;
+  Status s =
+      GetVersionSet()->RenameLevels(&options, current_version, GetVersionSet());
+}
 
 Status DBImpl::FlushPartialOrRangeFile(
     ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
@@ -237,7 +259,7 @@ Status DBImpl::FlushPartialOrRangeFile(
                                    // write_manifest
       thread_pri, io_tracer_, seqno_time_mapping_, read_options_, db_id_,
       db_session_id_, cfd->GetFullHistoryTsLow(), &blob_callback_, memtable,
-      level, meta_data);
+      level, meta_data, this);
   FileMetaData file_meta;
 
   Status s = Status::OK();

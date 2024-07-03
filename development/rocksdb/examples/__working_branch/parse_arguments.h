@@ -88,6 +88,10 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       "Enable range query comapaction [def: 0]",
       {"rq", "range_query_compaction"});
 
+  args::ValueFlag<int> level_renaming_enabled_cmd(
+      group1, "level_renaming_enabled",
+      "Enable level renaming when to add new level", {"re", "renaming_level"});
+
   args::ValueFlag<float> upper_threshold_cmd(
       group1, "higher_bound",
       "Higher threshold between adjancent levels to perform compaction [def: "
@@ -100,6 +104,12 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
   args::ValueFlag<float> range_query_selectivity_cmd(
       group1, "Y", "Range query selectivity [def: 0]",
       {'Y', "range_query_selectivity"});
+
+  // Fluid LSM parameters
+  args::ValueFlag<float> smaller_lvl_runs_count_cmd(
+      group1, "K", "Number of run in smaller levels", {'K', "k"});
+  args::ValueFlag<float> larger_lvl_runs_count_cmd(
+      group1, "Z", "Number of run in larger levels", {'Z', "z"});
 
   try {
     parser.ParseCLI(argc, argv);
@@ -170,11 +180,20 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       enable_range_query_compaction_cmd
           ? args::get(enable_range_query_compaction_cmd)
           : 0;
+  _env->level_renaming_enabled =
+      level_renaming_enabled_cmd ? args::get(level_renaming_enabled_cmd) : 0;
+
   _env->lower_threshold =
       lower_threshold_cmd ? args::get(lower_threshold_cmd) : 0;
   _env->upper_threshold = upper_threshold_cmd
                               ? args::get(upper_threshold_cmd)
                               : std::numeric_limits<float>::max();
+
+  // Fluid LSM parameters
+  _env->smaller_lvl_runs_count =
+      smaller_lvl_runs_count_cmd ? args::get(smaller_lvl_runs_count_cmd) : 1;
+  _env->larger_lvl_runs_count =
+      larger_lvl_runs_count_cmd ? args::get(larger_lvl_runs_count_cmd) : 1;
 
   return 0;
 }

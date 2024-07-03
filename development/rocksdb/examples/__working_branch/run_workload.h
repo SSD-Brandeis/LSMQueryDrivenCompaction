@@ -14,17 +14,35 @@
 
 #include "config_options.h"
 #include "emu_environment.h"
+#ifdef DOSTO
+#include "fluid_lsm.h"
+#endif  // DOSTO
 #include "thread"
 
 #define PROFILE
 #define TIMER
+// #define DOSTO
 
 std::string kDBPath = "./db_working_home";
 std::mutex mtx;
 std::condition_variable cv;
 bool compaction_complete = false;
+auto globaltp = std::chrono::steady_clock::now();
 
 void printExperimentalSetup(EmuEnv* _env);
+
+std::string GetCompactionReason(CompactionReason comp_reason) {
+  switch (comp_reason) {
+    case CompactionReason::kLevelL0FilesNum:
+      return "kLevelL0FilesNum";
+    case CompactionReason::kLevelMaxLevelSize:
+      return "kLevelMaxLevelSize";
+    case CompactionReason::kManualCompaction:
+      return "kManualCompaction";
+    default:
+      return "Not Aware";
+  }
+}
 
 /*
  * The compactions can run in background even after the workload is completely
@@ -37,8 +55,59 @@ class CompactionsListner : public EventListener {
  public:
   explicit CompactionsListner() {}
 
-  void OnCompactionCompleted(DB* /*db*/,
-                             const CompactionJobInfo& /*ci*/) override {
+  void OnCompactionCompleted(DB* db, const CompactionJobInfo& ci) override {
+    auto localtp = std::chrono::steady_clock::now();
+
+    auto tp = std::chrono::duration_cast<std::chrono::nanoseconds>(localtp -
+                                                                   globaltp);
+#ifdef PROFILE
+    {
+      std::stringstream input_files;
+      std::stringstream output_files;
+      for (auto file : ci.input_files) {
+        input_files << file << ", ";
+      }
+      for (auto file : ci.output_files) {
+        output_files << file << ", ";
+      }
+      std::cout << "Compaction Reason: ["
+                << GetCompactionReason(ci.compaction_reason) << "]" << std::endl
+                << "\t(Smallest Input Level) "
+                << std::to_string(ci.base_input_level) << " ====> "
+                << std::to_string(ci.output_level) << " (Output Level)"
+                << std::endl
+                << "\t\tInput Files: " << input_files.str() << std::endl
+                << "\t\tOutput Files: " << output_files.str() << std::endl << std::endl;
+    }
+#endif  // PROFILE
+
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.compact.write.bytes: "
+    //           << db->GetOptions().statistics->getTickerCount(
+    //                  COMPACT_WRITE_BYTES)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.flush.write.bytes: "
+    //           <<
+    //           db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.compaction.num.triggered: "
+    //           << db->GetOptions().statistics->getTickerCount(
+    //                  NUM_COMPACTION_TRIGGERED)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.files.trivially.moved: "
+    //           << db->GetOptions().statistics->getTickerCount(
+    //                  NUM_FILES_TRIVALLY_MOVED)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " levels.state: " << db->GetLevelsState() << std::endl
+    //           << std::flush;
     std::lock_guard<std::mutex> lock(mtx);
     compaction_complete = true;
     cv.notify_one();
@@ -66,7 +135,7 @@ void WaitForCompactions(DB* db) {
         num_pending_compactions == 0) {
       break;
     }
-    cv.wait(lock);
+    cv.wait_for(lock, std::chrono::seconds(2));
   }
 }
 
@@ -98,8 +167,7 @@ class PartialAndFullRangeFlushListner : public EventListener {
   uint64_t untotal_bytes_written() { return unestimated_total_bytes_written_; }
   uint64_t unentries_count() { return unentries_count_; }
 
-  void OnFlushCompleted(DB* /*db*/,
-                        const FlushJobInfo& flush_job_info) override {
+  void OnFlushCompleted(DB* db, const FlushJobInfo& flush_job_info) override {
     if (flush_job_info.flush_reason == FlushReason::kRangeFlush) {
       TableProperties tp = flush_job_info.table_properties;
       uestimated_total_bytes_written_ +=
@@ -113,6 +181,84 @@ class PartialAndFullRangeFlushListner : public EventListener {
       undata_bytes_written_ += tp.data_size;
       unentries_count_ += tp.num_entries;
     }
+    auto localtp = std::chrono::steady_clock::now();
+
+    auto tp = std::chrono::duration_cast<std::chrono::nanoseconds>(localtp -
+                                                                   globaltp);
+    {
+#ifdef PROFILE
+      ColumnFamilyMetaData metadata;
+      db->GetColumnFamilyMetaData(&metadata);
+      std::stringstream cfd_details;
+
+      // Print column family metadata
+      cfd_details << "[Before Compactions] Column Family Name: "
+                  << metadata.name << ", Size: " << metadata.size
+                  << " bytes, Files Count: " << metadata.file_count;
+
+      std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+
+      unsigned long long total_entries_in_cfd = std::get<0>(details);
+      std::string all_level_details = std::get<1>(details);
+
+      std::cout << cfd_details.str()
+                << ", Entries Count: " << total_entries_in_cfd << std::endl
+                << all_level_details << std::endl;
+#endif  // PROFILE
+    }
+    WaitForCompactions(db);
+    {
+#ifdef PROFILE
+      ColumnFamilyMetaData metadata;
+      db->GetColumnFamilyMetaData(&metadata);
+      std::stringstream cfd_details;
+
+      // Print column family metadata
+      cfd_details << "[After Compactions] Column Family Name: " << metadata.name
+                  << ", Size: " << metadata.size
+                  << " bytes, Files Count: " << metadata.file_count;
+
+      std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+
+      unsigned long long total_entries_in_cfd = std::get<0>(details);
+      std::string all_level_details = std::get<1>(details);
+
+      std::cout << cfd_details.str()
+                << ", Entries Count: " << total_entries_in_cfd << std::endl
+                << all_level_details << std::endl
+                << std::endl
+                << std::endl
+                << std::endl
+                << std::endl;
+#endif  // PROFILE
+    }
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.compact.write.bytes: "
+    //           << db->GetOptions().statistics->getTickerCount(
+    //                  COMPACT_WRITE_BYTES)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.flush.write.bytes: "
+    //           <<
+    //           db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.compaction.num.triggered: "
+    //           << db->GetOptions().statistics->getTickerCount(
+    //                  NUM_COMPACTION_TRIGGERED)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " rocksdb.files.trivially.moved: "
+    //           << db->GetOptions().statistics->getTickerCount(
+    //                  NUM_FILES_TRIVALLY_MOVED)
+    //           << std::endl
+    //           << std::flush;
+    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    //           << " levels.state: " << db->GetLevelsState() << std::endl
+    //           << std::flush;
   }
 
  private:
@@ -170,11 +316,19 @@ int runWorkload(EmuEnv* _env) {
   }
 
   // options.info_log_level = InfoLogLevel::DEBUG_LEVEL;
+#ifdef DOSTO
+  std::shared_ptr<FluidLSM> tree = std::make_shared<FluidLSM>(
+      _env->size_ratio, _env->smaller_lvl_runs_count,
+      _env->larger_lvl_runs_count, _env->file_size, options);
+#endif  // DOSTO
   std::shared_ptr<CompactionsListner> compaction_listener =
       std::make_shared<CompactionsListner>();
   std::shared_ptr<PartialAndFullRangeFlushListner>
       partial_range_flush_listener =
           std::make_shared<PartialAndFullRangeFlushListner>();
+#ifdef DOSTO
+  options.listeners.emplace_back(tree);
+#endif  // DOSTO
   options.listeners.emplace_back(compaction_listener);
   options.listeners.emplace_back(partial_range_flush_listener);
 
@@ -182,11 +336,19 @@ int runWorkload(EmuEnv* _env) {
   // std::cout << "Maximum #OpenFiles = " << options.max_open_files
   //           << std::endl;  // !YBS-sep07-XX!
   // std::cout << "Maximum #ThreadsUsedToOpenFiles = "
-  //           << options.max_file_opening_threads << std::endl;  // !YBS-sep07-XX!
+  //           << options.max_file_opening_threads << std::endl;  //
+  //           !YBS-sep07-XX!
 
   Status s = DB::Open(options, kDBPath, &db);
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
+
+#ifdef DOSTO
+  if (_env->debugging) {
+    tree->SetDebugMode(_env->debugging);
+    tree->PrintFluidLSM(db);
+  }
+#endif  // DOSTO
 
   // opening workload file for the first time
   bool lexico_valid = false;
@@ -202,7 +364,7 @@ int runWorkload(EmuEnv* _env) {
 
 #ifdef PROFILE
   // number of epochs to run the experiment
-  int num_epochs = 1;
+  int num_epochs = 11;
   int num_instructions_for_one_epoch =
       (_env->num_updates / num_epochs) + (_env->num_range_queries / num_epochs);
   int num_instructions_executed_for_one_epoch = 0;
@@ -394,65 +556,77 @@ int runWorkload(EmuEnv* _env) {
           uint64_t entries_count_skipped = 0;
           uint64_t entries_read_to_compact = 0;
           uint64_t ideal_entries_count = 0;
-          {
-#ifdef PROFILE
-            ColumnFamilyMetaData metadata;
-            db->GetColumnFamilyMetaData(&metadata);
-            std::stringstream cfd_details;
-            // std::stringstream all_level_details;
-            // unsigned long long total_entries_in_cfd = 0;
+          //           {
+          // #ifdef PROFILE
+          //             ColumnFamilyMetaData metadata;
+          //             db->GetColumnFamilyMetaData(&metadata);
+          //             std::stringstream cfd_details;
+          //             // std::stringstream all_level_details;
+          //             // unsigned long long total_entries_in_cfd = 0;
 
-            // Print column family metadata
-            cfd_details << "Column Family Name: " << metadata.name
-                        << ", Size: " << metadata.size
-                        << " bytes, Files Count: " << metadata.file_count;
+          //             // Print column family metadata
+          //             cfd_details << "Column Family Name: " << metadata.name
+          //                         << ", Size: " << metadata.size
+          //                         << " bytes, Files Count: " <<
+          //                         metadata.file_count;
 
-            // Print metadata for each level
-            // for (const auto& level : metadata.levels) {
-            //   std::stringstream level_details;
-            //   level_details << "\tLevel: " << level.level
-            //                 << ", Size: " << level.size
-            //                 << " bytes, Files Count: " << level.files.size();
+          //             // Print metadata for each level
+          //             // for (const auto& level : metadata.levels) {
+          //             //   std::stringstream level_details;
+          //             //   level_details << "\tLevel: " << level.level
+          //             //                 << ", Size: " << level.size
+          //             //                 << " bytes, Files Count: " <<
+          //             level.files.size();
 
-            //   unsigned long long total_entries_in_one_level = 0;
-            //   std::stringstream level_sst_file_details;
+          //             //   unsigned long long total_entries_in_one_level = 0;
+          //             //   std::stringstream level_sst_file_details;
 
-            //   // Print metadata for each file in the level
-            //   for (const auto& file : level.files) {
-            //     total_entries_in_one_level += file.num_entries;
-            //     level_sst_file_details << "[#" << file.file_number << ":"
-            //                            << file.size << " (" << file.smallestkey
-            //                            << ", " << file.largestkey << ") "
-            //                            << file.num_entries << "], ";
-            //   }
-            //   total_entries_in_cfd += total_entries_in_one_level;
-            //   level_details << ", Entries Count: " << total_entries_in_one_level
-            //                 << "\n\t\t";
-            //   all_level_details << level_details.str()
-            //                     << level_sst_file_details.str() << std::endl;
-            // }
+          //             //   // Print metadata for each file in the level
+          //             //   for (const auto& file : level.files) {
+          //             //     total_entries_in_one_level += file.num_entries;
+          //             //     level_sst_file_details << "[#" <<
+          //             file.file_number << ":"
+          //             //                            << file.size << " (" <<
+          //             file.smallestkey
+          //             //                            << ", " <<
+          //             file.largestkey << ") "
+          //             //                            << file.num_entries <<
+          //             "], ";
+          //             //   }
+          //             //   total_entries_in_cfd +=
+          //             total_entries_in_one_level;
+          //             //   level_details << ", Entries Count: " <<
+          //             total_entries_in_one_level
+          //             //                 << "\n\t\t";
+          //             //   all_level_details << level_details.str()
+          //             //                     << level_sst_file_details.str()
+          //             << std::endl;
+          //             // }
 
-            std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+          //             std::tuple<unsigned long long, std::string> details =
+          //             db->GetTreeState();
 
-            unsigned long long total_entries_in_cfd = std::get<0>(details);
-            std::stringstream& all_level_details = std::get<1>(details);
+          //             unsigned long long total_entries_in_cfd =
+          //             std::get<0>(details); std::string all_level_details =
+          //             std::get<1>(details);
 
-            std::cout << cfd_details.str()
-                      << ", Entries Count: " << total_entries_in_cfd
-                      << ", Invalid Entries Count: "
-                      << total_entries_in_cfd - _env->num_inserts << std::endl
-                      << all_level_details.str() << std::endl;
+          //             std::cout << cfd_details.str()
+          //                       << ", Entries Count: " <<
+          //                       total_entries_in_cfd
+          //                       << ", Invalid Entries Count: "
+          //                       << total_entries_in_cfd - _env->num_inserts
+          //                       << std::endl
+          //                       << all_level_details << std::endl;
 
-#endif  // PROFILE
-          }
+          // #endif  // PROFILE
+          //           }
 
-  // {
-  //   std::cout << "\nwaiting for compactions to finish ..." << std::endl;
-  //   std::vector<std::string> live_files;
-  //   uint64_t manifest_size;
-  //   db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
-  //   WaitForCompactions(db);
-  // }
+          // {
+          //   std::cout << "\nwaiting for compactions to finish ..." <<
+          //   std::endl; std::vector<std::string> live_files; uint64_t
+          //   manifest_size; db->GetLiveFiles(live_files, &manifest_size, true
+          //   /*flush_memtable*/); WaitForCompactions(db);
+          // }
 
 #ifdef TIMER
           auto start = std::chrono::high_resolution_clock::now();
@@ -472,7 +646,8 @@ int runWorkload(EmuEnv* _env) {
               std::chrono::duration_cast<std::chrono::nanoseconds>(
                   refresh_time - start)
                   .count();
-          std::cout << "refreshTime: " << refresh_duration << std::endl << std::flush;
+          // std::cout << "refreshTime: " << refresh_duration << std::endl <<
+          // std::flush;
 #endif  // TIMER
 
           assert(it->status().ok());
@@ -488,21 +663,28 @@ int runWorkload(EmuEnv* _env) {
           }
 
 #ifdef TIMER
-          r_options.range_query_options->count_of_total_invalid = (r_options.range_query_options->count_of_entries - ideal_entries_count);
-          // r_options.range_query_options->count_of_entries_removed = r_options.range_query_options->count_of_entries_to_compact - r_options.range_query_options->count_of_entries_compacted;
+          r_options.range_query_options->count_of_total_invalid =
+              (r_options.range_query_options->count_of_entries -
+               ideal_entries_count);
+          // r_options.range_query_options->count_of_entries_removed =
+          // r_options.range_query_options->count_of_entries_to_compact -
+          // r_options.range_query_options->count_of_entries_compacted;
           auto reset_start = std::chrono::high_resolution_clock::now();
-          std::cout << "entriesCount: " << r_options.range_query_options->count_of_entries << std::endl << std::flush;
-          std::cout << "idealEntriesCount: " << ideal_entries_count << std::endl << std::flush;
-          std::cout << "invalidEntriesCount: " << r_options.range_query_options->count_of_total_invalid << std::endl << std::flush;
-          // std::cout << "entriesToCompactCount: " << r_options.range_query_options->count_of_entries_to_compact << std::endl << std::flush;
-          // std::cout << "entriesCompactedCount: " << r_options.range_query_options->count_of_entries_compacted << std::endl << std::flush;
-          // std::cout << "entriesRemoved: " << r_options.range_query_options->count_of_entries_removed << std::endl << std::flush;
-          // std::cout << "extraEntriesWritten: " << r_options.range_query_options->count_of_extra_write_for_partial << std::endl << std::flush;
-#endif  // TIMER
-          // if (_env->enable_range_query_compaction && lexico_valid) {
-            it->Reset(entries_count_skipped, entries_read_to_compact);
-          // }
-#ifdef TIMER
+          // std::cout << "entriesCount: " <<
+          // r_options.range_query_options->count_of_entries << std::endl <<
+          // std::flush; std::cout << "idealEntriesCount: " <<
+          // ideal_entries_count << std::endl << std::flush; std::cout <<
+          // "invalidEntriesCount: " <<
+          // r_options.range_query_options->count_of_total_invalid << std::endl
+          // << std::flush; std::cout << "entriesToCompactCount: " <<
+          // r_options.range_query_options->count_of_entries_to_compact <<
+          // std::endl << std::flush; std::cout << "entriesCompactedCount: " <<
+          // r_options.range_query_options->count_of_entries_compacted <<
+          // std::endl << std::flush; std::cout << "entriesRemoved: " <<
+          // r_options.range_query_options->count_of_entries_removed <<
+          // std::endl << std::flush; std::cout << "extraEntriesWritten: " <<
+          // r_options.range_query_options->count_of_extra_write_for_partial <<
+          // std::endl << std::flush;
           auto reset_end = std::chrono::high_resolution_clock::now();
           actual_range_time =
               std::chrono::duration_cast<std::chrono::nanoseconds>(reset_start -
@@ -511,15 +693,14 @@ int runWorkload(EmuEnv* _env) {
           reset_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                reset_end - reset_start)
                                .count();
-          std::cout << "actualTime: " << actual_range_time << std::endl << std::flush;
-          std::cout << "resetTime: " << reset_duration << std::endl << std::flush;
-#endif  // TIMER
-
-#ifdef TIMER
+          // std::cout << "actualTime: " << actual_range_time << std::endl <<
+          // std::flush; std::cout << "resetTime: " << reset_duration <<
+          // std::endl << std::flush;
           auto stop = std::chrono::high_resolution_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
               stop - start);
-          std::cout << "totalTime: " << duration.count() << std::endl << std::flush;
+          // std::cout << "totalTime: " << duration.count() << std::endl <<
+          // std::flush;
           range_queries_time_for_one_epoch += duration.count();
           operations_execution_time += duration.count();
           all_range_queries_time += duration.count();
@@ -528,59 +709,70 @@ int runWorkload(EmuEnv* _env) {
               partial_range_flush_listener->udata_bytes_written(),
               partial_range_flush_listener->utotal_bytes_written(),
               partial_range_flush_listener->uentries_count(),
-              entries_count_read,
+              r_options.range_query_options->count_of_entries,
               partial_range_flush_listener->undata_bytes_written(),
               partial_range_flush_listener->untotal_bytes_written(),
               partial_range_flush_listener->unentries_count(), refresh_duration,
               reset_duration, actual_range_time));
           partial_range_flush_listener->reset();
 #endif  // TIMER
+          it->Reset(entries_count_skipped, entries_read_to_compact);
 
-          {
-#ifdef PROFILE
-            ColumnFamilyMetaData metadata;
-            db->GetColumnFamilyMetaData(&metadata);
-            std::stringstream cfd_details;
-            std::stringstream all_level_details;
-            unsigned long long total_entries_in_cfd = 0;
+          //           {
+          // #ifdef PROFILE
+          //             ColumnFamilyMetaData metadata;
+          //             db->GetColumnFamilyMetaData(&metadata);
+          //             std::stringstream cfd_details;
+          //             std::stringstream all_level_details;
+          //             unsigned long long total_entries_in_cfd = 0;
 
-            // Print column family metadata
-            cfd_details << "Column Family Name: " << metadata.name
-                        << ", Size: " << metadata.size
-                        << " bytes, Files Count: " << metadata.file_count;
+          //             // Print column family metadata
+          //             cfd_details << "Column Family Name: " << metadata.name
+          //                         << ", Size: " << metadata.size
+          //                         << " bytes, Files Count: " <<
+          //                         metadata.file_count;
 
-            // Print metadata for each level
-            for (const auto& level : metadata.levels) {
-              std::stringstream level_details;
-              level_details << "\tLevel: " << level.level
-                            << ", Size: " << level.size
-                            << " bytes, Files Count: " << level.files.size();
+          //             // Print metadata for each level
+          //             for (const auto& level : metadata.levels) {
+          //               std::stringstream level_details;
+          //               level_details << "\tLevel: " << level.level
+          //                             << ", Size: " << level.size
+          //                             << " bytes, Files Count: " <<
+          //                             level.files.size();
 
-              unsigned long long total_entries_in_one_level = 0;
-              std::stringstream level_sst_file_details;
+          //               unsigned long long total_entries_in_one_level = 0;
+          //               std::stringstream level_sst_file_details;
 
-              // Print metadata for each file in the level
-              for (const auto& file : level.files) {
-                total_entries_in_one_level += file.num_entries;
-                level_sst_file_details << "[#" << file.file_number << ":"
-                                       << file.size << " (" << file.smallestkey
-                                       << ", " << file.largestkey << ") "
-                                       << file.num_entries << "], ";
-              }
-              total_entries_in_cfd += total_entries_in_one_level;
-              level_details << ", Entries Count: " << total_entries_in_one_level
-                            << "\n\t\t";
-              all_level_details << level_details.str()
-                                << level_sst_file_details.str() << std::endl;
-            }
+          //               // Print metadata for each file in the level
+          //               for (const auto& file : level.files) {
+          //                 total_entries_in_one_level += file.num_entries;
+          //                 level_sst_file_details << "[#" << file.file_number
+          //                 << ":"
+          //                                        << file.size << " (" <<
+          //                                        file.smallestkey
+          //                                        << ", " << file.largestkey
+          //                                        << ") "
+          //                                        << file.num_entries << "],
+          //                                        ";
+          //               }
+          //               total_entries_in_cfd += total_entries_in_one_level;
+          //               level_details << ", Entries Count: " <<
+          //               total_entries_in_one_level
+          //                             << "\n\t\t";
+          //               all_level_details << level_details.str()
+          //                                 << level_sst_file_details.str() <<
+          //                                 std::endl;
+          //             }
 
-            std::cout << cfd_details.str()
-                      << ", Entries Count: " << total_entries_in_cfd
-                      << ", Invalid Entries Count: "
-                      << total_entries_in_cfd - _env->num_inserts << std::endl
-                      << all_level_details.str() << std::endl;
-#endif  // PROFILE
-          }
+          //             std::cout << cfd_details.str()
+          //                       << ", Entries Count: " <<
+          //                       total_entries_in_cfd
+          //                       << ", Invalid Entries Count: "
+          //                       << total_entries_in_cfd - _env->num_inserts
+          //                       << std::endl
+          //                       << all_level_details.str() << std::endl;
+          // #endif  // PROFILE
+          //           }
         }
 
 #ifdef PROFILE
@@ -597,316 +789,340 @@ int runWorkload(EmuEnv* _env) {
 #ifdef PROFILE
     if (counter >= _env->num_inserts) {
       if (counter == _env->num_inserts) {
-        std::cout << "=====================" << std::endl;
-        std::cout << "Inserts are completed ..." << std::endl;
+        // std::cout << "=====================" << std::endl;
+        // std::cout << "Inserts are completed ..." << std::endl;
 
-        {
-          std::vector<std::string> live_files;
-          uint64_t manifest_size;
-          db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
-          WaitForCompactions(db);
-        }
-
-        //  "rocksdb.obsolete-sst-files-size" - returns total size (bytes) of
-        //  all
-        //      SST files that became obsolete but have not yet been deleted or
-        //      scheduled for deletion. SST files can end up in this state when
-        //      using `DisableFileDeletions()`, for example.
-        //
-        //      N.B. Unlike the other "*SstFilesSize" properties, this property
-        //      includes SST files that originated in any of the DB's CFs.
-        printProperty("rocksdb.obsolete-sst-files-size");
-        //  "rocksdb.live-sst-files-size" - returns total size (bytes) of all
-        //  SST
-        //      files belong to the CF's current version.
-        printProperty("rocksdb.live-sst-files-size");
-        //  "rocksdb.total-sst-files-size" - returns total size (bytes) of all
-        //  SST
-        //      files belonging to any of the CF's versions.
-        //  WARNING: may slow down online queries if there are too many files.
-        printProperty("rocksdb.total-sst-files-size");
-
-        // //  "rocksdb.estimate-live-data-size" - returns an estimate of the
-        // //  amount of
-        // //      live data in bytes. For BlobDB, it also includes the exact
-        // value
-        // //      of live bytes in the blob files of the version.
-        // printProperty("rocksdb.estimate-live-data-size");
-        // //  "rocksdb.estimate-table-readers-mem" - returns estimated memory
-        // used
-        // //  for
-        // //      reading SST tables, excluding memory used in block cache
-        // (e.g.,
-        // //      filter and index blocks).
-
-        // printProperty("rocksdb.estimate-table-readers-mem");
-        //  "rocksdb.estimate-num-keys" - returns estimated number of total keys
-        //  in
-        //      the active and unflushed immutable memtables and storage.
-        printProperty("rocksdb.estimate-num-keys");
-        //  "rocksdb.num-entries-active-mem-table" - returns total number of
-        //  entries
-        //      in the active memtable.
-        printProperty("rocksdb.num-entries-active-mem-table");
-        //  "rocksdb.num-entries-imm-mem-tables" - returns total number of
-        //  entries
-        //      in the unflushed immutable memtables.
-        printProperty("rocksdb.num-entries-imm-mem-tables");
-
-        // //  "rocksdb.size-all-mem-tables" - returns approximate size of
-        // active,
-        // //      unflushed immutable, and pinned immutable memtables (bytes).
-        // printProperty("rocksdb.size-all-mem-tables");
-        // //  "rocksdb.cur-size-all-mem-tables" - returns approximate size of
-        // //  active
-        // //      and unflushed immutable memtables (bytes).
-        // printProperty("rocksdb.cur-size-all-mem-tables");
-        // //  "rocksdb.cur-size-active-mem-table" - returns approximate size of
-        // //  active
-        // //      memtable (bytes).
-        // printProperty("rocksdb.cur-size-active-mem-table");
-        // //  "rocksdb.levelstats" - returns multi-line string containing the
-        // //  number
-        // //      of files per level and total size of each level (MB).
-        // printProperty("rocksdb.levelstats");
-        // //  "rocksdb.sstables" - returns a multi-line string summarizing
-        // current
-        // //      SST files.
-        // printProperty("rocksdb.sstables");
-        // //  "rocksdb.stats" - returns a multi-line string containing the data
-        // //      described by kCFStats followed by the data described by
-        // kDBStats. printProperty("rocksdb.stats");
-
-        std::cout << std::endl;
-
-        ColumnFamilyMetaData metadata;
-        db->GetColumnFamilyMetaData(&metadata);
-        std::stringstream cfd_details;
-        // std::stringstream all_level_details;
-        // unsigned long long total_entries_in_cfd = 0;
-
-        // Print column family metadata
-        cfd_details << "Column Family Name: " << metadata.name
-                    << ", Size: " << metadata.size
-                    << " bytes, Files Count: " << metadata.file_count;
-
-        // // Print metadata for each level
-        // for (const auto& level : metadata.levels) {
-        //   std::stringstream level_details;
-        //   level_details << "\tLevel: " << level.level
-        //                 << ", Size: " << level.size
-        //                 << " bytes, Files Count: " << level.files.size();
-
-        //   unsigned long long total_entries_in_one_level = 0;
-        //   std::stringstream level_sst_file_details;
-
-        //   // Print metadata for each file in the level
-        //   for (const auto& file : level.files) {
-        //     total_entries_in_one_level += file.num_entries;
-        //     level_sst_file_details << "[#" << file.file_number << ":"
-        //                            << file.size << " (" << file.smallestkey
-        //                            << ", " << file.largestkey << ") "
-        //                            << file.num_entries << "], ";
-        //   }
-        //   total_entries_in_cfd += total_entries_in_one_level;
-        //   level_details << ", Entries Count: " << total_entries_in_one_level
-        //                 << "\n\t\t";
-        //   all_level_details << level_details.str()
-        //                     << level_sst_file_details.str() << std::endl;
+        // {
+        //   std::vector<std::string> live_files;
+        //   uint64_t manifest_size;
+        //   db->GetLiveFiles(live_files, &manifest_size, true
+        //   /*flush_memtable*/); WaitForCompactions(db);
         // }
 
-        std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+        // //  "rocksdb.obsolete-sst-files-size" - returns total size (bytes) of
+        // //  all
+        // //      SST files that became obsolete but have not yet been deleted
+        // or
+        // //      scheduled for deletion. SST files can end up in this state
+        // when
+        // //      using `DisableFileDeletions()`, for example.
+        // //
+        // //      N.B. Unlike the other "*SstFilesSize" properties, this
+        // property
+        // //      includes SST files that originated in any of the DB's CFs.
+        // printProperty("rocksdb.obsolete-sst-files-size");
+        // //  "rocksdb.live-sst-files-size" - returns total size (bytes) of all
+        // //  SST
+        // //      files belong to the CF's current version.
+        // printProperty("rocksdb.live-sst-files-size");
+        // //  "rocksdb.total-sst-files-size" - returns total size (bytes) of
+        // all
+        // //  SST
+        // //      files belonging to any of the CF's versions.
+        // //  WARNING: may slow down online queries if there are too many
+        // files. printProperty("rocksdb.total-sst-files-size");
 
-        unsigned long long total_entries_in_cfd = std::get<0>(details);
-        std::stringstream& all_level_details = std::get<1>(details);
+        // // //  "rocksdb.estimate-live-data-size" - returns an estimate of the
+        // // //  amount of
+        // // //      live data in bytes. For BlobDB, it also includes the exact
+        // // value
+        // // //      of live bytes in the blob files of the version.
+        // // printProperty("rocksdb.estimate-live-data-size");
+        // // //  "rocksdb.estimate-table-readers-mem" - returns estimated
+        // memory
+        // // used
+        // // //  for
+        // // //      reading SST tables, excluding memory used in block cache
+        // // (e.g.,
+        // // //      filter and index blocks).
 
-        std::cout << cfd_details.str()
-                  << ", Entries Count: " << total_entries_in_cfd
-                  << ", Invalid Entries Count: "
-                  << total_entries_in_cfd - _env->num_inserts << std::endl
-                  << all_level_details.str() << std::endl;
+        // // printProperty("rocksdb.estimate-table-readers-mem");
+        // //  "rocksdb.estimate-num-keys" - returns estimated number of total
+        // keys
+        // //  in
+        // //      the active and unflushed immutable memtables and storage.
+        // printProperty("rocksdb.estimate-num-keys");
+        // //  "rocksdb.num-entries-active-mem-table" - returns total number of
+        // //  entries
+        // //      in the active memtable.
+        // printProperty("rocksdb.num-entries-active-mem-table");
+        // //  "rocksdb.num-entries-imm-mem-tables" - returns total number of
+        // //  entries
+        // //      in the unflushed immutable memtables.
+        // printProperty("rocksdb.num-entries-imm-mem-tables");
 
-        std::cout << "Rocksdb Statistics: " << std::endl;
-        std::cout << "rocksdb.compact.read.bytes: "
-                  << options.statistics->getTickerCount(COMPACT_READ_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.compact.write.bytes: "
-                  << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.flush.write.bytes: "
-                  << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.partial.file.flush.count: "
-                  << options.statistics->getTickerCount(
-                         PARTIAL_FILE_FLUSH_COUNT)
-                  << std::endl;
-        std::cout << "rocksdb.partial.file.flush.bytes: "
-                  << options.statistics->getTickerCount(
-                         PARTIAL_FILE_FLUSH_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.full.file.flush.count: "
-                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
-                  << std::endl;
-        std::cout << "rocksdb.full.file.flush.bytes: "
-                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.compaction.times.micros: "
-                  << options.statistics->getTickerCount(COMPACTION_TIME)
-                  << std::endl;
-        // std::cout << "rocksdb.bytes.read: "
-        //           << options.statistics->getTickerCount(BYTES_READ)
+        // // //  "rocksdb.size-all-mem-tables" - returns approximate size of
+        // // active,
+        // // //      unflushed immutable, and pinned immutable memtables
+        // (bytes).
+        // // printProperty("rocksdb.size-all-mem-tables");
+        // // //  "rocksdb.cur-size-all-mem-tables" - returns approximate size
+        // of
+        // // //  active
+        // // //      and unflushed immutable memtables (bytes).
+        // // printProperty("rocksdb.cur-size-all-mem-tables");
+        // // //  "rocksdb.cur-size-active-mem-table" - returns approximate size
+        // of
+        // // //  active
+        // // //      memtable (bytes).
+        // // printProperty("rocksdb.cur-size-active-mem-table");
+        // // //  "rocksdb.levelstats" - returns multi-line string containing
+        // the
+        // // //  number
+        // // //      of files per level and total size of each level (MB).
+        // // printProperty("rocksdb.levelstats");
+        // // //  "rocksdb.sstables" - returns a multi-line string summarizing
+        // // current
+        // // //      SST files.
+        // // printProperty("rocksdb.sstables");
+        // // //  "rocksdb.stats" - returns a multi-line string containing the
+        // data
+        // // //      described by kCFStats followed by the data described by
+        // // kDBStats. printProperty("rocksdb.stats");
+
+        // std::cout << std::endl;
+
+        // ColumnFamilyMetaData metadata;
+        // db->GetColumnFamilyMetaData(&metadata);
+        // std::stringstream cfd_details;
+        // // std::stringstream all_level_details;
+        // // unsigned long long total_entries_in_cfd = 0;
+
+        // // Print column family metadata
+        // cfd_details << "Column Family Name: " << metadata.name
+        //             << ", Size: " << metadata.size
+        //             << " bytes, Files Count: " << metadata.file_count;
+
+        // // // Print metadata for each level
+        // // for (const auto& level : metadata.levels) {
+        // //   std::stringstream level_details;
+        // //   level_details << "\tLevel: " << level.level
+        // //                 << ", Size: " << level.size
+        // //                 << " bytes, Files Count: " << level.files.size();
+
+        // //   unsigned long long total_entries_in_one_level = 0;
+        // //   std::stringstream level_sst_file_details;
+
+        // //   // Print metadata for each file in the level
+        // //   for (const auto& file : level.files) {
+        // //     total_entries_in_one_level += file.num_entries;
+        // //     level_sst_file_details << "[#" << file.file_number << ":"
+        // //                            << file.size << " (" <<
+        // file.smallestkey
+        // //                            << ", " << file.largestkey << ") "
+        // //                            << file.num_entries << "], ";
+        // //   }
+        // //   total_entries_in_cfd += total_entries_in_one_level;
+        // //   level_details << ", Entries Count: " <<
+        // total_entries_in_one_level
+        // //                 << "\n\t\t";
+        // //   all_level_details << level_details.str()
+        // //                     << level_sst_file_details.str() << std::endl;
+        // // }
+
+        // std::this_thread::sleep_for(std::chrono::seconds(2));
+        // std::tuple<unsigned long long, std::string> details =
+        //     db->GetTreeState();
+
+        // unsigned long long total_entries_in_cfd = std::get<0>(details);
+        // std::string all_level_details = std::get<1>(details);
+
+        // std::cout << cfd_details.str()
+        //           << ", Entries Count: " << total_entries_in_cfd
+        //           << ", Invalid Entries Count: "
+        //           << total_entries_in_cfd - _env->num_inserts << std::endl
+        //           << all_level_details << std::endl;
+
+        // std::cout << "Rocksdb Statistics: " << std::endl;
+        // std::cout << "rocksdb.compact.read.bytes: "
+        //           << options.statistics->getTickerCount(COMPACT_READ_BYTES)
         //           << std::endl;
-        // std::cout << "rocksdb.bytes.written: "
-        //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+        // std::cout << "rocksdb.compact.write.bytes: "
+        //           << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
         //           << std::endl;
-        // std::cout << "rocksdb.db.iter.bytes.read: "
-        //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+        // std::cout << "rocksdb.flush.write.bytes: "
+        //           << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
         //           << std::endl;
-        // std::cout << "rocksdb.number.multiget.bytes.read: "
+        // std::cout << "rocksdb.partial.file.flush.count: "
+        //           << options.statistics->getTickerCount(
+        //                  PARTIAL_FILE_FLUSH_COUNT)
+        //           << std::endl;
+        // std::cout << "rocksdb.partial.file.flush.bytes: "
+        //           << options.statistics->getTickerCount(
+        //                  PARTIAL_FILE_FLUSH_BYTES)
+        //           << std::endl;
+        // std::cout << "rocksdb.full.file.flush.count: "
         //           <<
-        //           options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+        //           options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
         //           << std::endl;
+        // std::cout << "rocksdb.full.file.flush.bytes: "
+        //           <<
+        //           options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+        //           << std::endl;
+        // std::cout << "rocksdb.compaction.times.micros: "
+        //           << options.statistics->getTickerCount(COMPACTION_TIME)
+        //           << std::endl;
+        // // std::cout << "rocksdb.bytes.read: "
+        // //           << options.statistics->getTickerCount(BYTES_READ)
+        // //           << std::endl;
+        // // std::cout << "rocksdb.bytes.written: "
+        // //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+        // //           << std::endl;
+        // // std::cout << "rocksdb.db.iter.bytes.read: "
+        // //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+        // //           << std::endl;
+        // // std::cout << "rocksdb.number.multiget.bytes.read: "
+        // //           <<
+        // // options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+        // //           << std::endl;
 
-        std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
-                  << std::endl;
-        std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
-                  << std::endl;
-        std::cout << "Time spent in Range Queries: "
-                  << range_queries_time_for_one_epoch << std::endl;
-        inserts_time_for_one_epoch = 0;
-        updates_time_for_one_epoch = 0;
-        range_queries_time_for_one_epoch = 0;
+        // std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
+        //           << std::endl;
+        // std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
+        //           << std::endl;
+        // std::cout << "Time spent in Range Queries: "
+        //           << range_queries_time_for_one_epoch << std::endl;
+        // inserts_time_for_one_epoch = 0;
+        // updates_time_for_one_epoch = 0;
+        // range_queries_time_for_one_epoch = 0;
 
       } else if (num_instructions_executed_for_one_epoch ==
                  num_instructions_for_one_epoch) {
-        std::cout << "=====================" << std::endl;
-        std::cout << "One Epoch done ... "
-                  << num_instructions_executed_for_one_epoch << " instructions"
-                  << std::endl;
+        // std::cout << "=====================" << std::endl;
+        // std::cout << "One Epoch done ... "
+        //           << num_instructions_executed_for_one_epoch << "
+        //           instructions"
+        //           << std::endl;
 
-        {
-          std::vector<std::string> live_files;
-          uint64_t manifest_size;
-          db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
-          WaitForCompactions(db);
-        }
-
-        printProperty("rocksdb.obsolete-sst-files-size");
-        printProperty("rocksdb.live-sst-files-size");
-        printProperty("rocksdb.total-sst-files-size");
-        // printProperty("rocksdb.estimate-live-data-size");
-        // printProperty("rocksdb.estimate-table-readers-mem");
-        printProperty("rocksdb.estimate-num-keys");
-        printProperty("rocksdb.num-entries-active-mem-table");
-        printProperty("rocksdb.num-entries-imm-mem-tables");
-        // printProperty("rocksdb.size-all-mem-tables");
-        // printProperty("rocksdb.cur-size-all-mem-tables");
-        // printProperty("rocksdb.cur-size-active-mem-table");
-        // printProperty("rocksdb.levelstats");
-        // printProperty("rocksdb.sstables");
-        // printProperty("rocksdb.stats");
-
-        std::cout << std::endl;
-
-        ColumnFamilyMetaData metadata;
-        db->GetColumnFamilyMetaData(&metadata);
-        std::stringstream cfd_details;
-        // std::stringstream all_level_details;
-        // unsigned long long total_entries_in_cfd = 0;
-
-        // Print column family metadata
-        cfd_details << "Column Family Name: " << metadata.name
-                    << ", Size: " << metadata.size
-                    << " bytes, Files Count: " << metadata.file_count;
-
-        // Print metadata for each level
-        // for (const auto& level : metadata.levels) {
-        //   std::stringstream level_details;
-        //   level_details << "\tLevel: " << level.level
-        //                 << ", Size: " << level.size
-        //                 << " bytes, Files Count: " << level.files.size();
-
-        //   unsigned long long total_entries_in_one_level = 0;
-        //   std::stringstream level_sst_file_details;
-
-        //   // Print metadata for each file in the level
-        //   for (const auto& file : level.files) {
-        //     total_entries_in_one_level += file.num_entries;
-        //     level_sst_file_details << "[#" << file.file_number << ":"
-        //                            << file.size << " (" << file.smallestkey
-        //                            << ", " << file.largestkey << ") "
-        //                            << file.num_entries << "], ";
-        //   }
-        //   total_entries_in_cfd += total_entries_in_one_level;
-        //   level_details << ", Entries Count: " << total_entries_in_one_level
-        //                 << "\n\t\t";
-        //   all_level_details << level_details.str()
-        //                     << level_sst_file_details.str() << std::endl;
+        // {
+        //   std::vector<std::string> live_files;
+        //   uint64_t manifest_size;
+        //   db->GetLiveFiles(live_files, &manifest_size, true
+        //   /*flush_memtable*/); WaitForCompactions(db);
         // }
 
-        std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+        // printProperty("rocksdb.obsolete-sst-files-size");
+        // printProperty("rocksdb.live-sst-files-size");
+        // printProperty("rocksdb.total-sst-files-size");
+        // // printProperty("rocksdb.estimate-live-data-size");
+        // // printProperty("rocksdb.estimate-table-readers-mem");
+        // printProperty("rocksdb.estimate-num-keys");
+        // printProperty("rocksdb.num-entries-active-mem-table");
+        // printProperty("rocksdb.num-entries-imm-mem-tables");
+        // // printProperty("rocksdb.size-all-mem-tables");
+        // // printProperty("rocksdb.cur-size-all-mem-tables");
+        // // printProperty("rocksdb.cur-size-active-mem-table");
+        // // printProperty("rocksdb.levelstats");
+        // // printProperty("rocksdb.sstables");
+        // // printProperty("rocksdb.stats");
 
-        unsigned long long total_entries_in_cfd = std::get<0>(details);
-        std::stringstream& all_level_details = std::get<1>(details);
+        // std::cout << std::endl;
 
-        std::cout << cfd_details.str()
-                  << ", Entries Count: " << total_entries_in_cfd
-                  << ", Invalid Entries Count: "
-                  << total_entries_in_cfd - _env->num_inserts << std::endl
-                  << all_level_details.str() << std::endl;
+        // ColumnFamilyMetaData metadata;
+        // db->GetColumnFamilyMetaData(&metadata);
+        // std::stringstream cfd_details;
+        // // std::stringstream all_level_details;
+        // // unsigned long long total_entries_in_cfd = 0;
 
-        std::cout << "Rocksdb Statistics: " << std::endl;
-        std::cout << "rocksdb.compact.read.bytes: "
-                  << options.statistics->getTickerCount(COMPACT_READ_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.compact.write.bytes: "
-                  << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.flush.write.bytes: "
-                  << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.partial.file.flush.count: "
-                  << options.statistics->getTickerCount(
-                         PARTIAL_FILE_FLUSH_COUNT)
-                  << std::endl;
-        std::cout << "rocksdb.partial.file.flush.bytes: "
-                  << options.statistics->getTickerCount(
-                         PARTIAL_FILE_FLUSH_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.full.file.flush.count: "
-                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
-                  << std::endl;
-        std::cout << "rocksdb.full.file.flush.bytes: "
-                  << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
-                  << std::endl;
-        std::cout << "rocksdb.compaction.times.micros: "
-                  << options.statistics->getTickerCount(COMPACTION_TIME)
-                  << std::endl;
-        // std::cout << "rocksdb.bytes.read: "
-        //           << options.statistics->getTickerCount(BYTES_READ)
+        // // Print column family metadata
+        // cfd_details << "Column Family Name: " << metadata.name
+        //             << ", Size: " << metadata.size
+        //             << " bytes, Files Count: " << metadata.file_count;
+
+        // // Print metadata for each level
+        // // for (const auto& level : metadata.levels) {
+        // //   std::stringstream level_details;
+        // //   level_details << "\tLevel: " << level.level
+        // //                 << ", Size: " << level.size
+        // //                 << " bytes, Files Count: " << level.files.size();
+
+        // //   unsigned long long total_entries_in_one_level = 0;
+        // //   std::stringstream level_sst_file_details;
+
+        // //   // Print metadata for each file in the level
+        // //   for (const auto& file : level.files) {
+        // //     total_entries_in_one_level += file.num_entries;
+        // //     level_sst_file_details << "[#" << file.file_number << ":"
+        // //                            << file.size << " (" <<
+        // file.smallestkey
+        // //                            << ", " << file.largestkey << ") "
+        // //                            << file.num_entries << "], ";
+        // //   }
+        // //   total_entries_in_cfd += total_entries_in_one_level;
+        // //   level_details << ", Entries Count: " <<
+        // total_entries_in_one_level
+        // //                 << "\n\t\t";
+        // //   all_level_details << level_details.str()
+        // //                     << level_sst_file_details.str() << std::endl;
+        // // }
+
+        // std::this_thread::sleep_for(std::chrono::seconds(2));
+        // std::tuple<unsigned long long, std::string> details =
+        //     db->GetTreeState();
+
+        // unsigned long long total_entries_in_cfd = std::get<0>(details);
+        // std::string all_level_details = std::get<1>(details);
+
+        // std::cout << cfd_details.str()
+        //           << ", Entries Count: " << total_entries_in_cfd
+        //           << ", Invalid Entries Count: "
+        //           << total_entries_in_cfd - _env->num_inserts << std::endl
+        //           << all_level_details << std::endl;
+
+        // std::cout << "Rocksdb Statistics: " << std::endl;
+        // std::cout << "rocksdb.compact.read.bytes: "
+        //           << options.statistics->getTickerCount(COMPACT_READ_BYTES)
         //           << std::endl;
-        // std::cout << "rocksdb.bytes.written: "
-        //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+        // std::cout << "rocksdb.compact.write.bytes: "
+        //           << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
         //           << std::endl;
-        // std::cout << "rocksdb.db.iter.bytes.read: "
-        //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+        // std::cout << "rocksdb.flush.write.bytes: "
+        //           << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
         //           << std::endl;
-        // std::cout << "rocksdb.number.multiget.bytes.read: "
+        // std::cout << "rocksdb.partial.file.flush.count: "
+        //           << options.statistics->getTickerCount(
+        //                  PARTIAL_FILE_FLUSH_COUNT)
+        //           << std::endl;
+        // std::cout << "rocksdb.partial.file.flush.bytes: "
+        //           << options.statistics->getTickerCount(
+        //                  PARTIAL_FILE_FLUSH_BYTES)
+        //           << std::endl;
+        // std::cout << "rocksdb.full.file.flush.count: "
         //           <<
-        //           options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+        //           options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
         //           << std::endl;
+        // std::cout << "rocksdb.full.file.flush.bytes: "
+        //           <<
+        //           options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+        //           << std::endl;
+        // std::cout << "rocksdb.compaction.times.micros: "
+        //           << options.statistics->getTickerCount(COMPACTION_TIME)
+        //           << std::endl;
+        // // std::cout << "rocksdb.bytes.read: "
+        // //           << options.statistics->getTickerCount(BYTES_READ)
+        // //           << std::endl;
+        // // std::cout << "rocksdb.bytes.written: "
+        // //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+        // //           << std::endl;
+        // // std::cout << "rocksdb.db.iter.bytes.read: "
+        // //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+        // //           << std::endl;
+        // // std::cout << "rocksdb.number.multiget.bytes.read: "
+        // //           <<
+        // // options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+        // //           << std::endl;
 
-        std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
-                  << std::endl;
-        std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
-                  << std::endl;
-        std::cout << "Time spent in Range Queries: "
-                  << range_queries_time_for_one_epoch << std::endl;
-        inserts_time_for_one_epoch = 0;
-        updates_time_for_one_epoch = 0;
-        range_queries_time_for_one_epoch = 0;
+        // std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
+        //           << std::endl;
+        // std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
+        //           << std::endl;
+        // std::cout << "Time spent in Range Queries: "
+        //           << range_queries_time_for_one_epoch << std::endl;
+        // inserts_time_for_one_epoch = 0;
+        // updates_time_for_one_epoch = 0;
+        // range_queries_time_for_one_epoch = 0;
 
-        num_instructions_executed_for_one_epoch = 0;
+        // num_instructions_executed_for_one_epoch = 0;
       }
     }
 #endif  // PROFILE
@@ -921,119 +1137,127 @@ int runWorkload(EmuEnv* _env) {
     WaitForCompactions(db);
   }
 
-#ifdef PROFILE
-  std::cout << "=====================" << std::endl;
-  std::cout << "Inserts epoch in last ..." << std::endl;
-  printProperty("rocksdb.obsolete-sst-files-size");
-  printProperty("rocksdb.live-sst-files-size");
-  printProperty("rocksdb.total-sst-files-size");
-  // printProperty("rocksdb.estimate-live-data-size");
-  // printProperty("rocksdb.estimate-table-readers-mem");
-  printProperty("rocksdb.estimate-num-keys");
-  printProperty("rocksdb.num-entries-active-mem-table");
-  printProperty("rocksdb.num-entries-imm-mem-tables");
-  // printProperty("rocksdb.size-all-mem-tables");
-  // printProperty("rocksdb.cur-size-all-mem-tables");
-  // printProperty("rocksdb.cur-size-active-mem-table");
-  // printProperty("rocksdb.levelstats");
-  // printProperty("rocksdb.sstables");
-  // printProperty("rocksdb.stats");
+  // #ifdef PROFILE
+  //   std::cout << "=====================" << std::endl;
+  //   std::cout << "Inserts epoch in last ..." << std::endl;
+  //   printProperty("rocksdb.obsolete-sst-files-size");
+  //   printProperty("rocksdb.live-sst-files-size");
+  //   printProperty("rocksdb.total-sst-files-size");
+  //   // printProperty("rocksdb.estimate-live-data-size");
+  //   // printProperty("rocksdb.estimate-table-readers-mem");
+  //   printProperty("rocksdb.estimate-num-keys");
+  //   printProperty("rocksdb.num-entries-active-mem-table");
+  //   printProperty("rocksdb.num-entries-imm-mem-tables");
+  //   // printProperty("rocksdb.size-all-mem-tables");
+  //   // printProperty("rocksdb.cur-size-all-mem-tables");
+  //   // printProperty("rocksdb.cur-size-active-mem-table");
+  //   // printProperty("rocksdb.levelstats");
+  //   // printProperty("rocksdb.sstables");
+  //   // printProperty("rocksdb.stats");
 
-  std::cout << std::endl;
+  //   std::cout << std::endl;
 
-  ColumnFamilyMetaData metadata;
-  db->GetColumnFamilyMetaData(&metadata);
-  std::stringstream cfd_details;
-  // std::stringstream all_level_details;
-  // unsigned long long total_entries_in_cfd = 0;
+  //   ColumnFamilyMetaData metadata;
+  //   db->GetColumnFamilyMetaData(&metadata);
+  //   std::stringstream cfd_details;
+  //   // std::stringstream all_level_details;
+  //   // unsigned long long total_entries_in_cfd = 0;
 
-  // Print column family metadata
-  cfd_details << "Column Family Name: " << metadata.name
-              << ", Size: " << metadata.size
-              << " bytes, Files Count: " << metadata.file_count;
+  //   // Print column family metadata
+  //   cfd_details << "Column Family Name: " << metadata.name
+  //               << ", Size: " << metadata.size
+  //               << " bytes, Files Count: " << metadata.file_count;
 
-  // Print metadata for each level
-  // for (const auto& level : metadata.levels) {
-  //   std::stringstream level_details;
-  //   level_details << "\tLevel: " << level.level << ", Size: " << level.size
-  //                 << " bytes, Files Count: " << level.files.size();
+  //   // Print metadata for each level
+  //   // for (const auto& level : metadata.levels) {
+  //   //   std::stringstream level_details;
+  //   //   level_details << "\tLevel: " << level.level << ", Size: " <<
+  //   level.size
+  //   //                 << " bytes, Files Count: " << level.files.size();
 
-  //   unsigned long long total_entries_in_one_level = 0;
-  //   std::stringstream level_sst_file_details;
+  //   //   unsigned long long total_entries_in_one_level = 0;
+  //   //   std::stringstream level_sst_file_details;
 
-  //   // Print metadata for each file in the level
-  //   for (const auto& file : level.files) {
-  //     total_entries_in_one_level += file.num_entries;
-  //     level_sst_file_details << "[#" << file.file_number << ":" << file.size
-  //                            << " (" << file.smallestkey << ", "
-  //                            << file.largestkey << ") " << file.num_entries
-  //                            << "], ";
-  //   }
-  //   total_entries_in_cfd += total_entries_in_one_level;
-  //   level_details << ", Entries Count: " << total_entries_in_one_level
-  //                 << "\n\t\t";
-  //   all_level_details << level_details.str() << level_sst_file_details.str()
-  //                     << std::endl;
-  // }
+  //   //   // Print metadata for each file in the level
+  //   //   for (const auto& file : level.files) {
+  //   //     total_entries_in_one_level += file.num_entries;
+  //   //     level_sst_file_details << "[#" << file.file_number << ":" <<
+  //   file.size
+  //   //                            << " (" << file.smallestkey << ", "
+  //   //                            << file.largestkey << ") " <<
+  //   file.num_entries
+  //   //                            << "], ";
+  //   //   }
+  //   //   total_entries_in_cfd += total_entries_in_one_level;
+  //   //   level_details << ", Entries Count: " << total_entries_in_one_level
+  //   //                 << "\n\t\t";
+  //   //   all_level_details << level_details.str() <<
+  //   level_sst_file_details.str()
+  //   //                     << std::endl;
+  //   // }
 
-  std::tuple<unsigned long long, std::stringstream&> details = db->GetTreeState();
+  //   std::this_thread::sleep_for(std::chrono::seconds(2));
+  //   std::tuple<unsigned long long, std::string> details = db->GetTreeState();
 
-  unsigned long long total_entries_in_cfd = std::get<0>(details);
-  std::stringstream& all_level_details = std::get<1>(details);
+  //   unsigned long long total_entries_in_cfd = std::get<0>(details);
+  //   std::string all_level_details = std::get<1>(details);
 
-  std::cout << cfd_details.str() << ", Entries Count: " << total_entries_in_cfd
-            << ", Invalid Entries Count: "
-            << total_entries_in_cfd - _env->num_inserts << std::endl
-            << all_level_details.str() << std::endl;
+  //   std::cout << cfd_details.str() << ", Entries Count: " <<
+  //   total_entries_in_cfd
+  //             << ", Invalid Entries Count: "
+  //             << total_entries_in_cfd - _env->num_inserts << std::endl
+  //             << all_level_details << std::endl;
 
-  std::cout << "Rocksdb Statistics: " << std::endl;
-  std::cout << "rocksdb.compact.read.bytes: "
-            << options.statistics->getTickerCount(COMPACT_READ_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.compact.write.bytes: "
-            << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.flush.write.bytes: "
-            << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.partial.file.flush.count: "
-            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
-            << std::endl;
-  std::cout << "rocksdb.partial.file.flush.bytes: "
-            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.full.file.flush.count: "
-            << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
-            << std::endl;
-  std::cout << "rocksdb.full.file.flush.bytes: "
-            << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.compaction.times.micros: "
-            << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
-  // std::cout << "rocksdb.bytes.read: "
-  //           << options.statistics->getTickerCount(BYTES_READ)
-  //           << std::endl;
-  // std::cout << "rocksdb.bytes.written: "
-  //           << options.statistics->getTickerCount(BYTES_WRITTEN)
-  //           << std::endl;
-  // std::cout << "rocksdb.db.iter.bytes.read: "
-  //           << options.statistics->getTickerCount(ITER_BYTES_READ)
-  //           << std::endl;
-  // std::cout << "rocksdb.number.multiget.bytes.read: "
-  //           << options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
-  //           << std::endl;
+  //   std::cout << "Rocksdb Statistics: " << std::endl;
+  //   std::cout << "rocksdb.compact.read.bytes: "
+  //             << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.compact.write.bytes: "
+  //             << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.flush.write.bytes: "
+  //             << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.partial.file.flush.count: "
+  //             << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
+  //             << std::endl;
+  //   std::cout << "rocksdb.partial.file.flush.bytes: "
+  //             << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.full.file.flush.count: "
+  //             << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+  //             << std::endl;
+  //   std::cout << "rocksdb.full.file.flush.bytes: "
+  //             << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.compaction.times.micros: "
+  //             << options.statistics->getTickerCount(COMPACTION_TIME) <<
+  //             std::endl;
+  //   // std::cout << "rocksdb.bytes.read: "
+  //   //           << options.statistics->getTickerCount(BYTES_READ)
+  //   //           << std::endl;
+  //   // std::cout << "rocksdb.bytes.written: "
+  //   //           << options.statistics->getTickerCount(BYTES_WRITTEN)
+  //   //           << std::endl;
+  //   // std::cout << "rocksdb.db.iter.bytes.read: "
+  //   //           << options.statistics->getTickerCount(ITER_BYTES_READ)
+  //   //           << std::endl;
+  //   // std::cout << "rocksdb.number.multiget.bytes.read: "
+  //   //           <<
+  //   options.statistics->getTickerCount(NUMBER_MULTIGET_BYTES_READ)
+  //   //           << std::endl;
 
-  std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
-            << std::endl;
-  std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
-            << std::endl;
-  std::cout << "Time spent in Range Queries: "
-            << range_queries_time_for_one_epoch << std::endl;
-  inserts_time_for_one_epoch = 0;
-  updates_time_for_one_epoch = 0;
-  range_queries_time_for_one_epoch = 0;
+  //   std::cout << "Time spent in Inserts: " << inserts_time_for_one_epoch
+  //             << std::endl;
+  //   std::cout << "Time spent in Updates: " << updates_time_for_one_epoch
+  //             << std::endl;
+  //   std::cout << "Time spent in Range Queries: "
+  //             << range_queries_time_for_one_epoch << std::endl;
+  //   inserts_time_for_one_epoch = 0;
+  //   updates_time_for_one_epoch = 0;
+  //   range_queries_time_for_one_epoch = 0;
 
-#endif  // PROFILE
+  // #endif  // PROFILE
 
   {
 #ifdef TIMER
@@ -1050,90 +1274,94 @@ int runWorkload(EmuEnv* _env) {
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
 
-  std::cout << "End of experiment - TEST !!\n";
+  //   std::cout << "End of experiment - TEST !!\n";
 
-#ifdef TIMER
-  std::cout << "=====================" << std::endl;
-  std::cout << "Workload Execution Time: " << workload_execution_time
-            << std::endl;
-  std::cout << "Operations Execution Time: " << operations_execution_time
-            << std::endl;
-  std::cout << "All Inserts Time: " << all_inserts_time << std::endl;
-  std::cout << "All Updates Time: " << all_updates_time << std::endl;
-  std::cout << "All Range Queries Time: " << all_range_queries_time
-            << std::endl;
+  // #ifdef TIMER
+  //   std::cout << "=====================" << std::endl;
+  //   std::cout << "Workload Execution Time: " << workload_execution_time
+  //             << std::endl;
+  //   std::cout << "Operations Execution Time: " << operations_execution_time
+  //             << std::endl;
+  //   std::cout << "All Inserts Time: " << all_inserts_time << std::endl;
+  //   std::cout << "All Updates Time: " << all_updates_time << std::endl;
+  //   std::cout << "All Range Queries Time: " << all_range_queries_time
+  //             << std::endl;
 
-  std::cout << std::endl;
+  //   std::cout << std::endl;
 
-  std::cout << "Rocksdb Statistics: " << std::endl;
-  std::cout << "rocksdb.compact.read.bytes: "
-            << options.statistics->getTickerCount(COMPACT_READ_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.compact.write.bytes: "
-            << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.flush.write.bytes: "
-            << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.partial.file.flush.count: "
-            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
-            << std::endl;
-  std::cout << "rocksdb.partial.file.flush.bytes: "
-            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.full.file.flush.count: "
-            << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
-            << std::endl;
-  std::cout << "rocksdb.full.file.flush.bytes: "
-            << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
-            << std::endl;
-  std::cout << "rocksdb.compaction.times.micros: "
-            << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl;
+  //   std::cout << "Rocksdb Statistics: " << std::endl;
+  //   std::cout << "rocksdb.compact.read.bytes: "
+  //             << options.statistics->getTickerCount(COMPACT_READ_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.compact.write.bytes: "
+  //             << options.statistics->getTickerCount(COMPACT_WRITE_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.flush.write.bytes: "
+  //             << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.partial.file.flush.count: "
+  //             << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
+  //             << std::endl;
+  //   std::cout << "rocksdb.partial.file.flush.bytes: "
+  //             << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.full.file.flush.count: "
+  //             << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
+  //             << std::endl;
+  //   std::cout << "rocksdb.full.file.flush.bytes: "
+  //             << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+  //             << std::endl;
+  //   std::cout << "rocksdb.compaction.times.micros: "
+  //             << options.statistics->getTickerCount(COMPACTION_TIME) <<
+  //             std::endl;
 
-  // Open a CSV file to write
-  std::ofstream rq_time_file("range_queries.csv");
+  //   // Open a CSV file to write
+  //   std::ofstream rq_time_file("range_queries.csv");
 
-  // Write header
-  rq_time_file
-      << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
-         "uBytes Written Back, uEntries Count Written Back, Total "
-         "Entries Read, Data unBytes Written Back, Total unBytes "
-         "Written Back, unEntries Count Written Back, RQ Refresh Time, "
-         "RQ Reset Time, Actual RQ Time"
-      << std::endl;
+  //   // Write header
+  //   rq_time_file
+  //       << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
+  //          "uBytes Written Back, uEntries Count Written Back, Total "
+  //          "Entries Read, Data unBytes Written Back, Total unBytes "
+  //          "Written Back, unEntries Count Written Back, RQ Refresh Time, "
+  //          "RQ Reset Time, Actual RQ Time"
+  //       << std::endl;
 
-  // Write data from range_queries_time to CSV
-  for (int i = 0; i < range_queries_.size(); ++i) {
-    std::tuple<unsigned long, unsigned long, unsigned long, unsigned long,
-               unsigned long, unsigned long, unsigned long, unsigned long,
-               unsigned long, unsigned long, unsigned long>
-        rq = range_queries_[i];
-    rq_time_file << i + 1 << ", " << std::get<0>(rq) << ", " << std::get<1>(rq)
-                 << ", " << std::get<2>(rq) << ", " << std::get<3>(rq) << ", "
-                 << std::get<4>(rq) << ", " << std::get<5>(rq) << ", "
-                 << std::get<6>(rq) << ", " << std::get<7>(rq) << ", "
-                 << std::get<8>(rq) << ", " << std::get<9>(rq) << ", "
-                 << std::get<10>(rq) << std::endl;
-  }
+  //   // Write data from range_queries_time to CSV
+  //   for (int i = 0; i < range_queries_.size(); ++i) {
+  //     std::tuple<unsigned long, unsigned long, unsigned long, unsigned long,
+  //                unsigned long, unsigned long, unsigned long, unsigned long,
+  //                unsigned long, unsigned long, unsigned long>
+  //         rq = range_queries_[i];
+  //     rq_time_file << i + 1 << ", " << std::get<0>(rq) << ", " <<
+  //     std::get<1>(rq)
+  //                  << ", " << std::get<2>(rq) << ", " << std::get<3>(rq) <<
+  //                  ", "
+  //                  << std::get<4>(rq) << ", " << std::get<5>(rq) << ", "
+  //                  << std::get<6>(rq) << ", " << std::get<7>(rq) << ", "
+  //                  << std::get<8>(rq) << ", " << std::get<9>(rq) << ", "
+  //                  << std::get<10>(rq) << std::endl;
+  //   }
 
-  // Close the file
-  rq_time_file.close();
-#endif  // TIMER
+  //   // Close the file
+  //   rq_time_file.close();
+  // #endif  // TIMER
 
   if (_env->enable_rocksdb_perf_iostat == 1) {
-    rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
-    std::cout << "RocksDB Perf Context : " << std::endl;
-    std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
-    std::cout << "RocksDB Iostats Context : " << std::endl;
-    std::cout << rocksdb::get_iostats_context()->ToString() << std::endl;
-    // END ROCKS PROFILE
-    // Print Full RocksDB stats
-    std::cout << "----------------------------------------" << std::endl;
-    // std::string tr_mem;
-    // db->GetProperty("rocksdb.estimate-table-readers-mem", &tr_mem);
+    // rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
+    // std::cout << "RocksDB Perf Context : " << std::endl;
+    // std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+    // std::cout << "RocksDB Iostats Context : " << std::endl;
+    // std::cout << rocksdb::get_iostats_context()->ToString() << std::endl;
+    // // END ROCKS PROFILE
     // // Print Full RocksDB stats
-    // std::cout << "RocksDB Estimated Table Readers Memory (index, filters) : "
-    // << tr_mem << std::endl;
+    // std::cout << "----------------------------------------" << std::endl;
+    // // std::string tr_mem;
+    // // db->GetProperty("rocksdb.estimate-table-readers-mem", &tr_mem);
+    // // // Print Full RocksDB stats
+    // // std::cout << "RocksDB Estimated Table Readers Memory (index, filters)
+    // : "
+    // // << tr_mem << std::endl;
   }
 
   return 1;
@@ -1154,8 +1382,7 @@ void printExperimentalSetup(EmuEnv* _env) {
             << std::setfill(' ') << std::setw(l) << "file_size"
             << std::setfill(' ') << std::setw(l) << "L1_size"
             << std::setfill(' ') << std::setw(l) << "blk_cch"  // !YBS-sep09-XX!
-            << std::setfill(' ') << std::setw(l) << "BPK"
-            << "\n";
+            << std::setfill(' ') << std::setw(l) << "BPK" << "\n";
   std::cout << std::setfill(' ') << std::setw(l)
             << _env->compaction_style;  // !YBS-sep07-XX!
   std::cout << std::setfill(' ') << std::setw(l) << _env->compaction_pri;

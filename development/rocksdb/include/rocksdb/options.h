@@ -62,6 +62,14 @@ struct DbPath;
 
 using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
 
+enum Verbosity {
+  NONE = 0,
+  LOW = 1,
+  MEDIUM = 2,
+  HIGH = 3,
+  EXTREME = 4,
+};
+
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // The function recovers options to a previous version. Only 4.6 or later
   // versions are supported.
@@ -470,9 +478,9 @@ struct DBOptions {
 
   // verbosity to see print statements
   // default to 0 (means no prints)
-  int verbosity = 0;
+  Verbosity verbosity = Verbosity::NONE;
 
-  bool level_renaming_enabled = false;
+  bool enable_level_renaming = false;
 
   // If true, the database will be created if it is missing.
   // Default: false
@@ -1643,16 +1651,15 @@ struct ReadOptions {
   const Slice* iterate_upper_bound = nullptr;
 
   // NOTE: (shubham)
-  // Only used when `range_query_compaction_enabled is true
+  // Only used when `enable_range_query_compaction is true
   // start_key represent the range start key and
   // end_key represent the end key of the range query
-  int entry_size = 0;
   std::string range_start_key;
   std::string range_end_key;
   bool range_query_partial_block_read = false;
 
   // Used to check if the range query compaction is enabled
-  bool range_query_compaction_enabled = false;
+  bool enable_range_query_compaction = false;
   RangeQueryOptions *range_query_options = new RangeQueryOptions();
 
   // number of entries overlap from lower to upper level 

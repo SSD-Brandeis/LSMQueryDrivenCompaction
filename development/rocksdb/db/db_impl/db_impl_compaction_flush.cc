@@ -3483,18 +3483,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   } else if (!trivial_move_disallowed && c->IsTrivialMove()) {
     auto vstorage_ = c->input_version()->storage_info();
     auto num_non_empty_levels = vstorage_->num_non_empty_levels();
-
-    if (num_non_empty_levels == c->output_level() && immutable_db_options_.level_renaming_enabled) {
-      int files_count = 0;
-      for (int l = 0; l < vstorage_->num_levels(); l++) {
-        for (int i = 0; i < vstorage_->NumLevelFiles(l); i++)
-          files_count++;
-      }
-      RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, files_count);
-      std::cout << "Level Renaming: [moving " << files_count << " files]" << std::endl << std::endl;
-      RenameLevels();
-    }
-    else {
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction:TrivialMove");
       TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
                               c->column_family_data());
@@ -3511,6 +3499,16 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       // Move files to next level
       int32_t moved_files = 0;
       int64_t moved_bytes = 0;
+
+    if (num_non_empty_levels == c->output_level() && immutable_db_options_.enable_level_renaming) {
+      for (int l = 0; l < vstorage_->num_levels(); l++) {
+          moved_files += vstorage_->NumLevelFiles(l);
+      }
+      // RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
+      std::cout << "Level Renaming: [moving " << moved_files << " files]" << std::endl << std::endl;
+      RenameLevels();
+    }
+    else {
       for (unsigned int l = 0; l < c->num_input_levels(); l++) {
         if (c->level(l) == c->output_level()) {
           continue;
@@ -3555,10 +3553,11 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       InstallSuperVersionAndScheduleWork(c->column_family_data(),
                                         &job_context->superversion_contexts[0],
                                         *c->mutable_cf_options());
-
-      VersionStorageInfo::LevelSummaryStorage tmp;
       c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
                                                               moved_bytes);
+      std::cout << "Trivially Moving: [moving " << moved_files << " files]" << std::endl << std::endl;
+    }
+      VersionStorageInfo::LevelSummaryStorage tmp;
       {
         event_logger_.LogToBuffer(log_buffer)
             << "job" << job_context->job_id << "event"
@@ -3574,13 +3573,12 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
           c->column_family_data()->current()->storage_info()->LevelSummary(&tmp));
       *made_progress = true;
 
-      std::cout << "Trivially Moving: [moving " << moved_files << " files]" << std::endl << std::endl;
       RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
       // Clear Instrument
       ThreadStatusUtil::ResetThreadStatus();
       TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:AfterCompaction",
                               c->column_family_data());
-    }
+
   } else if (!is_prepicked && c->output_level() > 0 &&
              c->output_level() ==
                  c->column_family_data()
@@ -3946,53 +3944,11 @@ void DBImpl::InstallSuperVersionAndScheduleWork(
                         old_sv->mutable_cf_options.max_write_buffer_number;
   }
 
-  // {
-  //   std::cout << "\n ========= BEFORE ========= " << std::endl << std::flush;
-  //   auto* vstorage = cfd->current()->storage_info();
-  //   int num_non_empty_levels = vstorage->num_levels();
-  //   for (int i = 0; i < num_non_empty_levels; i++) {
-  //   std::cout << "New level: " << i << std::endl << std::flush;
-  //   std::cout << "\tFilesMeta: " << std::flush;
-
-  //   // auto& new_lvl = new_files_list[i];
-  //   auto& new_lvl = vstorage->LevelFiles(i);
-
-  //   for (size_t findex = 0; findex < new_lvl.size(); findex++) {
-  //     const FileMetaData* const meta = new_lvl[findex];
-
-  //     std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
-  //   }
-  //   std::cout << std::endl << std::flush;
-  // }
-  //   std::cout << "Current Version Number: " << cfd->current()->GetVersionNumber() << std::endl << std::flush;
-  // }
-
   // this branch is unlikely to step in
   if (UNLIKELY(sv_context->new_superversion == nullptr)) {
     sv_context->NewSuperVersion();
   }
   cfd->InstallSuperVersion(sv_context, mutable_cf_options);
-
-  // {
-  //   std::cout << "\n ========= AFTER ========= " << std::endl << std::flush;
-  //   auto* vstorage = cfd->current()->storage_info();
-  //   int num_non_empty_levels = vstorage->num_levels();
-  //   for (int i = 0; i < num_non_empty_levels; i++) {
-  //   std::cout << "New level: " << i << std::endl << std::flush;
-  //   std::cout << "\tFilesMeta: " << std::flush;
-
-  //   // auto& new_lvl = new_files_list[i];
-  //   auto& new_lvl = vstorage->LevelFiles(i);
-
-  //   for (size_t findex = 0; findex < new_lvl.size(); findex++) {
-  //     const FileMetaData* const meta = new_lvl[findex];
-
-  //     std::cout << "FileNumber: [" << meta->fd.GetNumber() << "], " << std::flush;
-  //   }
-  //   std::cout << std::endl << std::flush;
-  // }
-  //   std::cout << "Current Version Number: " << cfd->current()->GetVersionNumber() << std::endl << std::flush;
-  // }
 
   // There may be a small data race here. The snapshot tricking bottommost
   // compaction may already be released here. But assuming there will always be

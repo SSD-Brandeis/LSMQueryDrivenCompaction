@@ -9,11 +9,11 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <mutex>
 #include <sstream>
 
 #include "config_options.h"
-#include "emu_environment.h"
 #ifdef DOSTO
 #include "fluid_lsm.h"
 #endif  // DOSTO
@@ -29,7 +29,7 @@ std::condition_variable cv;
 bool compaction_complete = false;
 auto globaltp = std::chrono::steady_clock::now();
 
-void printExperimentalSetup(EmuEnv* _env);
+void printExperimentalSetup(DBEnv* env);
 
 std::string GetCompactionReason(CompactionReason comp_reason) {
   switch (comp_reason) {
@@ -77,34 +77,34 @@ class CompactionsListner : public EventListener {
                 << std::to_string(ci.output_level) << " (Output Level)"
                 << std::endl
                 << "\t\tInput Files: " << input_files.str() << std::endl
-                << "\t\tOutput Files: " << output_files.str() << std::endl << std::endl;
+                << "\t\tOutput Files: " << output_files.str() << std::endl
+                << std::endl << std::flush;
     }
 #endif  // PROFILE
 
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.compact.write.bytes: "
-    //           << db->GetOptions().statistics->getTickerCount(
-    //                  COMPACT_WRITE_BYTES)
-    //           << std::endl
-    //           << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.flush.write.bytes: "
-    //           <<
-    //           db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
-    //           << std::endl
-    //           << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.compaction.num.triggered: "
-    //           << db->GetOptions().statistics->getTickerCount(
-    //                  NUM_COMPACTION_TRIGGERED)
-    //           << std::endl
-    //           << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.files.trivially.moved: "
-    //           << db->GetOptions().statistics->getTickerCount(
-    //                  NUM_FILES_TRIVALLY_MOVED)
-    //           << std::endl
-    //           << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.compact.write.bytes: "
+              << db->GetOptions().statistics->getTickerCount(
+                     COMPACT_WRITE_BYTES)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.flush.write.bytes: "
+              << db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.compaction.num.triggered: "
+              << db->GetOptions().statistics->getTickerCount(
+                     NUM_COMPACTION_TRIGGERED)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.files.trivially.moved: "
+              << db->GetOptions().statistics->getTickerCount(
+                     NUM_FILES_TRIVALLY_MOVED)
+              << std::endl
+              << std::flush;
     // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
     //           << " levels.state: " << db->GetLevelsState() << std::endl
     //           << std::flush;
@@ -167,6 +167,29 @@ class PartialAndFullRangeFlushListner : public EventListener {
   uint64_t untotal_bytes_written() { return unestimated_total_bytes_written_; }
   uint64_t unentries_count() { return unentries_count_; }
 
+  void OnFlushBegin(DB* db, const FlushJobInfo& flush_job_info) override {
+#ifdef PROFILE
+    ColumnFamilyMetaData metadata;
+    db->GetColumnFamilyMetaData(&metadata);
+    std::stringstream cfd_details;
+
+    // Print column family metadata
+    cfd_details << "[" << __FUNCTION__
+                << "] Column Family Name: " << metadata.name
+                << ", Size: " << metadata.size
+                << " bytes, Files Count: " << metadata.file_count;
+
+    std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+
+    unsigned long long total_entries_in_cfd = std::get<0>(details);
+    std::string all_level_details = std::get<1>(details);
+
+    std::cout << cfd_details.str()
+              << ", Entries Count: " << total_entries_in_cfd << std::endl
+              << all_level_details << std::endl;
+#endif  // PROFILE
+  }
+
   void OnFlushCompleted(DB* db, const FlushJobInfo& flush_job_info) override {
     if (flush_job_info.flush_reason == FlushReason::kRangeFlush) {
       TableProperties tp = flush_job_info.table_properties;
@@ -185,27 +208,6 @@ class PartialAndFullRangeFlushListner : public EventListener {
 
     auto tp = std::chrono::duration_cast<std::chrono::nanoseconds>(localtp -
                                                                    globaltp);
-    {
-#ifdef PROFILE
-      ColumnFamilyMetaData metadata;
-      db->GetColumnFamilyMetaData(&metadata);
-      std::stringstream cfd_details;
-
-      // Print column family metadata
-      cfd_details << "[Before Compactions] Column Family Name: "
-                  << metadata.name << ", Size: " << metadata.size
-                  << " bytes, Files Count: " << metadata.file_count;
-
-      std::tuple<unsigned long long, std::string> details = db->GetTreeState();
-
-      unsigned long long total_entries_in_cfd = std::get<0>(details);
-      std::string all_level_details = std::get<1>(details);
-
-      std::cout << cfd_details.str()
-                << ", Entries Count: " << total_entries_in_cfd << std::endl
-                << all_level_details << std::endl;
-#endif  // PROFILE
-    }
     WaitForCompactions(db);
     {
 #ifdef PROFILE
@@ -214,7 +216,8 @@ class PartialAndFullRangeFlushListner : public EventListener {
       std::stringstream cfd_details;
 
       // Print column family metadata
-      cfd_details << "[After Compactions] Column Family Name: " << metadata.name
+      cfd_details << "[" << __FUNCTION__
+                  << "] Column Family Name: " << metadata.name
                   << ", Size: " << metadata.size
                   << " bytes, Files Count: " << metadata.file_count;
 
@@ -232,30 +235,29 @@ class PartialAndFullRangeFlushListner : public EventListener {
                 << std::endl;
 #endif  // PROFILE
     }
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.compact.write.bytes: "
-    //           << db->GetOptions().statistics->getTickerCount(
-    //                  COMPACT_WRITE_BYTES)
-    //           << std::endl
-    //           << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.flush.write.bytes: "
-    //           <<
-    //           db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
-    //           << std::endl
-    //           << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.compaction.num.triggered: "
-    //           << db->GetOptions().statistics->getTickerCount(
-    //                  NUM_COMPACTION_TRIGGERED)
-    //           << std::endl
-    //           << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " rocksdb.files.trivially.moved: "
-    //           << db->GetOptions().statistics->getTickerCount(
-    //                  NUM_FILES_TRIVALLY_MOVED)
-    //           << std::endl
-    //           << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.compact.write.bytes: "
+              << db->GetOptions().statistics->getTickerCount(
+                     COMPACT_WRITE_BYTES)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.flush.write.bytes: "
+              << db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.compaction.num.triggered: "
+              << db->GetOptions().statistics->getTickerCount(
+                     NUM_COMPACTION_TRIGGERED)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.files.trivially.moved: "
+              << db->GetOptions().statistics->getTickerCount(
+                     NUM_FILES_TRIVALLY_MOVED)
+              << std::endl
+              << std::flush;
     // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
     //           << " levels.state: " << db->GetLevelsState() << std::endl
     //           << std::flush;
@@ -297,29 +299,29 @@ class PartialAndFullRangeFlushListner : public EventListener {
 //     uint64_t total_bytes_read_;
 // };
 
-int runWorkload(EmuEnv* _env) {
+int runWorkload(DBEnv* env) {
   DB* db;
   Options options;
-  WriteOptions w_options;
-  ReadOptions r_options;
+  WriteOptions write_options;
+  ReadOptions read_options;
   BlockBasedTableOptions table_options;
-  FlushOptions f_options;
+  FlushOptions flush_options;
 
-  configOptions(_env, &options, &table_options, &w_options, &r_options,
-                &f_options);
+  configOptions(env, &options, &table_options, &write_options, &read_options,
+                &flush_options);
 
-  r_options.range_query_options->initiate();
+  read_options.range_query_options->initiate();
 
-  if (_env->destroy_database) {
+  if (env->IsDestroyDatabaseEnabled()) {
     DestroyDB(kDBPath, options);
-    // std::cout << "Destroying database ..." << std::endl;
+    std::cout << "Destroying database ..." << std::endl;
   }
 
   // options.info_log_level = InfoLogLevel::DEBUG_LEVEL;
 #ifdef DOSTO
   std::shared_ptr<FluidLSM> tree = std::make_shared<FluidLSM>(
-      _env->size_ratio, _env->smaller_lvl_runs_count,
-      _env->larger_lvl_runs_count, _env->file_size, options);
+      env->size_ratio, env->smaller_lvl_runs_count, env->larger_lvl_runs_count,
+      env->file_size, options);
 #endif  // DOSTO
   std::shared_ptr<CompactionsListner> compaction_listener =
       std::make_shared<CompactionsListner>();
@@ -332,7 +334,7 @@ int runWorkload(EmuEnv* _env) {
   options.listeners.emplace_back(compaction_listener);
   options.listeners.emplace_back(partial_range_flush_listener);
 
-  printExperimentalSetup(_env);  // !YBS-sep07-XX!
+  printExperimentalSetup(env);  // !YBS-sep07-XX!
   // std::cout << "Maximum #OpenFiles = " << options.max_open_files
   //           << std::endl;  // !YBS-sep07-XX!
   // std::cout << "Maximum #ThreadsUsedToOpenFiles = "
@@ -344,15 +346,15 @@ int runWorkload(EmuEnv* _env) {
   assert(s.ok());
 
 #ifdef DOSTO
-  if (_env->debugging) {
-    tree->SetDebugMode(_env->debugging);
+  if (env->debugging) {
+    tree->SetDebugMode(env->debugging);
     tree->PrintFluidLSM(db);
   }
 #endif  // DOSTO
 
   // opening workload file for the first time
   bool lexico_valid = false;
-  ifstream workload_file;
+  std::ifstream workload_file;
   workload_file.open("workload.txt");
   assert(workload_file);
 
@@ -366,7 +368,7 @@ int runWorkload(EmuEnv* _env) {
   // number of epochs to run the experiment
   int num_epochs = 11;
   int num_instructions_for_one_epoch =
-      (_env->num_updates / num_epochs) + (_env->num_range_queries / num_epochs);
+      (env->num_updates / num_epochs) + (env->num_range_queries / num_epochs);
   int num_instructions_executed_for_one_epoch = 0;
 
   // Print the values of each property
@@ -383,13 +385,13 @@ int runWorkload(EmuEnv* _env) {
 #endif  // PROFILE
 
   // Clearing the system cache
-  if (_env->clear_system_cache) {
-    // std::cout << "Clearing system cache ..." << std::endl;
-    // std::cout << system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'")
-    //           << std::endl;
+  if (env->clear_system_cache) {
+    std::cout << "Clearing system cache ..." << std::endl;
+    std::cout << system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'")
+              << std::endl;
   }
   // START stat collection
-  if (_env->enable_rocksdb_perf_iostat == 1) {
+  if (env->IsPerfIOStatEnabled()) {
     // begin perf/iostat code
     rocksdb::SetPerfLevel(
         rocksdb::PerfLevel::kEnableTimeAndCPUTimeExceptForMutex);
@@ -404,8 +406,8 @@ int runWorkload(EmuEnv* _env) {
   workload_file.open("workload.txt");
   assert(workload_file);
 
-  Iterator* it = db->NewIterator(r_options);  // for range reads
-  uint32_t counter = 0;                       // for progress bar
+  Iterator* it = db->NewIterator(read_options);  // for range reads
+  uint32_t counter = 0;                          // for progress bar
 
 #ifdef TIMER
   unsigned long operations_execution_time = 0;
@@ -445,12 +447,11 @@ int runWorkload(EmuEnv* _env) {
   while (!workload_file.eof()) {
     char instruction;
     long key, start_key, end_key;
-    string value;
+    std::string value;
 
     std::time_t end_time;
 
     workload_file >> instruction;
-    _env->current_op = instruction;  // !YBS-sep18-XX!
     switch (instruction) {
       case 'I':  // insert
         workload_file >> key >> value;
@@ -459,7 +460,7 @@ int runWorkload(EmuEnv* _env) {
 #ifdef TIMER
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
-          s = db->Put(w_options, to_string(key), value);
+          s = db->Put(write_options, std::to_string(key), value);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -484,7 +485,7 @@ int runWorkload(EmuEnv* _env) {
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
 
-          s = db->Put(w_options, to_string(key), value);
+          s = db->Put(write_options, std::to_string(key), value);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -512,7 +513,7 @@ int runWorkload(EmuEnv* _env) {
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
 
-          s = db->Delete(w_options, to_string(key));
+          s = db->Delete(write_options, std::to_string(key));
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -534,7 +535,7 @@ int runWorkload(EmuEnv* _env) {
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
 
-          s = db->Get(r_options, to_string(key), &value);
+          s = db->Get(read_options, std::to_string(key), &value);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -549,7 +550,7 @@ int runWorkload(EmuEnv* _env) {
 
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
-        lexico_valid = to_string(start_key).compare(to_string(end_key)) < 0;
+        lexico_valid = std::to_string(start_key).compare(std::to_string(end_key)) < 0;
 
         {
           uint64_t entries_count_read = 0;
@@ -614,7 +615,7 @@ int runWorkload(EmuEnv* _env) {
           //                       << ", Entries Count: " <<
           //                       total_entries_in_cfd
           //                       << ", Invalid Entries Count: "
-          //                       << total_entries_in_cfd - _env->num_inserts
+          //                       << total_entries_in_cfd - env->num_inserts
           //                       << std::endl
           //                       << all_level_details << std::endl;
 
@@ -636,9 +637,8 @@ int runWorkload(EmuEnv* _env) {
           if (lexico_valid) {
             // std::cout << "\nrangeQuery startkey: " << start_key
             //           << " endkey: " << end_key << std::endl << std::flush;
-            it->Refresh(to_string(start_key), to_string(end_key),
-                        entries_count_read,
-                        _env->enable_range_query_compaction);
+            it->Refresh(std::to_string(start_key), std::to_string(end_key),
+                        entries_count_read, env->enable_range_query_compaction);
           }
 #ifdef TIMER
           refresh_time = std::chrono::high_resolution_clock::now();
@@ -651,8 +651,8 @@ int runWorkload(EmuEnv* _env) {
 #endif  // TIMER
 
           assert(it->status().ok());
-          for (it->Seek(to_string(start_key)); it->Valid(); it->Next()) {
-            if (it->key().ToString() >= to_string(end_key)) {
+          for (it->Seek(std::to_string(start_key)); it->Valid(); it->Next()) {
+            if (it->key().ToString() >= std::to_string(end_key)) {
               break;
             }
             ideal_entries_count++;
@@ -663,28 +663,29 @@ int runWorkload(EmuEnv* _env) {
           }
 
 #ifdef TIMER
-          r_options.range_query_options->count_of_total_invalid =
-              (r_options.range_query_options->count_of_entries -
+          read_options.range_query_options->count_of_total_invalid =
+              (read_options.range_query_options->count_of_entries -
                ideal_entries_count);
-          // r_options.range_query_options->count_of_entries_removed =
-          // r_options.range_query_options->count_of_entries_to_compact -
-          // r_options.range_query_options->count_of_entries_compacted;
+          // read_options.range_query_options->count_of_entries_removed =
+          // read_options.range_query_options->count_of_entries_to_compact -
+          // read_options.range_query_options->count_of_entries_compacted;
           auto reset_start = std::chrono::high_resolution_clock::now();
           // std::cout << "entriesCount: " <<
-          // r_options.range_query_options->count_of_entries << std::endl <<
+          // read_options.range_query_options->count_of_entries << std::endl <<
           // std::flush; std::cout << "idealEntriesCount: " <<
           // ideal_entries_count << std::endl << std::flush; std::cout <<
           // "invalidEntriesCount: " <<
-          // r_options.range_query_options->count_of_total_invalid << std::endl
+          // read_options.range_query_options->count_of_total_invalid <<
+          // std::endl
           // << std::flush; std::cout << "entriesToCompactCount: " <<
-          // r_options.range_query_options->count_of_entries_to_compact <<
+          // read_options.range_query_options->count_of_entries_to_compact <<
           // std::endl << std::flush; std::cout << "entriesCompactedCount: " <<
-          // r_options.range_query_options->count_of_entries_compacted <<
+          // read_options.range_query_options->count_of_entries_compacted <<
           // std::endl << std::flush; std::cout << "entriesRemoved: " <<
-          // r_options.range_query_options->count_of_entries_removed <<
+          // read_options.range_query_options->count_of_entries_removed <<
           // std::endl << std::flush; std::cout << "extraEntriesWritten: " <<
-          // r_options.range_query_options->count_of_extra_write_for_partial <<
-          // std::endl << std::flush;
+          // read_options.range_query_options->count_of_extra_write_for_partial
+          // << std::endl << std::flush;
           auto reset_end = std::chrono::high_resolution_clock::now();
           actual_range_time =
               std::chrono::duration_cast<std::chrono::nanoseconds>(reset_start -
@@ -709,7 +710,7 @@ int runWorkload(EmuEnv* _env) {
               partial_range_flush_listener->udata_bytes_written(),
               partial_range_flush_listener->utotal_bytes_written(),
               partial_range_flush_listener->uentries_count(),
-              r_options.range_query_options->count_of_entries,
+              read_options.range_query_options->count_of_entries,
               partial_range_flush_listener->undata_bytes_written(),
               partial_range_flush_listener->untotal_bytes_written(),
               partial_range_flush_listener->unentries_count(), refresh_duration,
@@ -768,7 +769,7 @@ int runWorkload(EmuEnv* _env) {
           //                       << ", Entries Count: " <<
           //                       total_entries_in_cfd
           //                       << ", Invalid Entries Count: "
-          //                       << total_entries_in_cfd - _env->num_inserts
+          //                       << total_entries_in_cfd - env->num_inserts
           //                       << std::endl
           //                       << all_level_details.str() << std::endl;
           // #endif  // PROFILE
@@ -787,8 +788,8 @@ int runWorkload(EmuEnv* _env) {
     }
 
 #ifdef PROFILE
-    if (counter >= _env->num_inserts) {
-      if (counter == _env->num_inserts) {
+    if (counter >= env->num_inserts) {
+      if (counter == env->num_inserts) {
         // std::cout << "=====================" << std::endl;
         // std::cout << "Inserts are completed ..." << std::endl;
 
@@ -930,7 +931,7 @@ int runWorkload(EmuEnv* _env) {
         // std::cout << cfd_details.str()
         //           << ", Entries Count: " << total_entries_in_cfd
         //           << ", Invalid Entries Count: "
-        //           << total_entries_in_cfd - _env->num_inserts << std::endl
+        //           << total_entries_in_cfd - env->num_inserts << std::endl
         //           << all_level_details << std::endl;
 
         // std::cout << "Rocksdb Statistics: " << std::endl;
@@ -1066,7 +1067,7 @@ int runWorkload(EmuEnv* _env) {
         // std::cout << cfd_details.str()
         //           << ", Entries Count: " << total_entries_in_cfd
         //           << ", Invalid Entries Count: "
-        //           << total_entries_in_cfd - _env->num_inserts << std::endl
+        //           << total_entries_in_cfd - env->num_inserts << std::endl
         //           << all_level_details << std::endl;
 
         // std::cout << "Rocksdb Statistics: " << std::endl;
@@ -1205,7 +1206,7 @@ int runWorkload(EmuEnv* _env) {
   //   std::cout << cfd_details.str() << ", Entries Count: " <<
   //   total_entries_in_cfd
   //             << ", Invalid Entries Count: "
-  //             << total_entries_in_cfd - _env->num_inserts << std::endl
+  //             << total_entries_in_cfd - env->num_inserts << std::endl
   //             << all_level_details << std::endl;
 
   //   std::cout << "Rocksdb Statistics: " << std::endl;
@@ -1347,7 +1348,7 @@ int runWorkload(EmuEnv* _env) {
   //   rq_time_file.close();
   // #endif  // TIMER
 
-  if (_env->enable_rocksdb_perf_iostat == 1) {
+  if (env->IsPerfIOStatEnabled()) {
     // rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
     // std::cout << "RocksDB Perf Context : " << std::endl;
     // std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
@@ -1367,7 +1368,7 @@ int runWorkload(EmuEnv* _env) {
   return 1;
 }
 
-void printExperimentalSetup(EmuEnv* _env) {
+void printExperimentalSetup(DBEnv* env) {
   int l = 10;
 
   std::cout << std::setfill(' ') << std::setw(l)
@@ -1384,23 +1385,23 @@ void printExperimentalSetup(EmuEnv* _env) {
             << std::setfill(' ') << std::setw(l) << "blk_cch"  // !YBS-sep09-XX!
             << std::setfill(' ') << std::setw(l) << "BPK" << "\n";
   std::cout << std::setfill(' ') << std::setw(l)
-            << _env->compaction_style;  // !YBS-sep07-XX!
-  std::cout << std::setfill(' ') << std::setw(l) << _env->compaction_pri;
-  std::cout << std::setfill(' ') << std::setw(4) << _env->size_ratio;
-  std::cout << std::setfill(' ') << std::setw(l) << _env->buffer_size_in_pages;
-  std::cout << std::setfill(' ') << std::setw(l) << _env->entries_per_page;
-  std::cout << std::setfill(' ') << std::setw(l) << _env->entry_size;
-  std::cout << std::setfill(' ') << std::setw(l) << _env->buffer_size;
+            << env->compaction_style;  // !YBS-sep07-XX!
+  std::cout << std::setfill(' ') << std::setw(l) << env->compaction_pri;
+  std::cout << std::setfill(' ') << std::setw(4) << env->size_ratio;
+  std::cout << std::setfill(' ') << std::setw(l) << env->buffer_size_in_pages;
+  std::cout << std::setfill(' ') << std::setw(l) << env->entries_per_page;
+  std::cout << std::setfill(' ') << std::setw(l) << env->entry_size;
+  std::cout << std::setfill(' ') << std::setw(l) << env->GetBufferSize();
   // std::cout << std::setfill(' ') << std::setw(l) <<
-  // _env->file_to_memtable_size_ratio;
-  std::cout << std::setfill(' ') << std::setw(l) << _env->file_size;
+  // env->file_to_memtable_size_ratio;
+  std::cout << std::setfill(' ') << std::setw(l) << env->GetFileSize();
   std::cout << std::setfill(' ') << std::setw(l)
-            << _env->max_bytes_for_level_base;
+            << env->GetMaxBytesForLevelBase();
   std::cout << std::setfill(' ') << std::setw(l)
-            << _env->block_cache;  // !YBS-sep09-XX!
-  std::cout << std::setfill(' ') << std::setw(l) << _env->bits_per_key;
+            << env->block_cache;  // !YBS-sep09-XX!
+  std::cout << std::setfill(' ') << std::setw(l) << env->bits_per_key;
   // std::cout << std::setfill(' ') << std::setw(l) <<
-  // _env->delete_persistence_latency; // !YBS-feb15-XXI!
+  // env->delete_persistence_latency; // !YBS-feb15-XXI!
 
   std::cout << std::endl;
 }

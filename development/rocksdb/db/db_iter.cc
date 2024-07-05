@@ -130,7 +130,7 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (read_options_mutable_.range_query_compaction_enabled &&
+  if (read_options_mutable_.enable_range_query_compaction &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
     cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
@@ -202,7 +202,7 @@ void DBIter::Next() {
 
   if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) >=
           0 &&
-      read_options_mutable_.range_query_compaction_enabled &&
+      read_options_mutable_.enable_range_query_compaction &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
     if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) ==
@@ -217,7 +217,7 @@ void DBIter::Next() {
     db_impl_->added_last_table = true;
   } else if (user_comparator_.Compare(
                  key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
-             read_options_mutable_.range_query_compaction_enabled &&
+             read_options_mutable_.enable_range_query_compaction &&
              key().level_ == 0) {
     MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,

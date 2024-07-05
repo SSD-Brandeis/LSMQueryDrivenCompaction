@@ -1356,7 +1356,7 @@ void LevelIterator::Seek(const Slice& target) {
                ---------
   */
 
-  if (read_options_.range_query_compaction_enabled &&
+  if (read_options_.enable_range_query_compaction &&
       file_index_ < flevel_->num_files && db_impl_ != nullptr) {
     // 4 & 5. start <= smallest and end >= largest  -- (Just Delete)
     if (icomparator_.user_comparator()->Compare(
@@ -1613,7 +1613,7 @@ bool LevelIterator::SkipEmptyFileForward() {
       //    file to the same level
 
       // refer to NOTE in Seek function
-      if (read_options_.range_query_compaction_enabled &&
+      if (read_options_.enable_range_query_compaction &&
           file_index_ < flevel_->num_files && db_impl_ != nullptr) {
         // 4 & 5. start <= smallest and end >= largest  -- (Just Delete)
         if (icomparator_.user_comparator()->Compare(

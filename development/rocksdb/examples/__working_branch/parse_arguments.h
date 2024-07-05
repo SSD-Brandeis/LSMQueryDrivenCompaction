@@ -1,7 +1,9 @@
-#include "args.hxx"
-#include "emu_environment.h"
+#include <iostream>
 
-int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
+#include "args.hxx"
+#include "db_env.h"
+
+int parse_arguments(int argc, char *argv[], DBEnv *env) {
   args::ArgumentParser parser("RocksDB_parser.", "");
   args::Group group1(parser, "This group is all exclusive:",
                      args::Group::Validators::DontCare);
@@ -61,15 +63,11 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       {'b', "bits_per_key"});
   args::ValueFlag<int> block_cache_cmd(
       group1, "bb", "Block cache size in MB [def: 8 MB]", {"bb"});
-  args::ValueFlag<int> show_progress_cmd(group1, "show_progress",
-                                         "Show progress [def: 0]", {'s', "sp"});
-  args::ValueFlag<double> del_per_th_cmd(
-      group1, "del_per_th", "Delete persistence threshold [def: -1]",
-      {'t', "dpth"});
-  args::ValueFlag<int> enable_rocksdb_perf_iostat_cmd(
-      group1, "enable_rocksdb_perf_iostat",
+  args::ValueFlag<int> enable_perf_iostat_cmd(
+      group1, "enable_perf_iostat",
       "Enable RocksDB's internal Perf and IOstat [def: 0]", {"stat"});
 
+  // Range Query Driven Compaction Options
   args::ValueFlag<long> num_inserts_cmd(
       group1, "inserts",
       "The number of unique inserts to issue in the experiment [def: 1]",
@@ -89,7 +87,7 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
       {"rq", "range_query_compaction"});
 
   args::ValueFlag<int> level_renaming_enabled_cmd(
-      group1, "level_renaming_enabled",
+      group1, "enable_level_renaming",
       "Enable level renaming when to add new level", {"re", "renaming_level"});
 
   args::ValueFlag<float> upper_threshold_cmd(
@@ -116,7 +114,6 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
   } catch (args::Help &) {
     std::cout << parser;
     exit(0);
-    // return 0;
   } catch (args::ParseError &e) {
     std::cerr << e.what() << std::endl;
     std::cerr << parser;
@@ -127,73 +124,66 @@ int parse_arguments2(int argc, char *argv[], EmuEnv *_env) {
     return 1;
   }
 
-  _env->destroy_database =
-      destroy_database_cmd ? args::get(destroy_database_cmd) : 1;
-  _env->clear_system_cache =
-      clear_system_cache_cmd ? args::get(clear_system_cache_cmd) : 1;
-  _env->size_ratio = size_ratio_cmd ? args::get(size_ratio_cmd) : 2;
-
-  // change to 128 or 256 [Added by Subhadeep]
-  _env->buffer_size_in_pages =
-      buffer_size_in_pages_cmd ? args::get(buffer_size_in_pages_cmd) : 128;
-
-  // change to 128 [Added by Subhadeep]
-  _env->entries_per_page =
-      entries_per_page_cmd ? args::get(entries_per_page_cmd) : 128;
-
-  // change to 32 [Added by Subhadeep]
-  _env->entry_size = entry_size_cmd ? args::get(entry_size_cmd) : 32;
-
-  _env->buffer_size = buffer_size_cmd
-                          ? args::get(buffer_size_cmd)
-                          : _env->buffer_size_in_pages *
-                                _env->entries_per_page * _env->entry_size;
-  _env->file_to_memtable_size_ratio =
+  env->SetDestroyDatabase(destroy_database_cmd
+                              ? args::get(destroy_database_cmd)
+                              : env->IsDestroyDatabaseEnabled());
+  env->clear_system_cache = clear_system_cache_cmd
+                                ? args::get(clear_system_cache_cmd)
+                                : env->clear_system_cache;
+  env->size_ratio =
+      size_ratio_cmd ? args::get(size_ratio_cmd) : env->size_ratio;
+  env->buffer_size_in_pages = buffer_size_in_pages_cmd
+                                  ? args::get(buffer_size_in_pages_cmd)
+                                  : env->buffer_size_in_pages;
+  env->entries_per_page = entries_per_page_cmd ? args::get(entries_per_page_cmd)
+                                               : env->entries_per_page;
+  env->entry_size =
+      entry_size_cmd ? args::get(entry_size_cmd) : env->entry_size;
+  env->SetBufferSize(buffer_size_cmd ? args::get(buffer_size_cmd) : 0);
+  env->file_to_memtable_size_ratio =
       file_to_memtable_size_ratio_cmd
           ? args::get(file_to_memtable_size_ratio_cmd)
-          : 1;
-  _env->file_size =
-      file_size_cmd ? args::get(file_size_cmd) : _env->buffer_size;
-  _env->verbosity = verbosity_cmd ? args::get(verbosity_cmd) : 0;
-  _env->compaction_pri = compaction_pri_cmd ? args::get(compaction_pri_cmd) : 1;
-  _env->compaction_style =
-      compaction_style_cmd ? args::get(compaction_style_cmd) : 1;
-  _env->bits_per_key = bits_per_key_cmd ? args::get(bits_per_key_cmd) : 10;
-  _env->block_cache = block_cache_cmd ? args::get(block_cache_cmd) : 8;
-  _env->show_progress = show_progress_cmd ? args::get(show_progress_cmd) : 0;
-  _env->delete_persistence_latency =
-      del_per_th_cmd ? args::get(del_per_th_cmd) : 0;
-  _env->enable_rocksdb_perf_iostat =
-      enable_rocksdb_perf_iostat_cmd ? args::get(enable_rocksdb_perf_iostat_cmd)
-                                     : 0;
-  _env->max_background_jobs = 0;
-  _env->target_file_size_base = _env->buffer_size;
-  _env->max_bytes_for_level_base = _env->buffer_size * _env->size_ratio;
-
-  _env->num_inserts = num_inserts_cmd ? args::get(num_inserts_cmd) : 0;
-  _env->num_updates = num_updates_cmd ? args::get(num_updates_cmd) : 0;
-  _env->num_range_queries =
-      num_range_queries_cmd ? args::get(num_range_queries_cmd) : 0;
+          : env->file_to_memtable_size_ratio;
+  env->verbosity = verbosity_cmd ? args::get(verbosity_cmd) : env->verbosity;
+  env->compaction_pri =
+      compaction_pri_cmd ? args::get(compaction_pri_cmd) : env->compaction_pri;
+  env->compaction_style = compaction_style_cmd ? args::get(compaction_style_cmd)
+                                               : env->compaction_style;
+  env->bits_per_key =
+      bits_per_key_cmd ? args::get(bits_per_key_cmd) : env->bits_per_key;
+  env->block_cache =
+      block_cache_cmd ? args::get(block_cache_cmd) : env->block_cache;
+  env->SetPerfIOStat(enable_perf_iostat_cmd ? args::get(enable_perf_iostat_cmd)
+                                            : env->IsPerfIOStatEnabled());
 
   // Range Query Driven Compaction Options
-  _env->enable_range_query_compaction =
+  env->num_inserts =
+      num_inserts_cmd ? args::get(num_inserts_cmd) : env->num_inserts;
+  env->num_updates =
+      num_updates_cmd ? args::get(num_updates_cmd) : env->num_updates;
+  env->num_range_queries = num_range_queries_cmd
+                               ? args::get(num_range_queries_cmd)
+                               : env->num_range_queries;
+  env->enable_range_query_compaction =
       enable_range_query_compaction_cmd
           ? args::get(enable_range_query_compaction_cmd)
-          : 0;
-  _env->level_renaming_enabled =
-      level_renaming_enabled_cmd ? args::get(level_renaming_enabled_cmd) : 0;
+          : env->enable_range_query_compaction;
+  env->enable_level_renaming = level_renaming_enabled_cmd
+                                   ? args::get(level_renaming_enabled_cmd)
+                                   : env->enable_level_renaming;
 
-  _env->lower_threshold =
-      lower_threshold_cmd ? args::get(lower_threshold_cmd) : 0;
-  _env->upper_threshold = upper_threshold_cmd
-                              ? args::get(upper_threshold_cmd)
-                              : std::numeric_limits<float>::max();
+  env->lower_threshold = lower_threshold_cmd ? args::get(lower_threshold_cmd)
+                                             : env->lower_threshold;
+  env->upper_threshold = upper_threshold_cmd ? args::get(upper_threshold_cmd)
+                                             : env->upper_threshold;
 
   // Fluid LSM parameters
-  _env->smaller_lvl_runs_count =
-      smaller_lvl_runs_count_cmd ? args::get(smaller_lvl_runs_count_cmd) : 1;
-  _env->larger_lvl_runs_count =
-      larger_lvl_runs_count_cmd ? args::get(larger_lvl_runs_count_cmd) : 1;
+  env->num_runs_in_smaller_level = smaller_lvl_runs_count_cmd
+                                       ? args::get(smaller_lvl_runs_count_cmd)
+                                       : env->num_runs_in_smaller_level;
+  env->num_runs_in_larger_level = larger_lvl_runs_count_cmd
+                                      ? args::get(larger_lvl_runs_count_cmd)
+                                      : env->num_runs_in_larger_level;
 
   return 0;
 }

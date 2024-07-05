@@ -3,20 +3,19 @@
  *  Author: Subhadeep
  */
 
-#include "emu_environment.h"
 #include "parse_arguments.h"
 #include "run_workload.h"
 
 int main(int argc, char *argv[]) {
   // check emu_environment.h for the contents of EmuEnv and also the definitions
   // of the singleton experimental environment
-  EmuEnv *_env = EmuEnv::getInstance();
+  DBEnv *env = DBEnv::GetInstance();
 
   // parse the command line arguments
-  if (parse_arguments2(argc, argv, _env)) {
+  if (parse_arguments(argc, argv, env)) {
     exit(1);
   }
 
-  int s = runWorkload(_env);
+  int s = runWorkload(env);
   return 0;
 }

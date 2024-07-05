@@ -16,11 +16,11 @@ endif
 
 all: working_version 
 
-working_version: librocksdb working_version.cc emu_environment.cc stats.cc aux_time.cc fluid_lsm.cc
-	$(CXX) $(CXXFLAGS) $@.cc -g -o$@ emu_environment.cc stats.cc aux_time.cc fluid_lsm.cc ../../librocksdb.a -I../../include -I../.. -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -DTIMER -DPROFILE
+working_version: librocksdb working_version.cc db_env.cc stats.cc aux_time.cc fluid_lsm.cc
+	$(CXX) $(CXXFLAGS) $@.cc -g -o$@ db_env.cc stats.cc aux_time.cc fluid_lsm.cc ../../librocksdb.a -I../../include -I../.. -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -DTIMER -DPROFILE
 
-working_version_debug: librocksdb_debug working_version.cc emu_environment.cc stats.cc aux_time.cc fluid_lsm.cc
-	$(CXX) $(CXXFLAGS) working_version.cc -o $@ emu_environment.cc stats.cc aux_time.cc fluid_lsm.cc ../../librocksdb.a -I../../include -I../.. -O0 -ggdb -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
+working_version_debug: librocksdb_debug working_version.cc db_env.cc stats.cc aux_time.cc fluid_lsm.cc
+	$(CXX) $(CXXFLAGS) working_version.cc -o $@ db_env.cc stats.cc aux_time.cc fluid_lsm.cc ../../librocksdb.a -I../../include -I../.. -O0 -ggdb -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
 
 clean:
 	rm -rf working_version working_version_debug working_version_debug.* 

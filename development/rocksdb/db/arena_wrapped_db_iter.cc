@@ -266,7 +266,7 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
   // Assign read options once to avoid multiple assignments
   read_options_.range_end_key = end_key;
   read_options_.range_start_key = start_key;
-  read_options_.range_query_compaction_enabled = rqdc_enabled;
+  read_options_.enable_range_query_compaction = rqdc_enabled;
   db_impl_->read_options_ = read_options_;
 
 // #ifdef TIMEBREAK
@@ -286,7 +286,7 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
 
   if (!CanPerformRangeQueryCompaction(entries_count)) {
     db_impl_->ContinueBackgroundWork();
-    read_options_.range_query_compaction_enabled = false;
+    read_options_.enable_range_query_compaction = false;
     read_options_.range_start_key.clear();
     read_options_.range_end_key.clear();
     db_impl_->read_options_ = read_options_;
@@ -311,7 +311,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
                                  uint64_t& entries_to_compact) {
   // Check if the last table is added to the queue
 
-  if (!read_options_.range_query_compaction_enabled) {
+  if (!read_options_.enable_range_query_compaction) {
     read_options_.range_query_options->is_range_query_running = false;
     read_options_.range_query_options->reset();
     // db_impl_->ContinueBackgroundWork();
@@ -320,7 +320,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
 // #ifdef TIMEBREAK
 //   auto tp1 = std::chrono::high_resolution_clock::now();
 // #endif  // TIMEBREAK
-  if (db_impl_->read_options_.range_query_compaction_enabled) {
+  if (db_impl_->read_options_.enable_range_query_compaction) {
     if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
         cfd_->mem_range()->num_entries() > 0) {
       MemTable* imm_range = cfd_->mem_range();
@@ -383,11 +383,11 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
   read_options_.range_query_options->reset();
   // check if range query compaction was enabled, set to true
   // otherwise background compaction is already running
-  if (db_impl_->read_options_.range_query_compaction_enabled) {
+  if (db_impl_->read_options_.enable_range_query_compaction) {
     // db_impl_->RenameLevels();
     read_options_.range_end_key = "";
     read_options_.range_start_key = "";
-    read_options_.range_query_compaction_enabled = false;
+    read_options_.enable_range_query_compaction = false;
     db_impl_->read_options_ = read_options_;
   }
   db_impl_->was_decision_true = false;

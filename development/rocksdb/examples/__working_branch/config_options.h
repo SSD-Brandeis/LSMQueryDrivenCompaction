@@ -324,6 +324,7 @@ void configOptions(DBEnv *env, Options *options,
       env->level_compaction_dynamic_level_bytes;
   options->ignore_max_compaction_bytes_for_input =
       env->ignore_max_compaction_bytes_for_input;
+  options->max_multi_trivial_move = env->max_multi_trivial_move;
 #pragma endregion  // [ColumnFamilyOptions]
 
 #pragma region[FlushOptions]
@@ -332,7 +333,7 @@ void configOptions(DBEnv *env, Options *options,
 #pragma endregion  // [FlushOptions]
 
 #pragma region[RangeReduce]
-// TODO: (shubham) Add pending options here
+  // TODO: (shubham) Add pending options here
   read_options->enable_range_query_compaction =
       env->enable_range_query_compaction;
   read_options->lower_threshold = env->lower_threshold;

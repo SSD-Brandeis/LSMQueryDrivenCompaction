@@ -1157,6 +1157,13 @@ struct AdvancedColumnFamilyOptions {
   // Supported values: 0, 1, 2, 4, 8.
   uint8_t block_protection_bytes_per_key = 0;
 
+  // Maximum number of trivial moves that are allowed at non l0 levels
+  // 
+  // Default: 4
+  // Increase in this option moves more files from 
+  // last level to create a new level
+  size_t max_multi_trivial_move = 4;
+
   // Create ColumnFamilyOptions with default values for all fields
   AdvancedColumnFamilyOptions();
   // Create ColumnFamilyOptions from Options

@@ -16,6 +16,9 @@ const unsigned int FILE_TO_MEMTABLE_SIZE_RATIO = 1;
 const int MAX_WRITE_BUFFER_NUMBER = 2;
 const int LEVEL0_FILE_NUM_COMPACTION_TRIGGER = 1;
 
+// kMaxMultiTrivialMove, default is 4 for RocksDB
+const size_t MAX_MULTI_TRIVIAL_MOVE = 1; 
+
 const int MAX_OPEN_FILES = 50;
 const int MAX_FILE_OPENING_THREADS = 80;
 
@@ -393,6 +396,10 @@ class DBEnv {
   // `max_compaction_bytes` limit when pulling in input files that are entirely
   // within output key range.
   bool ignore_max_compaction_bytes_for_input = false;
+
+  // maximum number of trivial moves that are allowed at non l0 levels
+  // RocksDB default is 4
+  size_t max_multi_trivial_move = Default::MAX_MULTI_TRIVIAL_MOVE;
 #pragma endregion
 
 #pragma region[FlushOptions]

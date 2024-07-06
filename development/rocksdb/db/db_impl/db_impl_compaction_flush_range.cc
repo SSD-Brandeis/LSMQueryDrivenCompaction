@@ -213,21 +213,6 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
   return overlapping_count;
 }
 
-void DBImpl::RenameLevels() {
-  // check if level overflowed due to range query driven compaction.
-  // If yes, shift it one level down and handle the corner cases like
-  // if next level is not empty push all the level down
-  auto cfh =
-      static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
-  Options options =
-      Options(BuildDBOptions(immutable_db_options_, mutable_db_options_),
-              cfh->cfd()->GetLatestCFOptions());
-  ColumnFamilyData* cfd = cfh->cfd();
-  Version* current_version = cfd->GetSuperVersion()->current;
-  Status s =
-      GetVersionSet()->RenameLevels(&options, current_version, GetVersionSet());
-}
-
 Status DBImpl::FlushPartialOrRangeFile(
     ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
     bool* made_progress, JobContext* job_context, FlushReason flush_reason,

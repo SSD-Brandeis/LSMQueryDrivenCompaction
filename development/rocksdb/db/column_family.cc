@@ -15,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include "db/blob/blob_file_cache.h"
 #include "db/blob/blob_source.h"

@@ -6550,55 +6550,6 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
                               &dummy_mutex, nullptr, true);
 }
 
-Status VersionSet::RenameLevels(const Options* options,
-                                Version* current_version,
-                                VersionSet* versions) {
-  const ReadOptions read_options;
-  Status status;
-
-  auto* vstorage = current_version->storage_info();
-  int current_levels = vstorage->num_levels();
-  int num_non_empty_levels = vstorage->num_non_empty_levels();
-
-  if (current_levels <= num_non_empty_levels) {
-    current_levels = num_non_empty_levels;
-  }
-
-  std::vector<FileMetaData*>* new_files_list =
-      new std::vector<FileMetaData*>[current_levels];
-
-  for (int i = 0; i < num_non_empty_levels; i++) {
-    new_files_list[i + 1] = vstorage->LevelFiles(i);
-  }
-
-  // update file locations
-  for (int lvl = 0; lvl < num_non_empty_levels; lvl++) {
-    auto& new_lvl = new_files_list[lvl + 1];
-    new_lvl = vstorage->LevelFiles(lvl);
-
-    for (size_t i = 0; i < new_lvl.size(); ++i) {
-      const FileMetaData* const meta = new_lvl[i];
-      assert(meta);
-
-      const uint64_t file_number = meta->fd.GetNumber();
-      vstorage->file_locations_[file_number] =
-          VersionStorageInfo::FileLocation(lvl + 1, i);
-    }
-  }
-
-  delete[] vstorage->files_;
-  vstorage->files_ = new_files_list;
-  vstorage->ResizeCompactCursors(num_non_empty_levels + 1);
-
-  MutableCFOptions mutable_cf_options(*options);
-  VersionEdit ve;
-  InstrumentedMutex dummy_mutex;
-  InstrumentedMutexLock l(&dummy_mutex);
-  return versions->LogAndApply(versions->GetColumnFamilySet()->GetDefault(),
-                               mutable_cf_options, read_options, &ve,
-                               &dummy_mutex, nullptr, true);
-}
-
 // Get the checksum information including the checksum and checksum function
 // name of all SST and blob files in VersionSet. Store the information in
 // FileChecksumList which contains a map from file number to its checksum info.

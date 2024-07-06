@@ -502,8 +502,6 @@ class DBImpl : public DB {
                                        Slice& useful_min_key,
                                        Slice& useful_max_key);
 
-  void RenameLevels();
-
   std::string GetLevelsState();
 
   std::tuple<unsigned long long, std::string> GetTreeState();

@@ -853,8 +853,8 @@ void DBImpl::NotifyOnFlushBegin(ColumnFamilyData* cfd, FileMetaData* file_meta,
     }
   }
   mutex_.Lock();
-// no need to signal bg_cv_ as it will be signaled at the end of the
-// flush process.
+  // no need to signal bg_cv_ as it will be signaled at the end of the
+  // flush process.
 }
 
 void DBImpl::NotifyOnFlushCompleted(
@@ -3483,32 +3483,55 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   } else if (!trivial_move_disallowed && c->IsTrivialMove()) {
     auto vstorage_ = c->input_version()->storage_info();
     auto num_non_empty_levels = vstorage_->num_non_empty_levels();
-      TEST_SYNC_POINT("DBImpl::BackgroundCompaction:TrivialMove");
-      TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
-                              c->column_family_data());
-      // Instrument for event update
-      // TODO(yhchiang): add op details for showing trivial-move.
-      ThreadStatusUtil::SetColumnFamily(c->column_family_data());
-      ThreadStatusUtil::SetThreadOperation(ThreadStatus::OP_COMPACTION);
+    TEST_SYNC_POINT("DBImpl::BackgroundCompaction:TrivialMove");
+    TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
+                             c->column_family_data());
+    // Instrument for event update
+    // TODO(yhchiang): add op details for showing trivial-move.
+    ThreadStatusUtil::SetColumnFamily(c->column_family_data());
+    ThreadStatusUtil::SetThreadOperation(ThreadStatus::OP_COMPACTION);
 
-      compaction_job_stats.num_input_files = c->num_input_files(0);
+    compaction_job_stats.num_input_files = c->num_input_files(0);
 
-      NotifyOnCompactionBegin(c->column_family_data(), c.get(), status,
-                              compaction_job_stats, job_context->job_id);
+    NotifyOnCompactionBegin(c->column_family_data(), c.get(), status,
+                            compaction_job_stats, job_context->job_id);
 
-      // Move files to next level
-      int32_t moved_files = 0;
-      int64_t moved_bytes = 0;
+    // Move files to next level
+    int32_t moved_files = 0;
+    int64_t moved_bytes = 0;
+    // auto before = std::chrono::steady_clock::now();
 
-    if (num_non_empty_levels == c->output_level() && immutable_db_options_.enable_level_renaming) {
-      for (int l = 0; l < vstorage_->num_levels(); l++) {
-          moved_files += vstorage_->NumLevelFiles(l);
+    if (num_non_empty_levels == c->output_level() &&
+        immutable_db_options_.enable_level_renaming) {
+      for (int l = 0; l < c->output_level(); l++) {
+        auto& level_files = vstorage_->LevelFiles(l);
+        for (size_t i = 0; i < level_files.size(); i++) {
+          FileMetaData* f = level_files[i];
+          c->edit()->DeleteFile(l, f->fd.GetNumber());
+          c->edit()->AddFile(
+              l + 1, f->fd.GetNumber(), f->fd.GetPathId(), f->fd.GetFileSize(),
+              f->smallest, f->largest, f->fd.smallest_seqno,
+              f->fd.largest_seqno, f->marked_for_compaction, f->temperature,
+              f->oldest_blob_file_number, f->oldest_ancester_time,
+              f->file_creation_time, f->epoch_number, f->file_checksum,
+              f->file_checksum_func_name, f->unique_id,
+              f->compensated_range_deletion_size, f->tail_size,
+              f->user_defined_timestamps_persisted);
+          moved_files++;
+          moved_bytes += f->fd.GetFileSize();
+        }
+        if (c->compaction_reason() == CompactionReason::kLevelMaxLevelSize &&
+            c->immutable_options()->compaction_pri == kRoundRobin) {
+          int start_level = l;
+          if (start_level > 0) {
+            auto vstorage = c->input_version()->storage_info();
+            c->edit()->AddCompactCursor(start_level,
+                                        vstorage->GetNextCompactCursor(
+                                            start_level, level_files.size()));
+          }
+        }
       }
-      // RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
-      std::cout << "Level Renaming: [moving " << moved_files << " files]" << std::endl << std::endl;
-      RenameLevels();
-    }
-    else {
+    } else {
       for (unsigned int l = 0; l < c->num_input_levels(); l++) {
         if (c->level(l) == c->output_level()) {
           continue;
@@ -3516,15 +3539,16 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         for (size_t i = 0; i < c->num_input_files(l); i++) {
           FileMetaData* f = c->input(l, i);
           c->edit()->DeleteFile(c->level(l), f->fd.GetNumber());
-          c->edit()->AddFile(
-              c->output_level(), f->fd.GetNumber(), f->fd.GetPathId(),
-              f->fd.GetFileSize(), f->smallest, f->largest, f->fd.smallest_seqno,
-              f->fd.largest_seqno, f->marked_for_compaction, f->temperature,
-              f->oldest_blob_file_number, f->oldest_ancester_time,
-              f->file_creation_time, f->epoch_number, f->file_checksum,
-              f->file_checksum_func_name, f->unique_id,
-              f->compensated_range_deletion_size, f->tail_size,
-              f->user_defined_timestamps_persisted);
+          c->edit()->AddFile(c->output_level(), f->fd.GetNumber(),
+                             f->fd.GetPathId(), f->fd.GetFileSize(),
+                             f->smallest, f->largest, f->fd.smallest_seqno,
+                             f->fd.largest_seqno, f->marked_for_compaction,
+                             f->temperature, f->oldest_blob_file_number,
+                             f->oldest_ancester_time, f->file_creation_time,
+                             f->epoch_number, f->file_checksum,
+                             f->file_checksum_func_name, f->unique_id,
+                             f->compensated_range_deletion_size, f->tail_size,
+                             f->user_defined_timestamps_persisted);
 
           ROCKS_LOG_BUFFER(
               log_buffer,
@@ -3540,44 +3564,52 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         int start_level = c->start_level();
         if (start_level > 0) {
           auto vstorage = c->input_version()->storage_info();
-          c->edit()->AddCompactCursor(
-              start_level,
-              vstorage->GetNextCompactCursor(start_level, c->num_input_files(0)));
+          c->edit()->AddCompactCursor(start_level,
+                                      vstorage->GetNextCompactCursor(
+                                          start_level, c->num_input_files(0)));
         }
       }
-      status = versions_->LogAndApply(
-          c->column_family_data(), *c->mutable_cf_options(), read_options,
-          c->edit(), &mutex_, directories_.GetDbDir());
-      io_s = versions_->io_status();
-      // Use latest MutableCFOptions
-      InstallSuperVersionAndScheduleWork(c->column_family_data(),
-                                        &job_context->superversion_contexts[0],
-                                        *c->mutable_cf_options());
-      c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
-                                                              moved_bytes);
-      std::cout << "Trivially Moving: [moving " << moved_files << " files]" << std::endl << std::endl;
     }
-      VersionStorageInfo::LevelSummaryStorage tmp;
-      {
-        event_logger_.LogToBuffer(log_buffer)
-            << "job" << job_context->job_id << "event"
-            << "trivial_move"
-            << "destination_level" << c->output_level() << "files" << moved_files
-            << "total_files_size" << moved_bytes;
-      }
-      ROCKS_LOG_BUFFER(
-          log_buffer,
-          "[%s] Moved #%d files to level-%d %" PRIu64 " bytes %s: %s\n",
-          c->column_family_data()->GetName().c_str(), moved_files,
-          c->output_level(), moved_bytes, status.ToString().c_str(),
-          c->column_family_data()->current()->storage_info()->LevelSummary(&tmp));
-      *made_progress = true;
+    status = versions_->LogAndApply(
+        c->column_family_data(), *c->mutable_cf_options(), read_options,
+        c->edit(), &mutex_, directories_.GetDbDir());
+    io_s = versions_->io_status();
+    // Use latest MutableCFOptions
+    InstallSuperVersionAndScheduleWork(c->column_family_data(),
+                                       &job_context->superversion_contexts[0],
+                                       *c->mutable_cf_options());
+    c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
+                                                             moved_bytes);
+    std::cout << "Trivially Moving: [moving " << moved_files << " files]"
+              << std::endl
+              << std::endl;
+    VersionStorageInfo::LevelSummaryStorage tmp;
+    {
+      event_logger_.LogToBuffer(log_buffer)
+          << "job" << job_context->job_id << "event" << "trivial_move"
+          << "destination_level" << c->output_level() << "files" << moved_files
+          << "total_files_size" << moved_bytes;
+    }
+    ROCKS_LOG_BUFFER(
+        log_buffer,
+        "[%s] Moved #%d files to level-%d %" PRIu64 " bytes %s: %s\n",
+        c->column_family_data()->GetName().c_str(), moved_files,
+        c->output_level(), moved_bytes, status.ToString().c_str(),
+        c->column_family_data()->current()->storage_info()->LevelSummary(&tmp));
+    *made_progress = true;
 
-      RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
-      // Clear Instrument
-      ThreadStatusUtil::ResetThreadStatus();
-      TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:AfterCompaction",
-                              c->column_family_data());
+    // auto after = std::chrono::steady_clock::now();
+    // std::cout << "TIME TO TRIVIALLY MOVE: "
+    //           << (std::chrono::duration_cast<std::chrono::nanoseconds>(after -
+    //                                                                    before))
+    //                  .count()
+    //           << std::endl
+    //           << std::flush;
+    RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
+    // Clear Instrument
+    ThreadStatusUtil::ResetThreadStatus();
+    TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:AfterCompaction",
+                             c->column_family_data());
 
   } else if (!is_prepicked && c->output_level() > 0 &&
              c->output_level() ==

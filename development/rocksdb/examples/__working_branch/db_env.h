@@ -12,7 +12,8 @@ const unsigned int BUFFER_SIZE_IN_PAGES = 128;
 const double SIZE_RATIO = 4;
 const unsigned int FILE_TO_MEMTABLE_SIZE_RATIO = 1;
 
-const int MAX_WRITE_BUFFER_NUMBER = 1;
+// The default and the minimum number is 2
+const int MAX_WRITE_BUFFER_NUMBER = 2;
 const int LEVEL0_FILE_NUM_COMPACTION_TRIGGER = 1;
 
 const int MAX_OPEN_FILES = 50;
@@ -132,7 +133,10 @@ class DBEnv {
   unsigned int file_to_memtable_size_ratio =
       Default::FILE_TO_MEMTABLE_SIZE_RATIO;  // [f]
 
-  // maximum number of write buffers that are build up in memory
+  // The maximum number of write buffers that are built up in memory.
+  // The default and the minimum number is 2, so that when 1 write buffer
+  // is being flushed to storage, new writes can continue to the other
+  // write buffer.
   int max_write_buffer_number = Default::MAX_WRITE_BUFFER_NUMBER;
 
   // bloom filter bits per key

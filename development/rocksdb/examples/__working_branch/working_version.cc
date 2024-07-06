@@ -7,8 +7,8 @@
 #include "run_workload.h"
 
 int main(int argc, char *argv[]) {
-  // check emu_environment.h for the contents of EmuEnv and also the definitions
-  // of the singleton experimental environment
+  // check db_env.h for the contents of DBEnv and also 
+  // the definitions of the singleton experimental environment
   DBEnv *env = DBEnv::GetInstance();
 
   // parse the command line arguments

@@ -677,7 +677,8 @@ bool LevelCompactionBuilder::TryExtendNonL0TrivialMove(int start_index,
     // to predict whether it is a trivial move.
     const std::vector<FileMetaData*>& level_files =
         vstorage_->LevelFiles(start_level_);
-    const size_t kMaxMultiTrivialMove = 4;
+    // NOTE: (shubham) hard coded trivial moves here were 4
+    const size_t kMaxMultiTrivialMove = ioptions_.max_multi_trivial_move;
     FileMetaData* initial_file = start_level_inputs_.files[0];
     size_t total_size = initial_file->fd.GetFileSize();
     CompactionInputFiles output_level_inputs;

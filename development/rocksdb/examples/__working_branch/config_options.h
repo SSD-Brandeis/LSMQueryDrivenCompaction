@@ -69,7 +69,6 @@ void configOptions(DBEnv *env, Options *options,
         NewBloomFilterPolicy(env->bits_per_key, false));
   }
 
-  // Compaction Priority
   switch (env->compaction_pri) {
     case 1:
       options->compaction_pri = CompactionPri::kMinOverlappingRatio;
@@ -333,12 +332,10 @@ void configOptions(DBEnv *env, Options *options,
 #pragma endregion  // [FlushOptions]
 
 #pragma region[RangeReduce]
-  // TODO: (shubham) Add pending options here
   read_options->enable_range_query_compaction =
       env->enable_range_query_compaction;
   read_options->lower_threshold = env->lower_threshold;
   read_options->upper_threshold = env->upper_threshold;
-
   options->enable_level_renaming = env->enable_level_renaming;
 #pragma endregion  // [RangeReduce]
 }

@@ -105,6 +105,12 @@ class CompactionsListner : public EventListener {
                      NUM_FILES_TRIVALLY_MOVED)
               << std::endl
               << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.files.compacted.sofar: "
+              << db->GetOptions().statistics->getTickerCount(
+                     NUM_FILES_COMPACTED_SO_FAR)
+              << std::endl
+              << std::flush;
     // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
     //           << " levels.state: " << db->GetLevelsState() << std::endl
     //           << std::flush;
@@ -256,6 +262,12 @@ class PartialAndFullRangeFlushListner : public EventListener {
               << " rocksdb.files.trivially.moved: "
               << db->GetOptions().statistics->getTickerCount(
                      NUM_FILES_TRIVALLY_MOVED)
+              << std::endl
+              << std::flush;
+    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+              << " rocksdb.files.compacted.sofar: "
+              << db->GetOptions().statistics->getTickerCount(
+                     NUM_FILES_COMPACTED_SO_FAR)
               << std::endl
               << std::flush;
     // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
@@ -1394,7 +1406,7 @@ void printExperimentalSetup(DBEnv* env) {
   std::cout << std::setfill(' ') << std::setw(l) << env->GetBufferSize();
   // std::cout << std::setfill(' ') << std::setw(l) <<
   // env->file_to_memtable_size_ratio;
-  std::cout << std::setfill(' ') << std::setw(l) << env->GetFileSize();
+  std::cout << std::setfill(' ') << std::setw(l) << env->GetTargetFileSizeBase();
   std::cout << std::setfill(' ') << std::setw(l)
             << env->GetMaxBytesForLevelBase();
   std::cout << std::setfill(' ') << std::setw(l)

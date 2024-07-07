@@ -118,8 +118,10 @@ enum Tickers : uint32_t {
   COMPACTION_CANCELLED,
   // number of compaction triggered
   NUM_COMPACTION_TRIGGERED,
-  // number of files trivially moved
+  // number of cummulative files trivially moved
   NUM_FILES_TRIVALLY_MOVED,
+  // number of cummulative files compacted
+  NUM_FILES_COMPACTED_SO_FAR,
 
   // Number of keys written to the database via the Put and Write call's
   NUMBER_KEYS_WRITTEN,

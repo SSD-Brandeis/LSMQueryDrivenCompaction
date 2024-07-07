@@ -63,6 +63,7 @@ const std::vector<std::pair<Tickers, std::string>> TickersNameMap = {
     {COMPACTION_CANCELLED, "rocksdb.compaction.cancelled"},
     {NUM_COMPACTION_TRIGGERED, "rocksdb.compaction.num.triggered"},
     {NUM_FILES_TRIVALLY_MOVED, "rocksdb.files.trivially.moved"},
+    {NUM_FILES_COMPACTED_SO_FAR, "rocksdb.files.compacted.sofar"},
     {NUMBER_KEYS_WRITTEN, "rocksdb.number.keys.written"},
     {NUMBER_KEYS_READ, "rocksdb.number.keys.read"},
     {NUMBER_KEYS_UPDATED, "rocksdb.number.keys.updated"},

@@ -435,6 +435,26 @@ bool Compaction::InputCompressionMatchesOutput() const {
   return matches;
 }
 
+bool Compaction::IsLevelRenaming() const {
+  size_t cumulative_capacity = 0;
+  // cumulative size upto max non-empty level
+  size_t cumulative_size = 0;
+  int num_non_empty_levels = 0;
+
+  num_non_empty_levels = input_vstorage_->num_non_empty_levels();
+
+  for (int l = 0; l < num_non_empty_levels; l++) {
+    cumulative_capacity += input_vstorage_->MaxBytesForLevel(l);
+    cumulative_size += input_vstorage_->NumLevelBytes(l);
+  }
+
+  return (num_non_empty_levels &&
+          cumulative_capacity <=
+              cumulative_size +
+                  (cfd_->GetLatestCFOptions().target_file_size_base *
+                   num_non_empty_levels));
+}
+
 bool Compaction::IsTrivialMove() const {
   // Avoid a move if there is lots of overlapping grandparent data.
   // Otherwise, the move could create a parent file that will require

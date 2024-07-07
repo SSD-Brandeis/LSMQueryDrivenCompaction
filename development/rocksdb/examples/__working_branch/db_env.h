@@ -1,7 +1,7 @@
 #ifndef DB_ENV_H_
 #define DB_ENV_H_
 
-#include <rocksdb/db.h>
+#include <mutex>
 
 namespace Default {
 
@@ -64,16 +64,11 @@ class DBEnv {
   bool IsPerfIOStatEnabled() const { return enable_perf_iostat_; }
   bool IsDestroyDatabaseEnabled() const { return destroy_database_; }
 
-  uint64_t GetFileSize() const {  // FIXME: (shubham) Not used anywhere so far
-    // file_size = buffer_size * file_to_memtable_size_ratio
-    return GetBufferSize() * file_to_memtable_size_ratio;
-  }
-
   long GetTargetFileSizeBase() const { return GetBufferSize(); }
 
   // control maximum total data size for level base (i.e. level 1)
   uint64_t GetMaxBytesForLevelBase() const {
-    return GetBufferSize() * size_ratio;
+    return GetTargetFileSizeBase() * size_ratio;
   }
 
 #pragma region[DBOptions]

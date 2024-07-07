@@ -3644,15 +3644,14 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         c->column_family_data(), *c->mutable_cf_options(), read_options,
         c->edit(), &mutex_, directories_.GetDbDir());
     io_s = versions_->io_status();
-    // Use latest MutableCFOptions
     InstallSuperVersionAndScheduleWork(c->column_family_data(),
                                        &job_context->superversion_contexts[0],
                                        *c->mutable_cf_options());
     c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
                                                              moved_bytes);
     std::cout << "Level Renaming: [moving " << moved_files << " files] "
-              << __LINE__ << std::endl
-              << std::endl;
+              << std::endl
+              << std::flush;
     VersionStorageInfo::LevelSummaryStorage tmp;
     {
       event_logger_.LogToBuffer(log_buffer)

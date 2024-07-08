@@ -436,6 +436,10 @@ bool Compaction::InputCompressionMatchesOutput() const {
 }
 
 bool Compaction::IsLevelRenaming() const {
+  if (input_vstorage_->num_non_empty_levels() == 1) {
+    return false;
+  }
+
   size_t cumulative_capacity = 0;
   // cumulative size upto max non-empty level
   size_t cumulative_size = 0;

@@ -463,6 +463,25 @@ class VersionStorageInfo {
     files_marked_for_compaction_.emplace_back(level, f);
   }
 
+  bool IsLevelRenaming(uint64_t target_file_size_base) const {
+    if (num_non_empty_levels_ == 1) {
+      return false;
+    }
+
+    size_t cumulative_capacity = 0;
+    // cumulative size upto max non-empty level
+    size_t cumulative_size = 0;
+
+    for (int l = 0; l < num_non_empty_levels_; l++) {
+      cumulative_capacity += MaxBytesForLevel(l);
+      cumulative_size += NumLevelBytes(l);
+    }
+
+    return (num_non_empty_levels_ &&
+            cumulative_capacity <= cumulative_size + (target_file_size_base *
+                                                      num_non_empty_levels_));
+  }
+
   // REQUIRES: ComputeCompactionScore has been called
   // REQUIRES: DB mutex held during access
   // Used by Leveled Compaction only.
@@ -1279,7 +1298,6 @@ class VersionSet {
   // printf contents (for debugging)
   Status DumpManifest(Options& options, std::string& manifestFileName,
                       bool verbose, bool hex = false, bool json = false);
-
 
   const std::string& DbSessionId() const { return db_session_id_; }
 

@@ -90,6 +90,8 @@ struct ImmutableCFOptions {
   bool persist_user_defined_timestamps;
 
   size_t max_multi_trivial_move;
+
+  uint64_t target_file_size_base;
 };
 
 struct ImmutableOptions : public ImmutableDBOptions, public ImmutableCFOptions {

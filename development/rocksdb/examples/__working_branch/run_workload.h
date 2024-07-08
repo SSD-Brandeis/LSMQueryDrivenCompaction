@@ -174,26 +174,26 @@ class PartialAndFullRangeFlushListner : public EventListener {
   uint64_t unentries_count() { return unentries_count_; }
 
   void OnFlushBegin(DB* db, const FlushJobInfo& flush_job_info) override {
-#ifdef PROFILE
-    ColumnFamilyMetaData metadata;
-    db->GetColumnFamilyMetaData(&metadata);
-    std::stringstream cfd_details;
+// #ifdef PROFILE
+//     ColumnFamilyMetaData metadata;
+//     db->GetColumnFamilyMetaData(&metadata);
+//     std::stringstream cfd_details;
 
-    // Print column family metadata
-    cfd_details << "[" << __FUNCTION__
-                << "] Column Family Name: " << metadata.name
-                << ", Size: " << metadata.size
-                << " bytes, Files Count: " << metadata.file_count;
+//     // Print column family metadata
+//     cfd_details << "[" << __FUNCTION__
+//                 << "] Column Family Name: " << metadata.name
+//                 << ", Size: " << metadata.size
+//                 << " bytes, Files Count: " << metadata.file_count;
 
-    std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+//     std::tuple<unsigned long long, std::string> details = db->GetTreeState();
 
-    unsigned long long total_entries_in_cfd = std::get<0>(details);
-    std::string all_level_details = std::get<1>(details);
+//     unsigned long long total_entries_in_cfd = std::get<0>(details);
+//     std::string all_level_details = std::get<1>(details);
 
-    std::cout << cfd_details.str()
-              << ", Entries Count: " << total_entries_in_cfd << std::endl
-              << all_level_details << std::endl;
-#endif  // PROFILE
+//     std::cout << cfd_details.str()
+//               << ", Entries Count: " << total_entries_in_cfd << std::endl
+//               << all_level_details << std::endl;
+// #endif  // PROFILE
   }
 
   void OnFlushCompleted(DB* db, const FlushJobInfo& flush_job_info) override {
@@ -215,32 +215,32 @@ class PartialAndFullRangeFlushListner : public EventListener {
     auto tp = std::chrono::duration_cast<std::chrono::nanoseconds>(localtp -
                                                                    globaltp);
     WaitForCompactions(db);
-    {
-#ifdef PROFILE
-      ColumnFamilyMetaData metadata;
-      db->GetColumnFamilyMetaData(&metadata);
-      std::stringstream cfd_details;
+//     {
+// #ifdef PROFILE
+//       ColumnFamilyMetaData metadata;
+//       db->GetColumnFamilyMetaData(&metadata);
+//       std::stringstream cfd_details;
 
-      // Print column family metadata
-      cfd_details << "[" << __FUNCTION__
-                  << "] Column Family Name: " << metadata.name
-                  << ", Size: " << metadata.size
-                  << " bytes, Files Count: " << metadata.file_count;
+//       // Print column family metadata
+//       cfd_details << "[" << __FUNCTION__
+//                   << "] Column Family Name: " << metadata.name
+//                   << ", Size: " << metadata.size
+//                   << " bytes, Files Count: " << metadata.file_count;
 
-      std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+//       std::tuple<unsigned long long, std::string> details = db->GetTreeState();
 
-      unsigned long long total_entries_in_cfd = std::get<0>(details);
-      std::string all_level_details = std::get<1>(details);
+//       unsigned long long total_entries_in_cfd = std::get<0>(details);
+//       std::string all_level_details = std::get<1>(details);
 
-      std::cout << cfd_details.str()
-                << ", Entries Count: " << total_entries_in_cfd << std::endl
-                << all_level_details << std::endl
-                << std::endl
-                << std::endl
-                << std::endl
-                << std::endl;
-#endif  // PROFILE
-    }
+//       std::cout << cfd_details.str()
+//                 << ", Entries Count: " << total_entries_in_cfd << std::endl
+//                 << all_level_details << std::endl
+//                 << std::endl
+//                 << std::endl
+//                 << std::endl
+//                 << std::endl;
+// #endif  // PROFILE
+//     }
     std::cout << __FUNCTION__ << "(" << tp.count() << ")"
               << " rocksdb.compact.write.bytes: "
               << db->GetOptions().statistics->getTickerCount(

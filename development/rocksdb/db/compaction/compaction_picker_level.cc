@@ -21,6 +21,10 @@ namespace ROCKSDB_NAMESPACE {
 
 bool LevelCompactionPicker::NeedsCompaction(
     const VersionStorageInfo* vstorage) const {
+  if (ioptions_.enable_level_renaming &&
+      vstorage->IsLevelRenaming(ioptions_.target_file_size_base)) {
+    return true;
+  }
   if (!vstorage->ExpiredTtlFiles().empty()) {
     return true;
   }

@@ -952,7 +952,8 @@ ImmutableCFOptions::ImmutableCFOptions(const ColumnFamilyOptions& cf_options)
       blob_cache(cf_options.blob_cache),
       persist_user_defined_timestamps(
           cf_options.persist_user_defined_timestamps),
-      max_multi_trivial_move(cf_options.max_multi_trivial_move) {}
+      max_multi_trivial_move(cf_options.max_multi_trivial_move),
+      target_file_size_base(cf_options.target_file_size_base) {}
 
 ImmutableOptions::ImmutableOptions() : ImmutableOptions(Options()) {}
 

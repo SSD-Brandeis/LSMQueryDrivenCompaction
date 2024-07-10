@@ -33,6 +33,8 @@ enum CompactionStyle : char {
   // Disable background compaction. Compaction jobs are submitted
   // via CompactFiles().
   kCompactionStyleNone = 0x3,
+  // // tiering based compaction style
+  // kCompactionStyleTiering = 0x4,
 };
 
 // In Level-based compaction, it Determines which file from a level to be

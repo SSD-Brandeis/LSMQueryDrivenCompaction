@@ -3,8 +3,9 @@
  *  Author: Subhadeep
  */
 
-#include "parse_arguments.h"
-#include "run_workload.h"
+#include <parse_arguments.h>
+#include <run_workload.h>
+#include <db_env.h>
 
 int main(int argc, char *argv[]) {
   // check db_env.h for the contents of DBEnv and also 

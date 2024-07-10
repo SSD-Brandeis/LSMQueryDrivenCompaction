@@ -1742,6 +1742,7 @@ FilterBitsBuilder* RibbonFilterPolicy::GetBuilderWithContext(
   int levelish = INT_MAX;
 
   switch (context.compaction_style) {
+    // case kCompactionStyleTiering: // NOTE: (shubham) added for backward compatiblity
     case kCompactionStyleLevel:
     case kCompactionStyleUniversal: {
       if (context.reason == TableFileCreationReason::kFlush) {

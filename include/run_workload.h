@@ -7,9 +7,9 @@
 #include <chrono>
 #include <condition_variable>
 #include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <mutex>
 #include <sstream>
 
@@ -19,15 +19,11 @@
 #endif  // DOSTO
 #include "thread"
 
-#define PROFILE
-#define TIMER
-// #define DOSTO
-
-std::string kDBPath = "./db_working_home";
+std::string kDBPath = "./db";
 std::mutex mtx;
 std::condition_variable cv;
 bool compaction_complete = false;
-auto globaltp = std::chrono::steady_clock::now();
+uint64_t flush_count = 1;
 
 void printExperimentalSetup(DBEnv* env);
 
@@ -57,9 +53,6 @@ class CompactionsListner : public EventListener {
 
   void OnCompactionCompleted(DB* db, const CompactionJobInfo& ci) override {
     auto localtp = std::chrono::steady_clock::now();
-
-    auto tp = std::chrono::duration_cast<std::chrono::nanoseconds>(localtp -
-                                                                   globaltp);
 #ifdef PROFILE
     {
       std::stringstream input_files;
@@ -78,42 +71,10 @@ class CompactionsListner : public EventListener {
                 << std::endl
                 << "\t\tInput Files: " << input_files.str() << std::endl
                 << "\t\tOutput Files: " << output_files.str() << std::endl
-                << std::endl << std::flush;
+                << std::endl
+                << std::flush;
     }
 #endif  // PROFILE
-
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-              << " rocksdb.compact.write.bytes: "
-              << db->GetOptions().statistics->getTickerCount(
-                     COMPACT_WRITE_BYTES)
-              << std::endl
-              << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-              << " rocksdb.flush.write.bytes: "
-              << db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
-              << std::endl
-              << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-              << " rocksdb.compaction.num.triggered: "
-              << db->GetOptions().statistics->getTickerCount(
-                     NUM_COMPACTION_TRIGGERED)
-              << std::endl
-              << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-              << " rocksdb.files.trivially.moved: "
-              << db->GetOptions().statistics->getTickerCount(
-                     NUM_FILES_TRIVALLY_MOVED)
-              << std::endl
-              << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-              << " rocksdb.files.compacted.sofar: "
-              << db->GetOptions().statistics->getTickerCount(
-                     NUM_FILES_COMPACTED_SO_FAR)
-              << std::endl
-              << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
-    //           << " levels.state: " << db->GetLevelsState() << std::endl
-    //           << std::flush;
     std::lock_guard<std::mutex> lock(mtx);
     compaction_complete = true;
     cv.notify_one();
@@ -174,26 +135,27 @@ class PartialAndFullRangeFlushListner : public EventListener {
   uint64_t unentries_count() { return unentries_count_; }
 
   void OnFlushBegin(DB* db, const FlushJobInfo& flush_job_info) override {
-// #ifdef PROFILE
-//     ColumnFamilyMetaData metadata;
-//     db->GetColumnFamilyMetaData(&metadata);
-//     std::stringstream cfd_details;
+    // #ifdef PROFILE
+    //     ColumnFamilyMetaData metadata;
+    //     db->GetColumnFamilyMetaData(&metadata);
+    //     std::stringstream cfd_details;
 
-//     // Print column family metadata
-//     cfd_details << "[" << __FUNCTION__
-//                 << "] Column Family Name: " << metadata.name
-//                 << ", Size: " << metadata.size
-//                 << " bytes, Files Count: " << metadata.file_count;
+    //     // Print column family metadata
+    //     cfd_details << "[" << __FUNCTION__
+    //                 << "] Column Family Name: " << metadata.name
+    //                 << ", Size: " << metadata.size
+    //                 << " bytes, Files Count: " << metadata.file_count;
 
-//     std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+    //     std::tuple<unsigned long long, std::string> details =
+    //     db->GetTreeState();
 
-//     unsigned long long total_entries_in_cfd = std::get<0>(details);
-//     std::string all_level_details = std::get<1>(details);
+    //     unsigned long long total_entries_in_cfd = std::get<0>(details);
+    //     std::string all_level_details = std::get<1>(details);
 
-//     std::cout << cfd_details.str()
-//               << ", Entries Count: " << total_entries_in_cfd << std::endl
-//               << all_level_details << std::endl;
-// #endif  // PROFILE
+    //     std::cout << cfd_details.str()
+    //               << ", Entries Count: " << total_entries_in_cfd << std::endl
+    //               << all_level_details << std::endl;
+    // #endif  // PROFILE
   }
 
   void OnFlushCompleted(DB* db, const FlushJobInfo& flush_job_info) override {
@@ -211,9 +173,6 @@ class PartialAndFullRangeFlushListner : public EventListener {
       unentries_count_ += tp.num_entries;
     }
     auto localtp = std::chrono::steady_clock::now();
-
-    auto tp = std::chrono::duration_cast<std::chrono::nanoseconds>(localtp -
-                                                                   globaltp);
     WaitForCompactions(db);
 //     {
 // #ifdef PROFILE
@@ -241,38 +200,39 @@ class PartialAndFullRangeFlushListner : public EventListener {
 //                 << std::endl;
 // #endif  // PROFILE
 //     }
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    std::cout << __FUNCTION__ << "(" << flush_count << ")"
               << " rocksdb.compact.write.bytes: "
               << db->GetOptions().statistics->getTickerCount(
                      COMPACT_WRITE_BYTES)
               << std::endl
               << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    std::cout << __FUNCTION__ << "(" << flush_count << ")"
               << " rocksdb.flush.write.bytes: "
               << db->GetOptions().statistics->getTickerCount(FLUSH_WRITE_BYTES)
               << std::endl
               << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    std::cout << __FUNCTION__ << "(" << flush_count << ")"
               << " rocksdb.compaction.num.triggered: "
               << db->GetOptions().statistics->getTickerCount(
                      NUM_COMPACTION_TRIGGERED)
               << std::endl
               << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    std::cout << __FUNCTION__ << "(" << flush_count << ")"
               << " rocksdb.files.trivially.moved: "
               << db->GetOptions().statistics->getTickerCount(
                      NUM_FILES_TRIVALLY_MOVED)
               << std::endl
               << std::flush;
-    std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    std::cout << __FUNCTION__ << "(" << flush_count << ")"
               << " rocksdb.files.compacted.sofar: "
               << db->GetOptions().statistics->getTickerCount(
                      NUM_FILES_COMPACTED_SO_FAR)
               << std::endl
               << std::flush;
-    // std::cout << __FUNCTION__ << "(" << tp.count() << ")"
+    // std::cout << __FUNCTION__ << "(" << flush_count << ")"
     //           << " levels.state: " << db->GetLevelsState() << std::endl
     //           << std::flush;
+    flush_count++;
   }
 
  private:
@@ -562,7 +522,8 @@ int runWorkload(DBEnv* env) {
 
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
-        lexico_valid = std::to_string(start_key).compare(std::to_string(end_key)) < 0;
+        lexico_valid =
+            std::to_string(start_key).compare(std::to_string(end_key)) < 0;
 
         {
           uint64_t entries_count_read = 0;
@@ -1281,6 +1242,7 @@ int runWorkload(DBEnv* env) {
 #endif  // TIMER
   }
 
+  delete it;
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
   s = db->Close();
@@ -1406,7 +1368,8 @@ void printExperimentalSetup(DBEnv* env) {
   std::cout << std::setfill(' ') << std::setw(l) << env->GetBufferSize();
   // std::cout << std::setfill(' ') << std::setw(l) <<
   // env->file_to_memtable_size_ratio;
-  std::cout << std::setfill(' ') << std::setw(l) << env->GetTargetFileSizeBase();
+  std::cout << std::setfill(' ') << std::setw(l)
+            << env->GetTargetFileSizeBase();
   std::cout << std::setfill(' ') << std::setw(l)
             << env->GetMaxBytesForLevelBase();
   std::cout << std::setfill(' ') << std::setw(l)

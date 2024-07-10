@@ -9,7 +9,7 @@
  */
 
 
-#include "aux_time.h"
+#include <aux_time.h>
 #include <cmath>
 
 #ifdef __MACH__

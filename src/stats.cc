@@ -8,8 +8,8 @@
 #include <sys/time.h>
 #include <iomanip>
 #include <cstdlib>
-#include "stats.h"
-#include "db_env.h"
+#include <stats.h>
+#include <db_env.h>
 
 
 Stats* Stats::instance = 0;

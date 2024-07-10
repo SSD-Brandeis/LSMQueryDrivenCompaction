@@ -3448,6 +3448,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
 
   IOStatus io_s;
   bool is_trivial_move_compaction = false;
+  bool is_level_renaming_compaction = false;
   if (!c) {
     // Nothing to do
     ROCKS_LOG_BUFFER(log_buffer, "Compaction nothing to do");
@@ -3485,6 +3486,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
              c->IsLevelRenaming()) {
     c->ReleaseCompactionFiles(status);
     is_trivial_move_compaction = true;
+    is_level_renaming_compaction = true;
     auto vstorage = c->input_version()->storage_info();
     auto num_non_empty_levels = vstorage->num_non_empty_levels();
 
@@ -3741,7 +3743,8 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   }
 
   if (c != nullptr) {
-    c->ReleaseCompactionFiles(status);
+    if (!is_level_renaming_compaction)
+      c->ReleaseCompactionFiles(status);
     *made_progress = true;
 
     // Need to make sure SstFileManager does its bookkeeping

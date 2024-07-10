@@ -1,20 +1,50 @@
+# Prerequisites
+*.d
 
-## .vscode
-.vscode
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
 
-## build
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# build
 build
 
-## venv
-venv/*
+# bin
+bin
 
-## FLAT FILES
-*.txt
-*.csv
+# .vscode
+.vscode
+
+# .vstats
+.vstats
 
 # .DS_Store (Mac)
 **/.DS_Store
-**/Info.plist
 
 # test/paper-draft
 **.aux
@@ -31,3 +61,6 @@ venv/*
 
 # bibliography biblio.tex [generated at user side]
 **biblio.tex
+
+# temp_files
+logs.txt

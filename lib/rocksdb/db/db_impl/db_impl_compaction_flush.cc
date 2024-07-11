@@ -3447,7 +3447,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   }
 
   IOStatus io_s;
-  bool is_trivial_move_compaction = false;
   bool is_level_renaming_compaction = false;
   if (!c) {
     // Nothing to do
@@ -3485,7 +3484,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   } else if (immutable_db_options_.enable_level_renaming &&
              c->IsLevelRenaming()) {
     c->ReleaseCompactionFiles(status);
-    is_trivial_move_compaction = true;
     is_level_renaming_compaction = true;
     auto vstorage = c->input_version()->storage_info();
     auto num_non_empty_levels = vstorage->num_non_empty_levels();
@@ -3563,7 +3561,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:AfterCompaction",
                              c->column_family_data());
   } else if (!trivial_move_disallowed && c->IsTrivialMove()) {
-    is_trivial_move_compaction = true;
     TEST_SYNC_POINT("DBImpl::BackgroundCompaction:TrivialMove");
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:BeforeCompaction",
                              c->column_family_data());
@@ -3731,6 +3728,15 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                                          &job_context->superversion_contexts[0],
                                          *c->mutable_cf_options());
     }
+
+    {
+      auto files_participated = 0;
+      for (auto compaction_input_files : *(c->inputs())) {
+        files_participated += compaction_input_files.files.size();
+      }
+      RecordTick(stats_, NUM_FILES_COMPACTED_SO_FAR, files_participated);
+    }
+
     *made_progress = true;
     TEST_SYNC_POINT_CALLBACK("DBImpl::BackgroundCompaction:AfterCompaction",
                              c->column_family_data());
@@ -3743,8 +3749,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   }
 
   if (c != nullptr) {
-    if (!is_level_renaming_compaction)
-      c->ReleaseCompactionFiles(status);
+    if (!is_level_renaming_compaction) c->ReleaseCompactionFiles(status);
     *made_progress = true;
 
     // Need to make sure SstFileManager does its bookkeeping
@@ -3752,14 +3757,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         immutable_db_options_.sst_file_manager.get());
     if (sfm && sfm_reserved_compact_space) {
       sfm->OnCompactionCompletion(c.get());
-    }
-
-    if (!is_trivial_move_compaction) {
-      auto files_participated = 0;
-      for (auto compaction_input_files : *(c->inputs())) {
-        files_participated += compaction_input_files.files.size();
-      }
-      RecordTick(stats_, NUM_FILES_COMPACTED_SO_FAR, files_participated);
     }
 
     NotifyOnCompactionCompleted(c->column_family_data(), c.get(), status,

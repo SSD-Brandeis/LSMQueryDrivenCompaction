@@ -41,7 +41,7 @@ bin
 .vscode
 
 # .vstats
-.vstats
+.expstats
 
 # .DS_Store (Mac)
 **/.DS_Store

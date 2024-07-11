@@ -168,6 +168,7 @@ class DBEnv {
    * 2 for kCompactionStyleUniversal
    * 3 for kCompactionStyleFIFO
    * 4 for kCompactionStyleNone
+   * 5 for kCompactionStyleTiering
    */
   uint64_t compaction_style = 1;  // [C] upper case
 

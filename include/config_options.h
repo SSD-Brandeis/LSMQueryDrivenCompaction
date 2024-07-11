@@ -124,6 +124,9 @@ void configOptions(DBEnv *env, Options *options,
     case 4:
       options->compaction_style = CompactionStyle::kCompactionStyleNone;
       break;
+    case 5:
+      options->compaction_style = CompactionStyle::kCompactionStyleTiering;
+      break;
     default:
       std::cerr << "Error[" << __FILE__ << " : " << __LINE__
                 << "]: Invalid compaction eagerness!" << std::endl;
@@ -334,8 +337,11 @@ void configOptions(DBEnv *env, Options *options,
 #pragma region[RangeReduce]
   read_options->enable_range_query_compaction =
       env->enable_range_query_compaction;
+
   read_options->lower_threshold = env->lower_threshold;
   read_options->upper_threshold = env->upper_threshold;
+  read_options->range_query_options->initiate();
+
   options->enable_level_renaming = env->enable_level_renaming;
 #pragma endregion  // [RangeReduce]
 }

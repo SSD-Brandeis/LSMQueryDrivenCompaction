@@ -9,6 +9,8 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+const timespec _1M_NANO_SEC = {0, 1000000};
+
 class FluidLSM;
 
 /**
@@ -18,7 +20,7 @@ struct CompactionTask {
   CompactionTask(DB* db, FluidLSM* compactor, const std::string& cf_name,
                  const std::vector<std::string>& input_file_names,
                  const int output_lvl, const CompactionOptions& compact_options,
-                 bool retry_on_fail, bool debug_mode)
+                 bool retry_on_fail, Verbosity verbosity)
       : db_(db),
         compactor_(compactor),
         cf_name_(cf_name),
@@ -26,7 +28,7 @@ struct CompactionTask {
         output_lvl_(output_lvl),
         compact_options_(compact_options),
         retry_on_fail_(retry_on_fail),
-        debug_mode_(debug_mode) {}
+        verbosity_(verbosity) {}
   DB* db_;
   FluidLSM* compactor_;
   const std::string& cf_name_;
@@ -34,7 +36,7 @@ struct CompactionTask {
   int output_lvl_;
   CompactionOptions compact_options_;
   bool retry_on_fail_;
-  bool debug_mode_;
+  Verbosity verbosity_;
 };
 
 /**
@@ -100,7 +102,7 @@ class FluidLSM : public EventListener {
   int GetSmallerLevelRunsCount() { return smaller_lvl_runs_count_; }
   int GetLargerLevelRunsCount() { return larger_lvl_runs_count_; }
   int GetLargestOccupiedLevel() const;
-  void SetDebugMode(bool mode) { debug_mode_ = mode; }
+  void SetVerbosity(Verbosity level) { verbosity_ = level; }
 
   /**
    * Prints current state of FluidLSM
@@ -111,6 +113,11 @@ class FluidLSM : public EventListener {
    * Captures the Flush completion event
    */
   void OnFlushCompleted(DB* db, const FlushJobInfo& info) override;
+
+  /**
+   * Wait for compactions that runs after flush
+   */
+  void WaitForCompactions() const;
 
   static void CompactFiles(void* args);
 
@@ -152,6 +159,6 @@ class FluidLSM : public EventListener {
   CompactionOptions compact_options_;
   int parallel_compactions_allowed_;
   int parallel_compactions_running_;
-  bool debug_mode_;
+  Verbosity verbosity_;
 };
 }  // namespace ROCKSDB_NAMESPACE

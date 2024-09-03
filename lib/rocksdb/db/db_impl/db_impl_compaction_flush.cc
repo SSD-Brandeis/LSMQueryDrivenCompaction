@@ -3627,9 +3627,9 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                                        *c->mutable_cf_options());
     c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
                                                              moved_bytes);
-    std::cout << "Trivially Moving: [moving " << moved_files << " files]"
-              << std::endl
-              << std::endl;
+    // std::cout << "Trivially Moving: [moving " << moved_files << " files]"
+    //           << std::endl
+    //           << std::endl;
     VersionStorageInfo::LevelSummaryStorage tmp;
     {
       event_logger_.LogToBuffer(log_buffer)

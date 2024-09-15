@@ -14,7 +14,7 @@ LOAD_GEN_PATH = f"{CURR_DIR.absolute()}/bin/load_gen"
 WORKING_VERSION = f"{CURR_DIR.absolute()}/bin/working_version"
 
 # directory tag
-TAG = "heatmaps"
+TAG = "heatmaps2"
 
 # workload specification
 """
@@ -142,7 +142,7 @@ def get_bounds(lowest, highest, num_points):
 
 if __name__ == "__main__":
     # Parameters for experiments
-    size_ratios = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    size_ratios = [10, 9, 8] #, 7, 6, 5, 4, 3, 2]
     inserts = 4_500_000
     updates = 1_125_000  # 25 %
     range_queries = 4500  # 0.1 %
@@ -151,10 +151,12 @@ if __name__ == "__main__":
     number_of_pages = 64
 
     for size_ratio in size_ratios:
-        lower_bounds = get_bounds(0, size_ratio/2, 10)
-        upper_bounds = get_bounds(size_ratio/2, size_ratio, 10)
+        lower_bounds = get_bounds(0, size_ratio*0.25, 8)
+        upper_bounds = get_bounds(0, size_ratio*0.5, 5)
 
-        done_bounds = set()
+        done_bounds = {(10, 0.3125, 1.25), (10, 0.3125, 2.5), (10, 0.3125, 3.75)}
+        error_bounds = {(10, 0.3125, 4.375), (10, 0.3125, 5.0)}
+        might_perform_bad = set()
 
         lower_upper_bounds = []
 
@@ -162,7 +164,6 @@ if __name__ == "__main__":
             for ub in upper_bounds:
                 if lb < ub and (lb, ub) not in done_bounds:
                     lower_upper_bounds.append((lb, ub))
-                    done_bounds.add((lb, ub))
 
         for entry_size in DEFAULT_ENTRY_SIZES:
             # actual_entry_size = entry_size + METADATA_SIZE
@@ -186,17 +187,19 @@ if __name__ == "__main__":
             )
             arguments = f"-I {inserts} -U {updates} -S {range_queries} -Y {selectivity} -E {entry_size}"
 
-            # vanilla run
-            create_workload(
-                arguments,
-                directory_name + f" rq 0 re 0 E {entry_size} B {entries_per_page}",
-            )
 
-            run_workload(
-                arguments
-                + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 0 --re 0",
-                directory_name + f" rq 0 re 0 E {entry_size} B {entries_per_page}",
-            )
+            if size_ratio not in [10]:
+                # vanilla run
+                create_workload(
+                    arguments,
+                    directory_name + f" rq 0 re 0 E {entry_size} B {entries_per_page}",
+                )
+
+                run_workload(
+                    arguments
+                    + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 0",
+                    directory_name + f" rq 0 re 0 E {entry_size} B {entries_per_page}",
+                )
 
             # # vanilla with level renaming run
             # create_workload(
@@ -212,15 +215,16 @@ if __name__ == "__main__":
 
             # range reduce run
             for lower_bound, upper_bound in lower_upper_bounds:
-                create_workload(
-                    arguments,
-                    directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
-                )
+                if (size_ratio, lower_bound, upper_bound) not in done_bounds and (size_ratio, lower_bound, upper_bound) not in error_bounds:
+                    create_workload(
+                        arguments,
+                        directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
+                    )
 
-                run_workload(
-                    arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --re 0 --lb {lower_bound} --ub {upper_bound}",
-                    directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
-                )
+                    run_workload(
+                        arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",
+                        directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
+                    )
 
             # # range reduce with level renamining run
             # for lower_bound, upper_bound in lower_upper_bounds:
@@ -235,5 +239,6 @@ if __name__ == "__main__":
             #     )
 
             os.chdir(EXPERIMENTS_DIR.parent)
+        os.chdir(EXPERIMENTS_DIR.parent.parent.absolute())
 
     logging.info("Experiment Completed.")

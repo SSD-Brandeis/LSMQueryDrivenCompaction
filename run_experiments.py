@@ -14,33 +14,10 @@ LOAD_GEN_PATH = f"{CURR_DIR.absolute()}/bin/load_gen"
 WORKING_VERSION = f"{CURR_DIR.absolute()}/bin/working_version"
 
 # directory tag
-TAG = "heatmaps2"
+TAG = "heatmaps3"
 
-# workload specification
-"""
-    DATA_SIZE   SIZE_RATIO      LEVELS (excluding level 0)
-    1966080         2             4
-
-
-"""
-# DATA_SIZE = 1_966_080
-# DEFAULT_FILE_SIZE = 65_536
-
-# DEFAULT_INSERTS = ...
-# DEFAULT_UPDATES = 0
-# DEFAULT_RANGE_QUERIES = 0
-# DEFAULT_SELECTIVITY = 0
-DEFAULT_ENTRY_SIZES = [16]  # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]  # (E)
-
-# # with each entry we add a 8 byte meta data that includes (sequence number and key type)
+DEFAULT_ENTRY_SIZES = [16]
 METADATA_SIZE = 8
-
-# # system knobs
-# DEFAULT_NUMBER_OF_PAGES = 4  # (P)
-# DEFAULT_ENTRIES_PER_PAGE = ...  # (B) 65,536 / (E * P) = B
-# DEFAULT_LOWER_BOUNDS = [0.25]
-# DEFAULT_UPPER_BOUNDS = [4]
-# DEFAULT_SIZE_RATIO = 2
 COMPACTION_STYLE = 1
 
 if not os.path.exists(EXPERIMENTS_DIR):
@@ -122,53 +99,53 @@ def run_workload(params, dir_name):
         os.chdir(CURR_DIR)
 
 
-def get_bounds(lowest, highest, num_points):
-    """Get a list of bounds between the lowest and highest values."""
-    points = []
+# def get_bounds(lowest, highest, num_points):
+#     """Get a list of bounds between the lowest and highest values."""
+#     points = []
 
-    def find_midpoints(start, end, point):
-        if point == 1:
-            return [start, end]
-        midpoint = (start + end) / 2
-        left_point = point // 2
-        right_point = point - left_point
-        points.append(midpoint)
-        find_midpoints(start, midpoint, left_point)
-        find_midpoints(midpoint, end, right_point)
+#     def find_midpoints(start, end, point):
+#         if point == 1:
+#             return [start, end]
+#         midpoint = (start + end) / 2
+#         left_point = point // 2
+#         right_point = point - left_point
+#         points.append(midpoint)
+#         find_midpoints(start, midpoint, left_point)
+#         find_midpoints(midpoint, end, right_point)
 
-    find_midpoints(lowest, highest, num_points)
-    return sorted(points) + [highest]
+#     find_midpoints(lowest, highest, num_points)
+#     return sorted(points) + [highest]
 
 
 if __name__ == "__main__":
     # Parameters for experiments
-    size_ratios = [10, 9, 8] #, 7, 6, 5, 4, 3, 2]
+    size_ratios = [10, 9]
     inserts = 4_500_000
     updates = 1_125_000  # 25 %
-    range_queries = 4500  # 0.1 %
+    range_queries = 9000  # 0.002 %
     selectivity = 0.1 # 10 %
     entries_per_page = 64
     number_of_pages = 64
 
     for size_ratio in size_ratios:
-        lower_bounds = get_bounds(0, size_ratio*0.25, 8)
-        upper_bounds = get_bounds(0, size_ratio*0.5, 5)
+        xx = size_ratio-1
+        bounds = sorted([size_ratio/(2**x) for x in range(xx-3, xx+4)])
 
-        done_bounds = {(10, 0.3125, 1.25), (10, 0.3125, 2.5), (10, 0.3125, 3.75)}
-        error_bounds = {(10, 0.3125, 4.375), (10, 0.3125, 5.0)}
+        # lower_bounds = get_bounds(0, size_ratio*0.25, 8)
+        # upper_bounds = get_bounds(0, size_ratio*0.5, 5)
+
+        done_bounds = set()
+        error_bounds = set()
         might_perform_bad = set()
 
         lower_upper_bounds = []
 
-        for lb in lower_bounds:
-            for ub in upper_bounds:
-                if lb < ub and (lb, ub) not in done_bounds:
+        for lb in bounds:
+            for ub in bounds:
+                if lb < ub and (size_ratio, lb, ub) not in done_bounds:
                     lower_upper_bounds.append((lb, ub))
 
         for entry_size in DEFAULT_ENTRY_SIZES:
-            # actual_entry_size = entry_size + METADATA_SIZE
-            # inserts = DATA_SIZE // actual_entry_size
-            # entries_per_page = DEFAULT_FILE_SIZE // (actual_entry_size * DEFAULT_NUMBER_OF_PAGES)
             buffer_size = entry_size * entries_per_page * number_of_pages
             logging.info(f"Buffer size: {buffer_size}")
 
@@ -188,7 +165,7 @@ if __name__ == "__main__":
             arguments = f"-I {inserts} -U {updates} -S {range_queries} -Y {selectivity} -E {entry_size}"
 
 
-            if size_ratio not in [10]:
+            if size_ratio not in []:
                 # vanilla run
                 create_workload(
                     arguments,

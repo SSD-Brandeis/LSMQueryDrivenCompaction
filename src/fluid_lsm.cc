@@ -50,7 +50,7 @@ FluidLSM::FluidLSM(int size_ratio, int smaller_lvl_runs_count /* K */,
       compact_options_(),
       parallel_compactions_allowed_(1),
       parallel_compactions_running_(0),
-      debug_mode_(false) {
+      verbosity_(Verbosity::NO_PRINTS) {
   compact_options_.compression = options_.compression;
   compact_options_.output_file_size_limit = options_.target_file_size_base;
   lazy_levels_.resize(options_.num_levels);

@@ -63,7 +63,7 @@ struct DbPath;
 using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
 
 enum Verbosity {
-  NONE = 0,
+  NO_PRINTS = 0,
   LOW = 1,
   MEDIUM = 2,
   HIGH = 3,
@@ -478,7 +478,7 @@ struct DBOptions {
 
   // verbosity to see print statements
   // default to 0 (means no prints)
-  Verbosity verbosity = Verbosity::NONE;
+  Verbosity verbosity = Verbosity::NO_PRINTS;
 
   bool enable_level_renaming = false;
 

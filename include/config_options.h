@@ -35,7 +35,7 @@ void configOptions(DBEnv *env, Options *options,
 
   switch (env->verbosity) {
     case 0:
-      options->verbosity = Verbosity::NONE;
+      options->verbosity = Verbosity::NO_PRINTS;
       break;
     case 1:
       options->verbosity = Verbosity::LOW;

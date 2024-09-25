@@ -111,7 +111,7 @@ class DBEnv {
 
   /**
    * Verbosity of print statements
-   * 0 for NONE
+   * 0 for NO_PRINTS
    * 1 for LOW
    * 2 for MEDIUM
    * 3 for HIGH

@@ -88,7 +88,6 @@ class MergeIteratorBuilder {
   InternalIterator* first_iter;
   bool use_merging_iter;
   Arena* arena;
-  DBImpl* db_impl_;
   // Used to set LevelIterator.range_tombstone_iter_.
   // See AddRangeTombstoneIterator() implementation for more detail.
   std::vector<std::pair<size_t, TruncatedRangeDelIterator***>>

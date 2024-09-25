@@ -1647,7 +1647,7 @@ InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
 MergeIteratorBuilder::MergeIteratorBuilder(
     const InternalKeyComparator* comparator, Arena* a, bool prefix_seek_mode,
     const Slice* iterate_upper_bound, DBImpl* db_impl)
-    : first_iter(nullptr), use_merging_iter(false), arena(a), db_impl_(db_impl) {
+    : first_iter(nullptr), use_merging_iter(false), arena(a) {
   auto mem = arena->AllocateAligned(sizeof(MergingIterator));
   merge_iter = new (mem) MergingIterator(comparator, nullptr, 0, true,
                                          prefix_seek_mode, db_impl, iterate_upper_bound);

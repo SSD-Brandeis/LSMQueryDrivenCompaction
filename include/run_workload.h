@@ -387,7 +387,7 @@ int runWorkload(DBEnv* env) {
   unsigned long all_inserts_time = 0;
   unsigned long all_updates_time = 0;
   unsigned long all_range_queries_time = 0;
-  std::chrono::_V2::system_clock::time_point refresh_time;
+  std::chrono::high_resolution_clock::time_point refresh_time;
   unsigned long refresh_duration;
   unsigned long reset_duration = 0;
   unsigned long actual_range_time = 0;

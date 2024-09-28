@@ -387,7 +387,8 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
   autovector<ColumnFamilyData*> column_families_not_to_flush;
   autovector<FlushRequest> to_be_pushed_back;
   while (!flush_queue_.empty()) {
-    const FlushRequest& flush_req = PopFirstFromFlushQueue();
+    FlushRequest flush_req = flush_queue_.front();
+    flush_queue_.pop_front();
     FlushReason flush_reason = flush_req.flush_reason;
     MemTable* memtable = flush_req.mem_to_flush;
     int level = flush_req.level;
@@ -638,12 +639,14 @@ void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
   if (flush_req.cfd_to_max_mem_id_to_persist.empty()) {
     return;
   }
-  for (auto& iter : flush_req.cfd_to_max_mem_id_to_persist) {
-    ColumnFamilyData* cfd = iter.first;
+  if (!immutable_db_options_.atomic_flush) {
+    assert(flush_req.cfd_to_max_mem_id_to_persist.size() == 1);
+    ColumnFamilyData* cfd = flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
+    assert(cfd);
     cfd->Ref();
+    ++unscheduled_partial_or_range_flushes_;
+    flush_queue_.push_back(flush_req);
   }
-  ++unscheduled_partial_or_range_flushes_;
-  flush_queue_.push_back(flush_req);
 }
 
 void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
@@ -678,6 +681,8 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
 
   MemTable* memtable_to_flush = mem_range;
 
+  // std::cout << "FlushReason: " << (flush_reason==FlushReason::kRangeFlush ? "RangeFlush" : "PartialFlush") << std::endl << std::flush;
+
   // switch new range memtable
   if (flush_reason == FlushReason::kRangeFlush) {
     mutex_.Lock();
@@ -705,8 +710,12 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
 
   FlushRequest req{flush_reason, {{cfd, 0}},  memtable_to_flush,
                    level,        just_delete, file_meta};
-  SchedulePendingPartialRangeFlush(req);
-  SchedulePartialOrRangeFileFlush();
+
+  {
+    InstrumentedMutexLock l(&mutex_);
+    SchedulePendingPartialRangeFlush(req);
+    SchedulePartialOrRangeFileFlush();
+  }
 }
 
 }  // namespace ROCKSDB_NAMESPACE

@@ -181,8 +181,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
       decision_matrix_meta_data.size(),
       std::vector<DecisionCell>(decision_matrix_meta_data.size()));
 
-  for (size_t i = 0; i < decision_matrix.size(); i++) {
-    for (size_t j = i; j < decision_matrix.size(); j++) {
+  for (int i = 0; i < static_cast<int>(decision_matrix.size()); i++) {
+    for (int j = i; j < static_cast<int>(decision_matrix.size()); j++) {
       if (i == j) {
         decision_matrix[i][j] = DecisionCell(
             i + 1, j + 1,
@@ -331,7 +331,6 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
     while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
            db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
            db_impl_->bg_partial_or_range_flush_running_ > 0) {
-      db_impl_->SchedulePartialOrRangeFileFlush();
       db_impl_->range_queries_complete_cv_.Wait();
     }
   }

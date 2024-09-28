@@ -1756,6 +1756,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
         number_of_entries -= num_input_entries;
       }
     }
+    db_mutex_->Lock();
   }
 
   if (tail_part && s.ok()) {
@@ -1911,6 +1912,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
         std::cout  << "{\"FileNumber\": " << file_meta_->fd.GetNumber() << ", \"Level\": " << level_ << ", \"ToCompactAccurate\": " << (number_of_entries - num_input_entries) << "}," << std::endl << std::flush;
       }
     }
+    db_mutex_->Lock();
   }
 
   base_->Unref();

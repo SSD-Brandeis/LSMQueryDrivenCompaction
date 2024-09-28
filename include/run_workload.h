@@ -1241,12 +1241,14 @@ int runWorkload(DBEnv* env) {
 #endif  // TIMER
   }
 
+  delete it;
+  if (!s.ok()) std::cerr << s.ToString() << std::endl;
+  assert(s.ok());
   s = db->Close();
   if (!s.ok()) std::cerr << s.ToString() << std::endl;
   assert(s.ok());
-  delete db;
 
-    std::cout << "End of experiment - TEST !!\n";
+  std::cout << "End of experiment - TEST !!\n";
 
   #ifdef TIMER
     std::cout << "=====================" << std::endl;

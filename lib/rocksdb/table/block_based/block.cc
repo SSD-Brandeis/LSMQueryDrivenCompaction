@@ -456,20 +456,20 @@ std::tuple<uint64_t, Slice> IndexBlockIter::SeekAndReturnSkipCount(
   if (this->status().ok()) {
     SeekImpl(target);
     Slice key = this->key();
-    Slice user_key;
     InternalKey ikey;
 
     ikey.DecodeFrom(key);
-    user_key = ikey.user_key();
     auto offset = this->value().handle.offset();
     Slice last_key;
 
     while (this->Valid() && CompareCurrentKey(target) <= 0) {
       last_key = this->key();
       this->Next();
-      InternalKey next_ikey;
-      next_ikey.DecodeFrom(this->key());
-      offset = this->value().handle.offset();
+      if (this->Valid()){
+        InternalKey next_ikey;
+        next_ikey.DecodeFrom(this->key());
+        offset = this->value().handle.offset();
+      }
     }
     return std::make_tuple(offset, last_key);
   }

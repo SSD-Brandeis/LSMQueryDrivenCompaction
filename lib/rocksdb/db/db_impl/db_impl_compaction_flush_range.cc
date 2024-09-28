@@ -151,6 +151,8 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
         num_entries != 0 ? 1.0 * raw_key_size / num_entries : 0.0;
     uint64_t avg_raw_value_size =
         num_entries != 0 ? 1.0 * raw_value_size / num_entries : 0.0;
+    
+    SequenceNumber seq = GetLatestSequenceNumber();
 
     if (given_start_key != "" && given_end_key == "") {
       // start key comes when tail is overlapping
@@ -161,7 +163,8 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       //    |          |
       //    |----------|
 
-      Slice target = Slice(given_start_key);
+      InternalKey internal_start_key(Slice(given_start_key), seq, kValueTypeForSeek);
+      Slice target = internal_start_key.Encode();
       auto skip_count_with_key =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
                                                                 target);
@@ -178,7 +181,8 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       //     |          |
       //     |----------|
 
-      Slice target = Slice(given_end_key);
+      InternalKey internal_end_key(Slice(given_end_key), seq, kValueTypeForSeek);
+      Slice target = internal_end_key.Encode();
       auto skip_count_with_key =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
                                                                 target);
@@ -194,8 +198,10 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
       //          |          |
       //          |----------|
 
-      Slice start = Slice(given_start_key);
-      Slice end = Slice(given_end_key);
+      InternalKey internal_start_key(Slice(given_start_key), seq, kValueTypeForSeek);
+      InternalKey internal_end_key(Slice(given_end_key), seq, kValueTypeForSeek);
+      Slice start = internal_start_key.Encode();
+      Slice end = internal_end_key.Encode();
       auto start_overlapping =
           table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
                                                                 start);
@@ -439,6 +445,7 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
         // InstallSuperVersionAndScheduleWork(cfd,
         // &(superversion_contexts.back()),
         //                                    mutable_cf_options);
+        cfd->UnrefAndTryDelete();
         break;
       }
 
@@ -643,9 +650,9 @@ void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
     assert(flush_req.cfd_to_max_mem_id_to_persist.size() == 1);
     ColumnFamilyData* cfd = flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
     assert(cfd);
-    cfd->Ref();
-    ++unscheduled_partial_or_range_flushes_;
-    flush_queue_.push_back(flush_req);
+      cfd->Ref();
+      ++unscheduled_partial_or_range_flushes_;
+      flush_queue_.push_back(flush_req);
   }
 }
 

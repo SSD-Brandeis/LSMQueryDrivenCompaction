@@ -101,8 +101,11 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     Slice useful_min_key = "";
     Slice useful_max_key = "";
 
+    SequenceNumber seq = db_impl_->GetLatestSequenceNumber();
+    InternalKey internal_start_key(Slice(read_options_.range_start_key), seq, kValueTypeForSeek);
+    InternalKey internal_end_key(Slice(read_options_.range_end_key), seq, kValueTypeForSeek);
     size_t file_index_ = FindFile(cfd_->internal_comparator(), level_files,
-                                  Slice(read_options_.range_start_key));
+                                  internal_start_key.Encode());
 
     for (; file_index_ < num_files; file_index_++) {
       auto& fd = level_files.files[file_index_];

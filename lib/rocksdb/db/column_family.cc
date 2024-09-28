@@ -1108,12 +1108,6 @@ void ColumnFamilyData::CreateNewMemtable(
   }
   SetMemtable(ConstructNewMemtable(mutable_cf_options, earliest_seq));
   mem_->Ref();
-
-  if (mem_range_ != nullptr) {
-    delete mem_range_->Unref();
-  }
-  SetMemtableRange(ConstructNewMemtable(mutable_cf_options, earliest_seq));
-  mem_range_->Ref();
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {

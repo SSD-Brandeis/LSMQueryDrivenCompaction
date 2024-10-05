@@ -1656,6 +1656,7 @@ struct ReadOptions {
   // end_key represent the end key of the range query
   std::string range_start_key;
   std::string range_end_key;
+  SequenceNumber seq;
   bool range_query_partial_block_read = false;
 
   // Used to check if the range query compaction is enabled

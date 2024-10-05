@@ -492,8 +492,9 @@ void BlockBasedTableIterator::CheckOutOfBound() {
     } else {
       is_out_of_bound_ = false;
       is_seeked_for_range_query_once = true;
-      const Slice target{read_options_.range_end_key};
-      Seek(target);
+      InternalKey target(Slice(read_options_.range_end_key), 0, kValueTypeForSeek);
+      // const Slice target{read_options_.range_end_key};
+      Seek(target.Encode());
       bool still_in_range;
       while ((still_in_range = (user_comparator_.CompareWithoutTimestamp(
                                     Slice(read_options_.range_end_key),

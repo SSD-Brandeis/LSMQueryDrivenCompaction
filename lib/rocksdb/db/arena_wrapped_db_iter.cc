@@ -269,6 +269,7 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
   // Assign read options once to avoid multiple assignments
   read_options_.range_end_key = end_key;
   read_options_.range_start_key = start_key;
+  read_options_.seq = db_impl_->GetLatestSequenceNumber();
   read_options_.enable_range_query_compaction = rqdc_enabled;
   db_impl_->read_options_ = read_options_;
 

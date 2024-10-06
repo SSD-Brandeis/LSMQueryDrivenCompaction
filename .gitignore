@@ -64,3 +64,6 @@ bin
 
 # temp_files
 logs.txt
+
+#__pycache__
+__pycache__

@@ -418,7 +418,7 @@ int runWorkload(DBEnv* env) {
 
   while (!workload_file.eof()) {
     char instruction;
-    long key, start_key, end_key;
+    std::string key, start_key, end_key;
     std::string value;
 
     std::time_t end_time;
@@ -432,7 +432,7 @@ int runWorkload(DBEnv* env) {
 #ifdef TIMER
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
-          s = db->Put(write_options, std::to_string(key), value);
+          s = db->Put(write_options, key, value);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -457,7 +457,7 @@ int runWorkload(DBEnv* env) {
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
 
-          s = db->Put(write_options, std::to_string(key), value);
+          s = db->Put(write_options, key, value);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -485,7 +485,7 @@ int runWorkload(DBEnv* env) {
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
 
-          s = db->Delete(write_options, std::to_string(key));
+          s = db->Delete(write_options, key);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -507,7 +507,7 @@ int runWorkload(DBEnv* env) {
           auto start = std::chrono::high_resolution_clock::now();
 #endif  // TIMER
 
-          s = db->Get(read_options, std::to_string(key), &value);
+          s = db->Get(read_options, key, &value);
 
 #ifdef TIMER
           auto stop = std::chrono::high_resolution_clock::now();
@@ -523,7 +523,7 @@ int runWorkload(DBEnv* env) {
       case 'S':  // scan: range query
         workload_file >> start_key >> end_key;
         lexico_valid =
-            std::to_string(start_key).compare(std::to_string(end_key)) < 0;
+            start_key.compare(end_key) < 0;
 
         {
           uint64_t entries_count_read = 0;
@@ -610,7 +610,7 @@ int runWorkload(DBEnv* env) {
           if (lexico_valid) {
             // std::cout << "\nrangeQuery startkey: " << start_key
             //           << " endkey: " << end_key << std::endl << std::flush;
-            it->Refresh(std::to_string(start_key), std::to_string(end_key),
+            it->Refresh(start_key, end_key,
                         entries_count_read, env->enable_range_query_compaction);
           }
 #ifdef TIMER
@@ -624,8 +624,8 @@ int runWorkload(DBEnv* env) {
 #endif  // TIMER
 
           assert(it->status().ok());
-          for (it->Seek(std::to_string(start_key)); it->Valid(); it->Next()) {
-            if (it->key().ToString() >= std::to_string(end_key)) {
+          for (it->Seek(start_key); it->Valid(); it->Next()) {
+            if (it->key().ToString() >= end_key) {
               break;
             }
             ideal_entries_count++;

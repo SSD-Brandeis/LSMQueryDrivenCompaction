@@ -495,11 +495,11 @@ class PlotEpochStats:
 
 class PlotRangeQueryStats:
     vanilla_plot_kwargs = {
-        "label": "vanilla universal",
+        "label": "vanilla",
         "color": "saddlebrown",
     }
     rqdc_plot_kwargs = {
-        "label": "rqdc",
+        "label": "RangeReduce",
         "color": "steelblue",
     }
 
@@ -548,14 +548,14 @@ class PlotRangeQueryStats:
 
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
         ax.set_yticklabels(
-            [f"{int(i/(1000 ** 2))}" if i != 0 else "0" for i in ax.get_yticks()],
+            [f"{int(i/(1000 ** 1))}" if i != 0 else "0" for i in ax.get_yticks()],
             fontsize=12,
         )
         ax.set_title("total write (RQDC range query)", fontsize=12)
 
         plt.show()
 
-    def bytes_read_for_each_range_query(self):
+    def bytes_read_for_each_range_query(self, range_query_pattern=""):
         vanilla_rq_bytes = (
             self._vanilla[[str(RQColumn.TOTAL_ENTRIES_READ)]]
             .apply(lambda x: x * ENTRY_SIZE)[str(RQColumn.TOTAL_ENTRIES_READ)]
@@ -574,11 +574,10 @@ class PlotRangeQueryStats:
         fig, ax = plt.subplots(figsize=fig_size)
 
         ax.plot(
-            range(len(vanilla_rq_bytes)), vanilla_rq_bytes, **self.vanilla_plot_kwargs
-        )
-        ax.plot(range(len(rqdc_rq_bytes)), rqdc_rq_bytes, **self.rqdc_plot_kwargs)
+            range(len(vanilla_rq_bytes)), vanilla_rq_bytes, label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}", color=self.vanilla_plot_kwargs['color'], alpha=0.8)
+        ax.plot(range(len(rqdc_rq_bytes)), rqdc_rq_bytes, label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}", color=self.rqdc_plot_kwargs['color'], alpha=0.8)
 
-        ax.set_ylabel("total read (MB)", fontsize=12)
+        ax.set_ylabel("total read (KB)", fontsize=12)
         ax.set_xlabel("range query number", fontsize=12)
 
         ax.set_ylim(bottom=0)
@@ -588,7 +587,7 @@ class PlotRangeQueryStats:
 
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
         ax.set_yticklabels(
-            [f"{int(i/(1000 ** 2))}" if i != 0 else "0" for i in ax.get_yticks()],
+            [f"{int(i/(1000 ** 1))}" if i != 0 else "0" for i in ax.get_yticks()],
             fontsize=12,
         )
         ax.set_title("total read", fontsize=12)
@@ -600,10 +599,20 @@ class PlotRangeQueryStats:
             bbox_to_anchor=(0.5, 0.1),
             frameon=False,
         )
+        ax.annotate(
+            f"avg vanilla: {(sum(vanilla_rq_bytes)/len(vanilla_rq_bytes))/(1000**1):.2f} KB",
+            xy=(10, 200000),
+            fontsize=12,
+        )
+        ax.annotate(
+            f"avg RQDC: {sum(rqdc_rq_bytes)/len(rqdc_rq_bytes)/(1000 ** 1):.2f} KB",
+            xy=(60, 200000),
+            fontsize=12,
+        )
 
         plt.show()
 
-    def latency_for_each_range_query(self):
+    def latency_for_each_range_query(self, range_query_pattern=""):
 
         plotting_column = str(RQColumn.RQ_TOTAL_TIME)
 
@@ -617,9 +626,8 @@ class PlotRangeQueryStats:
         fig, ax = plt.subplots(figsize=fig_size)
 
         ax.plot(
-            range(len(vanilla_rq_time)), vanilla_rq_time, **self.vanilla_plot_kwargs
-        )
-        ax.plot(range(len(rqdc_rq_time)), rqdc_rq_time, **self.rqdc_plot_kwargs)
+            range(len(vanilla_rq_time)), vanilla_rq_time, label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}", color=self.vanilla_plot_kwargs['color'], alpha=0.8)
+        ax.plot(range(len(rqdc_rq_time)), rqdc_rq_time, label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}", color=self.rqdc_plot_kwargs['color'], alpha=0.8)
 
         ax.set_ylabel("latency (ms)", fontsize=12)
         ax.set_xlabel("range query number", fontsize=12)
@@ -639,18 +647,18 @@ class PlotRangeQueryStats:
             loc="lower center",
             ncol=2,
             fontsize=12,
-            bbox_to_anchor=(0.5, 0.1),
+            bbox_to_anchor=(0.5, 0.7),
             frameon=False,
         )
 
         ax.annotate(
             f"avg vanilla: {self._vanilla[plotting_column].mean()/(1000 ** 2):.2f}",
-            xy=(5, 200000000),
+            xy=(10, 25000000),
             fontsize=12,
         )
         ax.annotate(
             f"avg RQDC: {self._rqdc[plotting_column].mean()/(1000 ** 2):.2f}",
-            xy=(90, 200000000),
+            xy=(60, 25000000),
             fontsize=12,
         )
 

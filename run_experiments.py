@@ -14,7 +14,7 @@ LOAD_GEN_PATH = f"{CURR_DIR.absolute()}/bin/load_gen"
 WORKING_VERSION = f"{CURR_DIR.absolute()}/bin/working_version"
 
 # directory tag
-TAG = "final"
+TAG = "final2"
 
 DEFAULT_ENTRY_SIZES = [16]
 METADATA_SIZE = 8
@@ -31,49 +31,27 @@ logging.basicConfig(
 )
 
 
-# def create_workload(args, dir_name):
-#     """Create workload files for the experiment."""
-#     try:
-#         os.chdir(PROJECT_DIR)
-#         # if not os.path.exists(dir_name):
-#         #     os.mkdir(dir_name)
-
-#         if os.path.exists(WORKLOAD_FILE):
-#             logging.info("Found already generated workload, Replacing ...")
-
-#             os.chdir(EXPERIMENTS_DIR)
-#             if not os.path.exists(dir_name):
-#                 os.mkdir(dir_name)
-
-#             shutil.copy(os.path.join(PROJECT_DIR, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
-#         else:
-#             process_output = os.popen(f"{LOAD_GEN_PATH} {args}").read()
-#             logging.info(f"Workload generation output: {process_output}")
-
-#             os.chdir(EXPERIMENTS_DIR)
-#             if not os.path.exists(dir_name):
-#                 os.mkdir(dir_name)
-
-#             shutil.copy(os.path.join(PROJECT_DIR, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
-#     except Exception as e:
-#         logging.error(f"Error in create_workload: {e}")
-#     finally:
-#         os.chdir(PROJECT_DIR)
-
-
-def create_workload(args, dir_name):
+def create_workload(args, dir_name, flag=False):
     """Create workload files for the experiment."""
+
     try:
         os.chdir(EXPERIMENTS_DIR)
         if not os.path.exists(dir_name):
-            print(dir_name)
             os.mkdir(dir_name)
             os.chdir(dir_name)
+
+        if flag:
+            items = dir_name.split(' ')[:-4]
+            items[-7] = "0"
+            van_workload = os.path.join(" ".join(items))
+            shutil.copy(os.path.join("..", van_workload, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
+            return
 
         if os.path.exists(WORKLOAD_FILE):
             logging.info("Found already generated workload, Replacing ...")
             shutil.copy(WORKLOAD_FILE, os.path.join(EXPERIMENTS_DIR, dir_name))
         else:
+            logging.info(f"{LOAD_GEN_PATH} {args}")
             process_output = os.popen(f"{LOAD_GEN_PATH} {args}").read()
             logging.info(f"Workload generation output: {process_output}")
             # shutil.copy(WORKLOAD_FILE, os.path.join(EXPERIMENTS_DIR, dir_name))
@@ -81,7 +59,6 @@ def create_workload(args, dir_name):
         logging.error(f"Error in create_workload: {e}")
     finally:
         os.chdir(PROJECT_DIR)
-
 
 def run_workload(params, dir_name):
     """Run the generated workload for the experiment."""
@@ -148,8 +125,8 @@ if __name__ == "__main__":
     selectivity = 0.1 # 10 %
     entries_per_page = 64
     number_of_pages = 64
-    same_range_queries = 9
-    overlapping_percent = 0.9
+    same_range_queries = 100
+    overlapping_percent = 0.98
 
     for size_ratio in size_ratios:
         xx = size_ratio-1
@@ -187,7 +164,7 @@ if __name__ == "__main__":
                 f"I {inserts} U {updates} S {range_queries} Y {selectivity} T {size_ratio}"
             )
             arguments = f"-I {inserts} -U {updates} -S {range_queries} -Y {selectivity} -E {entry_size}"
-
+            lower_bound, upper_bound = lower_upper_bounds[0]
 
             if size_ratio not in []:
                 # vanilla run
@@ -219,7 +196,8 @@ if __name__ == "__main__":
                 if (size_ratio, lower_bound, upper_bound) not in done_bounds and (size_ratio, lower_bound, upper_bound) not in error_bounds:
                     create_workload(
                         arguments,
-                        directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
+                        directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}",
+                        flag=True
                     )
 
                     run_workload(
@@ -227,11 +205,11 @@ if __name__ == "__main__":
                         directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
                     )
 
-            # exactly same range queries 
-            create_workload(
-                arguments + f" -O {same_range_queries}",
-                directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries}"
-            )
+            # # exactly same range queries 
+            # create_workload(
+            #     arguments + f" -O {same_range_queries}",
+            #     directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries}"
+            # )
 
             run_workload(
                 arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",
@@ -239,11 +217,11 @@ if __name__ == "__main__":
             )
 
 
-            # overlapping range queries
-            create_workload(
-                arguments + f" -O {same_range_queries} --PO {overlapping_percent}",
-                directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries} PO {overlapping_percent}"
-            )
+            # # overlapping range queries
+            # create_workload(
+            #     arguments + f" -O {same_range_queries} --PO {overlapping_percent}",
+            #     directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries} PO {overlapping_percent}"
+            # )
 
             run_workload(
                 arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",

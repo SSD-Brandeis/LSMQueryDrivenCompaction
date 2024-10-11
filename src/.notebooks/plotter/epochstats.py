@@ -180,8 +180,8 @@ class EpochStats:
                     )
                     file_details = sst_file_string.split(":")[1].strip().split()
                     file_size = int(file_details[0].strip())
-                    smallest_key = int(file_details[1].strip(",").strip("("))
-                    largest_key = int(file_details[2].strip(")"))
+                    smallest_key = file_details[1].strip(",").strip("(")
+                    largest_key = file_details[2].strip(")")
                     entries_count = int(file_details[3].strip("]"))
 
                     sst_files.append(

@@ -14,7 +14,7 @@ LOAD_GEN_PATH = f"{CURR_DIR.absolute()}/bin/load_gen"
 WORKING_VERSION = f"{CURR_DIR.absolute()}/bin/working_version"
 
 # directory tag
-TAG = "final2"
+TAG = "heatmap4"
 
 DEFAULT_ENTRY_SIZES = [16]
 METADATA_SIZE = 8
@@ -31,34 +31,63 @@ logging.basicConfig(
 )
 
 
-def create_workload(args, dir_name, flag=False):
+def create_workload(args, dir_name):
     """Create workload files for the experiment."""
-
     try:
-        os.chdir(EXPERIMENTS_DIR)
-        if not os.path.exists(dir_name):
-            os.mkdir(dir_name)
-            os.chdir(dir_name)
-
-        if flag:
-            items = dir_name.split(' ')[:-4]
-            items[-7] = "0"
-            van_workload = os.path.join(" ".join(items))
-            shutil.copy(os.path.join("..", van_workload, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
-            return
+        os.chdir(PROJECT_DIR)
+        # if not os.path.exists(dir_name):
+        #     os.mkdir(dir_name)
 
         if os.path.exists(WORKLOAD_FILE):
             logging.info("Found already generated workload, Replacing ...")
-            shutil.copy(WORKLOAD_FILE, os.path.join(EXPERIMENTS_DIR, dir_name))
+
+            os.chdir(EXPERIMENTS_DIR)
+            if not os.path.exists(dir_name):
+                os.mkdir(dir_name)
+
+            shutil.copy(os.path.join(PROJECT_DIR, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
         else:
-            logging.info(f"{LOAD_GEN_PATH} {args}")
             process_output = os.popen(f"{LOAD_GEN_PATH} {args}").read()
             logging.info(f"Workload generation output: {process_output}")
-            # shutil.copy(WORKLOAD_FILE, os.path.join(EXPERIMENTS_DIR, dir_name))
+
+            os.chdir(EXPERIMENTS_DIR)
+            if not os.path.exists(dir_name):
+                os.mkdir(dir_name)
+
+            shutil.copy(os.path.join(PROJECT_DIR, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
     except Exception as e:
         logging.error(f"Error in create_workload: {e}")
     finally:
         os.chdir(PROJECT_DIR)
+
+# def create_workload(args, dir_name, flag=False):
+#     """Create workload files for the experiment."""
+
+#     try:
+#         os.chdir(EXPERIMENTS_DIR)
+#         if not os.path.exists(dir_name):
+#             os.mkdir(dir_name)
+#             os.chdir(dir_name)
+
+#         if flag:
+#             items = dir_name.split(' ')[:-4]
+#             items[-7] = "0"
+#             van_workload = os.path.join(" ".join(items))
+#             shutil.copy(os.path.join("..", van_workload, WORKLOAD_FILE), os.path.join(EXPERIMENTS_DIR, dir_name))
+#             return
+
+#         if os.path.exists(WORKLOAD_FILE):
+#             logging.info("Found already generated workload, Replacing ...")
+#             shutil.copy(WORKLOAD_FILE, os.path.join(EXPERIMENTS_DIR, dir_name))
+#         else:
+#             logging.info(f"{LOAD_GEN_PATH} {args}")
+#             process_output = os.popen(f"{LOAD_GEN_PATH} {args}").read()
+#             logging.info(f"Workload generation output: {process_output}")
+#             # shutil.copy(WORKLOAD_FILE, os.path.join(EXPERIMENTS_DIR, dir_name))
+#     except Exception as e:
+#         logging.error(f"Error in create_workload: {e}")
+#     finally:
+#         os.chdir(PROJECT_DIR)
 
 def run_workload(params, dir_name):
     """Run the generated workload for the experiment."""
@@ -125,26 +154,22 @@ if __name__ == "__main__":
     selectivity = 0.1 # 10 %
     entries_per_page = 64
     number_of_pages = 64
-    same_range_queries = 100
-    overlapping_percent = 0.98
+    # same_range_queries = 100
+    # overlapping_percent = 0.98
 
     for size_ratio in size_ratios:
         xx = size_ratio-1
-        bounds = sorted([size_ratio/(2**x) for x in range(xx-3, xx+4)])
+        bounds = sorted([size_ratio/(2**x) for x in range(xx-4, xx+5)])
 
         # lower_bounds = get_bounds(0, size_ratio*0.25, 8)
         # upper_bounds = get_bounds(0, size_ratio*0.5, 5)
 
-        done_bounds = set()
-        error_bounds = set()
-        might_perform_bad = set()
+        lower_upper_bounds = list()
 
-        lower_upper_bounds = [(size_ratio/(2**6), size_ratio/(2**5))]
-
-        # for lb in bounds:
-        #     for ub in bounds:
-        #         if lb < ub and (size_ratio, lb, ub) not in done_bounds:
-        #             lower_upper_bounds.append((lb, ub))
+        for lb in bounds:
+            for ub in bounds:
+                if lb < ub:
+                    lower_upper_bounds.append((lb, ub))
 
         for entry_size in DEFAULT_ENTRY_SIZES:
             buffer_size = entry_size * entries_per_page * number_of_pages
@@ -179,66 +204,18 @@ if __name__ == "__main__":
                     directory_name + f" rq 0 re 0 E {entry_size} B {entries_per_page}",
                 )
 
-            # # vanilla with level renaming run
-            # create_workload(
-            #     arguments,
-            #     directory_name + f" rq 0 re 1 E {entry_size} B {entries_per_page}",
-            # )
-
-            # run_workload(
-            #     arguments
-            #     + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 0 --re 1",
-            #     directory_name + f" rq 0 re 1 E {entry_size} B {entries_per_page}",
-            # )
-
             # range reduce run
             for lower_bound, upper_bound in lower_upper_bounds:
-                if (size_ratio, lower_bound, upper_bound) not in done_bounds and (size_ratio, lower_bound, upper_bound) not in error_bounds:
-                    create_workload(
-                        arguments,
-                        directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}",
-                        flag=True
-                    )
+                # if (size_ratio, lower_bound, upper_bound) not in done_bounds and (size_ratio, lower_bound, upper_bound) not in error_bounds:
+                create_workload(
+                    arguments,
+                    directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}",
+                )
 
-                    run_workload(
-                        arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",
-                        directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
-                    )
-
-            # # exactly same range queries 
-            # create_workload(
-            #     arguments + f" -O {same_range_queries}",
-            #     directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries}"
-            # )
-
-            run_workload(
-                arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",
-                directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries}"
-            )
-
-
-            # # overlapping range queries
-            # create_workload(
-            #     arguments + f" -O {same_range_queries} --PO {overlapping_percent}",
-            #     directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries} PO {overlapping_percent}"
-            # )
-
-            run_workload(
-                arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",
-                directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound} O {same_range_queries} PO {overlapping_percent}"
-            )
-
-            # # range reduce with level renamining run
-            # for lower_bound, upper_bound in lower_upper_bounds:
-            #     create_workload(
-            #         arguments,
-            #         directory_name + f" rq 1 re 1 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
-            #     )
-
-            #     run_workload(
-            #         arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size} --rq 1 --re 1 --lb {lower_bound} --ub {upper_bound}",
-            #         directory_name + f" rq 1 re 1 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
-            #     )
+                run_workload(
+                    arguments + f" -B {entries_per_page} -P {number_of_pages} -T {size_ratio} --rq 1 --lb {lower_bound} --ub {upper_bound}",
+                    directory_name + f" rq 1 re 0 E {entry_size} B {entries_per_page} lb {lower_bound} ub {upper_bound}"
+                )
 
             os.chdir(EXPERIMENTS_DIR.parent)
         os.chdir(EXPERIMENTS_DIR.parent.parent.absolute())

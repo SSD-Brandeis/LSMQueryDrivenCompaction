@@ -80,6 +80,56 @@ class PlotEpochStats:
         )
         plt.show()
 
+    def plot_database_size(self):
+        vanilla_compaction_debt = [van.DBSize for van in self._vanilla]
+        rqdc_compaction_debt = [rqdc.DBSize for rqdc in self._rqdc]
+
+        fig_size = (6, 4)
+        bar_width = 0.35
+        num_bars_per_group = 2
+        epochs = NUMEPOCHS
+
+        index = np.arange(epochs)
+        fig, ax = plt.subplots(figsize=fig_size)
+
+        ax.bar(
+            index - (bar_width / num_bars_per_group),
+            vanilla_compaction_debt,
+            bar_width,
+            **self.vanilla_bar_kwargs,
+        )
+        ax.bar(
+            index + (bar_width / num_bars_per_group),
+            rqdc_compaction_debt,
+            bar_width,
+            **self.rqdc_bar_kwargs,
+        )
+
+        ax.set_ylabel("Database Size (MB)", fontsize=12)
+        ax.set_xlabel("epoch", fontsize=12)
+
+        ax.set_ylim(bottom=0)
+
+        ax.set_xticks(range(epochs))
+        ax.set_xticklabels([f"{epoch}" for epoch in range(1, epochs + 1)], fontsize=12)
+
+        ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
+        ax.set_yticklabels(
+            [f"{int(i/(1000 ** 2))}" if i != 0 else "0" for i in ax.get_yticks()],
+            fontsize=12,
+        )
+
+        # ax.set_title("compaction debt", fontsize=12)
+
+        fig.legend(
+            loc="upper center",
+            ncol=2,
+            fontsize=12,
+            bbox_to_anchor=(0.5, 0.98),
+            frameon=False,
+        )
+        plt.show()
+
     def plot_compaction_debt(self):
         vanilla_compaction_debt = [van.CompactionDebt for van in self._vanilla]
         rqdc_compaction_debt = [rqdc.CompactionDebt for rqdc in self._rqdc]
@@ -442,6 +492,29 @@ class PlotEpochStats:
             "darkkhaki",
             "teal",
             "slateblue",
+            "goldenrod",
+            "mediumorchid",
+            "indianred",
+            "lightcoral",
+            "deepskyblue",
+            "limegreen",
+            "coral",
+            "orchid",
+            "crimson",
+            "darkseagreen",
+            "royalblue",
+            "firebrick",
+            "turquoise",
+            "lavender",
+            "navajowhite",
+            "sienna",
+            "dodgerblue",
+            "forestgreen",
+            "chocolate",
+            "lightblue",
+            "thistle",
+            "plum",
+            "mediumslateblue",
         ]
 
         index = np.arange(epochs)

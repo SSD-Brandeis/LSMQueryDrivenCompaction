@@ -53,15 +53,16 @@ class PlotHeatMaps:
 
     def _updated_xlabels(self, labels: List[str]) -> List[str]:
         i = 0
-        for _ in range(len(bounds)-1):
-            labels[i+1] += f"\n{LABELS[(i)]}"
+        for _ in range(len(EPSILON_VALUES)+1):
+            labels[i] = f"{round(float(labels[i]), 3)}"
             i += 1
         return labels
 
     def _updated_ylabels(self, labels: List[str]) -> List[str]:
         i = 0
-        for _ in range(len(bounds)-1):
-            labels[i+1] = f"{LABELS[(i+1)]}\n" + labels[i+1]
+        for _ in range(1):
+            labels[i+1] = 'inf'
+            # labels[i] = f"{round(float(labels[i]), 3)}"
             i += 1
         return labels
 
@@ -93,7 +94,7 @@ class PlotHeatMaps:
         plt.title(title + f" T [{SIZE_RATIO}] Y {SELECTIVITY}", fontsize=12)
         plt.gca().invert_yaxis()
 
-        self._plot_percentiles(data=self._get_percentiles(df, col), ax=ax)
+        # self._plot_percentiles(data=self._get_percentiles(df, col), ax=ax)
 
     def normalize_plotting_data(self, pltdata, key: str):
         pltdata_copy = deepcopy(pltdata)

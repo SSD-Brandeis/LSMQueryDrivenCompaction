@@ -7,17 +7,19 @@ UPDATES = 1_125_000
 RANGE_QUERIES = 9000
 # SELECTIVITIES = [0.5, 0.2, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
 SELECTIVITY = 0.1
-SIZE_RATIO = 2
+SIZE_RATIO = 6
 ENTRY_SIZE = 16
 NUM_PAGE_PER_FILE = 64
 ENTRIES_PER_PAGE = 64
 OVERLAPPING_RANGE_QUERY_COUNT = 0
 OVERLAPPING_RQ_PERCENT = 0.98
 
-LOWER_UPPER_BOUNDS = [(SIZE_RATIO/(2**6), SIZE_RATIO/(2**5))]
+EPSILON_VALUES = (0, 0.02, 0.08, 0.1, -0.02, -0.08) #, -0.1)
 
-xx = SIZE_RATIO - 1
-bounds = sorted([SIZE_RATIO / (2**x) for x in range(xx-4, xx+5)])
+# LOWER_UPPER_BOUNDS = [(SIZE_RATIO/(2**6), SIZE_RATIO/(2**5))]
 
-LABELS = [f"{SIZE_RATIO}/(2^{x})" for x in range(xx-4, xx+5)]
-LABELS.reverse()
+# xx = SIZE_RATIO - 1
+# bounds = sorted([SIZE_RATIO / (2**x) for x in range(xx-4, xx+5)])
+
+# LABELS = [f"{SIZE_RATIO}/(2^{x})" for x in range(xx-4, xx+5)]
+# LABELS.reverse()

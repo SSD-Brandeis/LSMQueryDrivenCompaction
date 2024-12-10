@@ -99,13 +99,11 @@ class EpochStats:
             sum_of_bytes - (filesize * last_non_empty_level_index)
         )
 
-    def _total_write_bytes(self, epoch_stats: List[str]):
+    def _compaction_written_bytes(self, epoch_stats: List[str]):
         write_bytes = 0
 
         for line in epoch_stats:
-            if line.startswith("rocksdb.compact.write.bytes") or line.startswith(
-                "rocksdb.flush.write.bytes"
-            ):
+            if line.startswith("rocksdb.compact.write.bytes"):
                 write_bytes += int(line.split(":")[1])
 
         return write_bytes
@@ -118,6 +116,17 @@ class EpochStats:
                 read_bytes += int(line.split(":")[1])
 
         return read_bytes
+
+    def _rangereduce_written_bytes(self, epoch_stats: List[str]):
+        write_bytes = 0
+
+        for line in epoch_stats:
+            if line.startswith("rocksdb.partial.file.flush.bytes") or line.startswith(
+                "rocksdb.full.file.flush.bytes"
+            ):
+                write_bytes += int(line.split(":")[1])
+
+        return write_bytes
 
     def _read_one_epoch(self):
         with open(self.filepath, "r") as file:
@@ -223,8 +232,9 @@ class EpochStats:
                 sorted_cfd = sorted(
                     columnfamilydata["Levels"], key=lambda x: x["Level"]
                 )
-                writebytes = self._total_write_bytes(one_epoch_stats_lines)
+                compaction_write_bytes = self._compaction_written_bytes(one_epoch_stats_lines)
                 compaction_read = self._compaction_read_bytes(one_epoch_stats_lines)
+                rangereduce_write_bytes = self._rangereduce_written_bytes(one_epoch_stats_lines)
 
                 self._plotting_stats.append(
                     PlottingStats(
@@ -243,8 +253,9 @@ class EpochStats:
                             "InvalidEntriesCount": columnfamilydata[
                                 "Invalid Entries Count"
                             ],
-                            "TotalWriteBytes": writebytes,
+                            "CompactionWrittenBytes": compaction_write_bytes,
                             "CompactionReadBytes": compaction_read,
+                            "RangeReduceWrittenBytes": rangereduce_write_bytes,
                             "LevelsState": [
                                 lvl["LevelFilesCount"] for lvl in sorted_cfd
                             ],

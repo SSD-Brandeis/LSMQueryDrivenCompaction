@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 from plotter import *
-from .dataclass import PlottingStats, RQColumn
+from .dataclass import AdditionalStats, PlottingStats, RQColumn
 
 
 class PlotEpochStats:
@@ -507,7 +507,55 @@ class PlotRangeQueryStats:
         self._vanilla = vanilla.copy(deep=True)
         self._rqdc = rqdc.copy(deep=True)
 
+    def _get_percentiles(self, data: pd.Series) -> AdditionalStats:
+        percentiles = data.quantile([0.9, 0.95, 0.98, 0.99]).to_dict()
+        return AdditionalStats(
+            min=data.min(),
+            max=data.max(),
+            mean=data.mean(),
+            std=data.std(),
+            p90th=percentiles[0.9],
+            p95th=percentiles[0.95],
+            p98th=percentiles[0.98],
+            p99th=percentiles[0.99],
+        )
+
+    def _plot_percentiles(self, vanilla: AdditionalStats, rqdc: AdditionalStats, ax):
+        cell_text = [
+            [
+                f"{vanilla.min:.2f}",
+                f"{vanilla.mean:.2f}",
+                f"{vanilla.std:.2f}",
+                f"{vanilla.p90th:.2f}",
+                f"{vanilla.p95th:.2f}",
+                f"{vanilla.p98th:.2f}",
+                f"{vanilla.p99th:.2f}",
+                f"{vanilla.max:.2f}",
+            ],
+            [
+                f"{rqdc.min:.2f}",
+                f"{rqdc.mean:.2f}",
+                f"{rqdc.std:.2f}",
+                f"{rqdc.p90th:.2f}",
+                f"{rqdc.p95th:.2f}",
+                f"{rqdc.p98th:.2f}",
+                f"{rqdc.p99th:.2f}",
+                f"{rqdc.max:.2f}",
+            ],
+        ]
+        rows = ["Vanilla", "RQDC"]
+
+        # Add a table at the bottom of the axes
+        ax.table(
+            cellText=cell_text,
+            rowLabels=rows,
+            colLabels=["Min", "Mean", "Std", "90th", "95th", "98th", "99th", "Max"],
+            loc="bottom",
+            bbox=[0.05, -0.45, 0.9, 0.20],
+        )
+
     def bytes_written_for_each_range_query(self):
+        convert_to_ = (1000 ** 1)
         vanilla_rq_bytes = (
             self._vanilla[
                 [
@@ -548,14 +596,26 @@ class PlotRangeQueryStats:
 
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
         ax.set_yticklabels(
-            [f"{int(i/(1000 ** 1))}" if i != 0 else "0" for i in ax.get_yticks()],
+            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
             fontsize=12,
         )
         ax.set_title("total write (RQDC range query)", fontsize=12)
 
+        ax.annotate(
+            f"success count: {sum([x > 0 for x in rqdc_rq_bytes])}",
+            xy=(int(len(rqdc_rq_bytes) * 0.10), int(max(rqdc_rq_bytes) * 0.95)),
+            fontsize=12,
+        )
+        ax.annotate(
+            f"total bytes written: {sum(rqdc_rq_bytes):_.2f} bytes",
+            xy=(int(len(rqdc_rq_bytes) * 0.75), int(max(rqdc_rq_bytes) * 0.95)),
+            fontsize=12,
+        )
+
         plt.show()
 
     def bytes_read_for_each_range_query(self, range_query_pattern=""):
+        convert_to_ = (1000 ** 1)
         vanilla_rq_bytes = (
             self._vanilla[[str(RQColumn.TOTAL_ENTRIES_READ)]]
             .apply(lambda x: x * ENTRY_SIZE)[str(RQColumn.TOTAL_ENTRIES_READ)]
@@ -574,8 +634,19 @@ class PlotRangeQueryStats:
         fig, ax = plt.subplots(figsize=fig_size)
 
         ax.plot(
-            range(len(vanilla_rq_bytes)), vanilla_rq_bytes, label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}", color=self.vanilla_plot_kwargs['color'], alpha=0.8)
-        ax.plot(range(len(rqdc_rq_bytes)), rqdc_rq_bytes, label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}", color=self.rqdc_plot_kwargs['color'], alpha=0.8)
+            range(len(vanilla_rq_bytes)),
+            vanilla_rq_bytes,
+            label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}",
+            color=self.vanilla_plot_kwargs["color"],
+            alpha=0.8,
+        )
+        ax.plot(
+            range(len(rqdc_rq_bytes)),
+            rqdc_rq_bytes,
+            label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}",
+            color=self.rqdc_plot_kwargs["color"],
+            alpha=0.8,
+        )
 
         ax.set_ylabel("total read (KB)", fontsize=12)
         ax.set_xlabel("range query number", fontsize=12)
@@ -587,7 +658,7 @@ class PlotRangeQueryStats:
 
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
         ax.set_yticklabels(
-            [f"{int(i/(1000 ** 1))}" if i != 0 else "0" for i in ax.get_yticks()],
+            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
             fontsize=12,
         )
         ax.set_title("total read", fontsize=12)
@@ -600,14 +671,20 @@ class PlotRangeQueryStats:
             frameon=False,
         )
         ax.annotate(
-            f"avg vanilla: {(sum(vanilla_rq_bytes)/len(vanilla_rq_bytes))/(1000**1):.2f} KB",
-            xy=(10, 200000),
+            f"avg vanilla: {(sum(vanilla_rq_bytes)/len(vanilla_rq_bytes)):_.2f} bytes",
+            xy=(int(len(rqdc_rq_bytes) * 0.10), int(max(rqdc_rq_bytes) * 0.05)),
             fontsize=12,
         )
         ax.annotate(
-            f"avg RQDC: {sum(rqdc_rq_bytes)/len(rqdc_rq_bytes)/(1000 ** 1):.2f} KB",
-            xy=(60, 200000),
+            f"avg RQDC: {sum(rqdc_rq_bytes)/len(rqdc_rq_bytes):_.2f} bytes",
+            xy=(int(len(rqdc_rq_bytes) * 0.80), int(max(rqdc_rq_bytes) * 0.05)),
             fontsize=12,
+        )
+
+        self._plot_percentiles(
+            self._get_percentiles(pd.Series([x/convert_to_ for x in vanilla_rq_bytes])),
+            self._get_percentiles(pd.Series([x/convert_to_ for x in rqdc_rq_bytes])),
+            ax,
         )
 
         plt.show()
@@ -615,6 +692,7 @@ class PlotRangeQueryStats:
     def latency_for_each_range_query(self, range_query_pattern=""):
 
         plotting_column = str(RQColumn.RQ_TOTAL_TIME)
+        convert_to_ = (1000 ** 2)
 
         vanilla_rq_time = self._vanilla[plotting_column].to_list()
         rqdc_rq_time = self._rqdc[plotting_column].to_list()
@@ -626,8 +704,19 @@ class PlotRangeQueryStats:
         fig, ax = plt.subplots(figsize=fig_size)
 
         ax.plot(
-            range(len(vanilla_rq_time)), vanilla_rq_time, label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}", color=self.vanilla_plot_kwargs['color'], alpha=0.8)
-        ax.plot(range(len(rqdc_rq_time)), rqdc_rq_time, label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}", color=self.rqdc_plot_kwargs['color'], alpha=0.8)
+            range(len(vanilla_rq_time)),
+            vanilla_rq_time,
+            label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}",
+            color=self.vanilla_plot_kwargs["color"],
+            alpha=0.8,
+        )
+        ax.plot(
+            range(len(rqdc_rq_time)),
+            rqdc_rq_time,
+            label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}",
+            color=self.rqdc_plot_kwargs["color"],
+            alpha=0.8,
+        )
 
         ax.set_ylabel("latency (ms)", fontsize=12)
         ax.set_xlabel("range query number", fontsize=12)
@@ -639,7 +728,7 @@ class PlotRangeQueryStats:
 
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
         ax.set_yticklabels(
-            [f"{int(i/(1000 ** 2))}" if i != 0 else "0" for i in ax.get_yticks()],
+            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
             fontsize=12,
         )
 
@@ -647,19 +736,25 @@ class PlotRangeQueryStats:
             loc="lower center",
             ncol=2,
             fontsize=12,
-            bbox_to_anchor=(0.5, 0.7),
+            bbox_to_anchor=(0.5, 0.1),
             frameon=False,
         )
 
         ax.annotate(
-            f"avg vanilla: {self._vanilla[plotting_column].mean()/(1000 ** 2):.2f}",
-            xy=(10, 25000000),
+            f"avg vanilla: {self._vanilla[plotting_column].mean()/convert_to_:_.2f} ms",
+            xy=(int(len(rqdc_rq_time) * 0.10), int(max(rqdc_rq_time) * 0.05)),
             fontsize=12,
         )
         ax.annotate(
-            f"avg RQDC: {self._rqdc[plotting_column].mean()/(1000 ** 2):.2f}",
-            xy=(60, 25000000),
+            f"avg RQDC: {self._rqdc[plotting_column].mean()/convert_to_:_.2f} ms",
+            xy=(int(len(rqdc_rq_time) * 0.80), int(max(rqdc_rq_time) * 0.05)),
             fontsize=12,
+        )
+
+        self._plot_percentiles(
+            self._get_percentiles(pd.Series([x/convert_to_ for x in vanilla_rq_time])),
+            self._get_percentiles(pd.Series([x/convert_to_ for x in rqdc_rq_time])),
+            ax,
         )
 
         plt.show()

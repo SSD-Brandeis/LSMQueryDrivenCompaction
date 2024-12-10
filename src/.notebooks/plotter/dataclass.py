@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import List, NamedTuple, TypedDict
 from collections import namedtuple
 from enum import Enum
 
@@ -17,25 +17,34 @@ PlottingStats = namedtuple(
         "DBSize",
         "ValidEntriesCount",
         "InvalidEntriesCount",
-        "TotalWriteBytes",
+        "CompactionWrittenBytes",
         "CompactionReadBytes",
+        "RangeReduceWrittenBytes",
         "LevelsState",
     ],
+)
+
+AdditionalStats = namedtuple(
+    "AdditionalStats", ["min", "max", "mean", "std", "p90th", "p95th", "p98th", "p99th"]
 )
 
 
 class SelectivityVsMetric(NamedTuple):
     Vanilla: PlottingStats
     RangeReduce: PlottingStats
-    RangeReduceSameRQ: PlottingStats
-    RangeReduceOverlappingRQ: PlottingStats
+    # VanillaSameRQ: PlottingStats
+    # RangeReduceSameRQ: PlottingStats
+    # VanillaOverlappingRQ: PlottingStats
+    # RangeReduceOverlappingRQ: PlottingStats
 
 
 class SelectivityVsRangeQueryMetric(NamedTuple):
     Vanilla: pd.DataFrame
     RangeReduce: pd.DataFrame
-    RangeReduceSameRQ: pd.DataFrame
-    RangeReduceOverlappingRQ: pd.DataFrame
+    # VanillaSameRQ: pd.DataFrame
+    # RangeReduceSameRQ: pd.DataFrame
+    # VanillaOverlappingRQ: pd.DataFrame
+    # RangeReduceOverlappingRQ: pd.DataFrame
 
 
 class RQColumn(Enum):
@@ -54,3 +63,22 @@ class RQColumn(Enum):
 
     def __str__(self):
         return "%s" % self.value
+
+class HeatMapStat(TypedDict):
+    lb: float
+    ub: float
+    plottingStats: List[PlottingStats]
+    rqStats: pd.DataFrame
+
+AdditionalStats = namedtuple(
+    'AdditionalStats',
+    [
+        'min',
+        'max',
+        'mean',
+        'std',
+        'p90th',
+        'p95th',
+        'p99th'
+    ]
+)

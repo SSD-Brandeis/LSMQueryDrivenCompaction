@@ -79,6 +79,7 @@ AdditionalStats = namedtuple(
         'std',
         'p90th',
         'p95th',
+        'p98th',
         'p99th'
     ]
 )

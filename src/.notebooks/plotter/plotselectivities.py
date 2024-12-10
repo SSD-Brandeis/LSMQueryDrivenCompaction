@@ -67,8 +67,8 @@ class PlotSelectivities:
         rqdc_data = dict()
 
         for selectivity, data in self._selectivity_vs_metric.items():
-            vanilla_data[selectivity] = data.Vanilla.TotalWriteBytes
-            rqdc_data[selectivity] = data.RangeReduce.TotalWriteBytes
+            vanilla_data[selectivity] = data.Vanilla.CompactionWrittenBytes
+            rqdc_data[selectivity] = data.RangeReduce.CompactionWrittenBytes + data.RangeReduce.RangeReduceWrittenBytes
 
         fig_size = (6.5, 4)
         fig, ax = plt.subplots(figsize=fig_size)
@@ -318,8 +318,8 @@ class PlotSelectivities:
             rqdc_data[selectivity] = data.RangeReduce[[str(RQColumn.TOTAL_ENTRIES_READ)]].sum()
 
         for selectivity, data in selectivity_vs_metric.items():
-            vanilla_data[selectivity] = data.Vanilla.TotalWriteBytes + data.Vanilla.CompactionReadBytes + vanilla_data[selectivity] * ENTRY_SIZE
-            rqdc_data[selectivity] = data.RangeReduce.TotalWriteBytes + data.RangeReduce.CompactionReadBytes + rqdc_data[selectivity] * ENTRY_SIZE
+            vanilla_data[selectivity] = data.Vanilla.CompactionWrittenBytes + data.Vanilla.CompactionReadBytes + vanilla_data[selectivity] * ENTRY_SIZE
+            rqdc_data[selectivity] = data.RangeReduce.CompactionWrittenBytes + data.RangeReduce.RangeReduceWrittenBytes + data.RangeReduce.CompactionReadBytes + rqdc_data[selectivity] * ENTRY_SIZE
 
         vanilla_plot_kwargs = {
             "label": "vanilla",

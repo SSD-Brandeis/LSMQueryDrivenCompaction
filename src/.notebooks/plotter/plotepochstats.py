@@ -832,6 +832,51 @@ class PlotRangeQueryStats:
 
         plt.show()
 
+    def cummulative_latency_for_range_queries(self, range_query_pattern=""):
+        plotting_column = str(RQColumn.RQ_TOTAL_TIME)
+        convert_to_ = (1000 ** 3)
+
+        vanilla_rq_time = self._vanilla[plotting_column].to_list()
+        rqdc_rq_time = self._rqdc[plotting_column].to_list()
+
+        if len(vanilla_rq_time) != len(rqdc_rq_time):
+            raise Exception("found different number of range queries")
+
+        fig_size = (16, 4)
+        fig, ax = plt.subplots(figsize=fig_size)
+
+        # Cumulative Plot
+        vanilla_cumulative = pd.Series(vanilla_rq_time).cumsum() / convert_to_
+        rqdc_cumulative = pd.Series(rqdc_rq_time).cumsum() / convert_to_
+
+        ax.plot(
+            range(len(vanilla_cumulative)),
+            vanilla_cumulative,
+            label=f"{self.vanilla_plot_kwargs['label']}",
+            color=self.vanilla_plot_kwargs["color"],
+            alpha=0.8,
+        )
+        ax.plot(
+            range(len(rqdc_cumulative)),
+            rqdc_cumulative,
+            label=f"{self.rqdc_plot_kwargs['label']}",
+            color=self.rqdc_plot_kwargs["color"],
+            alpha=0.8,
+        )
+
+        ax.set_ylabel("Cumulative latency (sec)", fontsize=12)
+        ax.set_xlabel("range query number", fontsize=12)
+        ax.legend(
+            loc="lower center",
+            ncol=2,
+            fontsize=12,
+            bbox_to_anchor=(0.5, 0.1),
+            frameon=False,
+        )
+
+        plt.tight_layout()
+        plt.show()
+
 
 def plot_total_data_movement(
     _vanilla: List[PlottingStats],

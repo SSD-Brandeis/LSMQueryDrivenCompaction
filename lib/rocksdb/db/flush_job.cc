@@ -973,7 +973,7 @@ Status FlushJob::WriteLevel0Table() {
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::FlushJob:Flush");
         RecordTick(stats_, MEMTABLE_PAYLOAD_BYTES_AT_FLUSH,
-                   memtable_payload_bytes);
+                   meta_.fd.GetFileSize());
         RecordTick(stats_, MEMTABLE_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
       }
@@ -1238,7 +1238,7 @@ Status PartialOrRangeFlushJob::Run(LogsWithPrepTracker* /*prep_tracker*/,
   if (s.ok() && file_meta != nullptr) {
     *file_meta = meta_;
   }
-  RecordFlushIOStats();
+  // RecordFlushIOStats();
 
   // When measure_io_stats_ is true, the default 512 bytes is not enough.
   auto stream = event_logger_->LogToBuffer(log_buffer_, 1024);
@@ -1407,7 +1407,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
         RecordTick(stats_, FULL_FILE_FLUSH_BYTES,
-                   memtable_payload_bytes);
+                   meta_.fd.GetFileSize());
         RecordTick(stats_, FULL_FILE_FLUSH_COUNT, 1);
         RecordTick(stats_, FULL_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
@@ -1499,7 +1499,7 @@ Status PartialOrRangeFlushJob::WriteLevelNTable() {
   cfd_->internal_stats()->AddCFStats(
       InternalStats::BYTES_FLUSHED,
       stats.bytes_written + stats.bytes_written_blob);
-  RecordFlushIOStats();
+  // RecordFlushIOStats();
 
   return s;
 }
@@ -1743,7 +1743,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
         RecordTick(stats_, PARTIAL_FILE_FLUSH_BYTES,
-                   memtable_payload_bytes);
+                   meta_.fd.GetFileSize());
         RecordTick(stats_, PARTIAL_FILE_FLUSH_COUNT, 1);
         RecordTick(stats_, PARTIAL_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
@@ -1900,7 +1900,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
       if (tboptions.reason == TableFileCreationReason::kFlush) {
         TEST_SYNC_POINT("DBImpl::PartialOrRangeFlushJob:Flush");
         RecordTick(stats_, PARTIAL_FILE_FLUSH_BYTES,
-                   memtable_payload_bytes);
+                   tail_meta_.fd.GetFileSize());
         RecordTick(stats_, PARTIAL_FILE_FLUSH_COUNT, 1);
         RecordTick(stats_, PARTIAL_GARBAGE_BYTES_AT_FLUSH,
                    memtable_garbage_bytes);
@@ -2000,7 +2000,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
   cfd_->internal_stats()->AddCFStats(
       InternalStats::BYTES_FLUSHED,
       stats.bytes_written + stats.bytes_written_blob);
-  RecordFlushIOStats();
+  // RecordFlushIOStats();
 
   return s;
 }

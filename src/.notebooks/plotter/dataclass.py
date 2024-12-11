@@ -21,6 +21,7 @@ PlottingStats = namedtuple(
         "CompactionReadBytes",
         "RangeReduceWrittenBytes",
         "LevelsState",
+        "WorkloadExecutionTime",
     ],
 )
 

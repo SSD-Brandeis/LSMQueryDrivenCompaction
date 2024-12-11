@@ -128,15 +128,25 @@ class EpochStats:
 
         return write_bytes
 
-    def _read_one_epoch(self):
+    def _workload_execution_time(self, epoch_stats: List[str]):
+        execution_time = 0
+
+        for line in epoch_stats:
+            if line.startswith("Workload Execution Time"):
+                execution_time = int(line.split(": ")[1])
+                break
+        return execution_time
+
+    def _read_one_epoch(self, string_to_check=["===========", "===========", "Operations Execution Time:"], i=0):
         with open(self.filepath, "r") as file:
             epoch_data = list()
             grabbing_data = False
 
             for line in file:
                 line = line.strip()
-                if line.startswith("==========="):
+                if line.startswith(string_to_check[i]):
                     if grabbing_data:
+                        i += 1
                         yield epoch_data
                         epoch_data = list()
                         grabbing_data = False
@@ -235,6 +245,7 @@ class EpochStats:
                 compaction_write_bytes = self._compaction_written_bytes(one_epoch_stats_lines)
                 compaction_read = self._compaction_read_bytes(one_epoch_stats_lines)
                 rangereduce_write_bytes = self._rangereduce_written_bytes(one_epoch_stats_lines)
+                wrkld_exec_time = self._workload_execution_time(one_epoch_stats_lines)
 
                 self._plotting_stats.append(
                     PlottingStats(
@@ -259,6 +270,7 @@ class EpochStats:
                             "LevelsState": [
                                 lvl["LevelFilesCount"] for lvl in sorted_cfd
                             ],
+                            "WorkloadExecutionTime": wrkld_exec_time,
                         }
                     )
                 )

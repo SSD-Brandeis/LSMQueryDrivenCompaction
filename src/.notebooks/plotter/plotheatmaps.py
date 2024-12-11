@@ -11,7 +11,7 @@ from .dataclass import HeatMapStat, AdditionalStats, RQColumn
 
 class PlotHeatMaps:
     LAST_EPOCH_INDEX = NUMEPOCHS-1
-    FIGSIZE = (12, 7)
+    FIGSIZE = (9, 3)
 
     def __init__(self, stats: List[HeatMapStat]):
         self._stats = list(stats)
@@ -268,6 +268,27 @@ class PlotHeatMaps:
 
         plotting_df = pd.DataFrame.from_dict(plotting_data)
         self._plot_heatmap(plotting_df, plotting, "compaction read (MB)", np.floor(plotting_df[plotting].min()), np.ceil(plotting_df[plotting].max()))
+
+    def plot_workload_execution_time(self):
+        plotting = "executiontime"
+        plotting_data = [
+            {
+                "lb": stat["lb"],
+                "ub": stat["ub"],
+                plotting: stat["plottingStats"][
+                    self.LAST_EPOCH_INDEX
+                ].WorkloadExecutionTime
+                / (1000**3),
+            }
+            for stat in self._stats
+        ]
+
+        # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
+
+        # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
+
+        plotting_df = pd.DataFrame.from_dict(plotting_data)
+        self._plot_heatmap(plotting_df, plotting, "workload execution time (sec)", np.floor(plotting_df[plotting].min()), np.ceil(plotting_df[plotting].max()))
 
     def avg_bytes_written_for_range_queries(self):
         plotting = "rqbyteswritten"

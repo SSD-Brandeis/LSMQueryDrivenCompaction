@@ -31,6 +31,10 @@ std::string DBImpl::GetLevelsState() {
   return all_level_details.str();
 }
 
+/**
+ * (shubham) Deprecated, as it throws errors when accessing VersionStorageInfo.
+ * The compactions updates the VersionStorageInfo which is not protected with mutex.
+ */
 std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
   using TypedHandle = TableCache::TypedHandle;
 
@@ -50,17 +54,19 @@ std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
   for (int l = 0; l < storage_info->num_non_empty_levels(); l++) {
     std::stringstream level_details;
     level_details.str("");
-    auto num_files = storage_info->LevelFilesBrief(l).num_files;
+    auto level_files_brief_ = storage_info->LevelFilesBrief(l);
+    // auto num_files = storage_info->LevelFilesBrief(l).num_files;
     unsigned long long level_size_in_bytes = 0;
     level_details << "\tLevel: " << std::to_string(l);
 
     unsigned long long total_entries_in_one_level = 0;
     std::stringstream level_sst_file_details;
 
-    for (size_t file_index = 0; file_index < num_files; file_index++) {
+    for (size_t file_index = 0; file_index < level_files_brief_.num_files; file_index++) {
       table_reader = nullptr;
       handle = nullptr;
-      auto fd = storage_info->LevelFilesBrief(l).files[file_index];
+      // auto fd = storage_info->LevelFilesBrief(l).files[file_index];
+      auto fd = level_files_brief_.files[file_index];
       auto file_meta = fd.file_metadata;
 
       table_reader = fd.file_metadata->fd.table_reader;
@@ -97,7 +103,7 @@ std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
     }
     total_entries_in_cfd += total_entries_in_one_level;
     level_details << ", Size: " << level_size_in_bytes
-                  << " bytes, Files Count: " << num_files
+                  << " bytes, Files Count: " << level_files_brief_.num_files
                   << ", Entries Count: " << total_entries_in_one_level
                   << "\n\t\t";
     all_level_details << level_details.str() << level_sst_file_details.str()

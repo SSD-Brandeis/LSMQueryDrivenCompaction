@@ -92,7 +92,8 @@ public:
     useful_entries_(0),
     un_useful_data_blocks_size_(0),
     un_useful_file_size_(0),
-    un_useful_entries_(0) {}
+    un_useful_entries_(0) {
+  }
 
   void reset() {
     useful_data_blocks_size_ = 0;
@@ -479,20 +480,27 @@ int runWorkload(DBEnv* env) {
         // Print column family metadata
         cfd_details << "Column Family Name: " << metadata.name
           << ", Size: " << metadata.size
-          << " bytes, Files Count: " << metadata.file_count;
+          << " bytes, Files Count: " << metadata.file_count << std::endl;
 
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        std::tuple<unsigned long long, std::string> details =
-          db->GetTreeState();
+        cfd_details << "Level Stats:" << std::endl;
+        for (const auto& level : metadata.levels) {
+          cfd_details << "Level: " << level.level
+            << ", Files: " << level.files.size()
+            << ", Size: " << level.size << " bytes" << std::endl;
+        }
 
-        unsigned long long total_entries_in_cfd = std::get<0>(details);
-        std::string all_level_details = std::get<1>(details);
+        // std::this_thread::sleep_for(std::chrono::seconds(2));
+        // std::tuple<unsigned long long, std::string> details =
+        //   db->GetTreeState();
 
-        std::cout << cfd_details.str()
-          << ", Entries Count: " << total_entries_in_cfd
-          << ", Invalid Entries Count: "
-          << total_entries_in_cfd - env->num_inserts << std::endl
-          << all_level_details << std::endl;
+        // unsigned long long total_entries_in_cfd = std::get<0>(details);
+        // std::string all_level_details = std::get<1>(details);
+
+        std::cout << cfd_details.str() << std::endl;
+        // << ", Entries Count: " << total_entries_in_cfd
+        // << ", Invalid Entries Count: "
+        // << total_entries_in_cfd - env->num_inserts << std::endl
+        // << all_level_details << std::endl;
 
         std::cout << "Rocksdb Statistics: " << std::endl;
         std::cout << "rocksdb.compact.read.bytes: "
@@ -604,7 +612,7 @@ int runWorkload(DBEnv* env) {
       //   //                     << level_sst_file_details.str() << std::endl;
       //   // }
 
-      //   std::this_thread::sleep_for(std::chrono::seconds(2));
+      // std::this_thread::sleep_for(std::chrono::seconds(2));
       //   std::tuple<unsigned long long, std::string> details =
       //       db->GetTreeState();
 
@@ -703,18 +711,27 @@ int runWorkload(DBEnv* env) {
   // Print column family metadata
   cfd_details << "Column Family Name: " << metadata.name
     << ", Size: " << metadata.size
-    << " bytes, Files Count: " << metadata.file_count;
+    << " bytes, Files Count: " << metadata.file_count << std::endl;
 
-  std::this_thread::sleep_for(std::chrono::seconds(2));
-  std::tuple<unsigned long long, std::string> details = db->GetTreeState();
+  cfd_details << "Level Stats:" << std::endl;
+  for (const auto& level : metadata.levels) {
+    cfd_details << "Level: " << level.level
+      << ", Files: " << level.files.size()
+      << ", Size: " << level.size << " bytes" << std::endl;
+  }
 
-  unsigned long long total_entries_in_cfd = std::get<0>(details);
-  std::string all_level_details = std::get<1>(details);
+  // std::this_thread::sleep_for(std::chrono::seconds(2));
+  // std::tuple<unsigned long long, std::string> details =
+  //   db->GetTreeState();
 
-  std::cout << cfd_details.str() << ", Entries Count: " << total_entries_in_cfd
-    << ", Invalid Entries Count: "
-    << total_entries_in_cfd - env->num_inserts << std::endl
-    << all_level_details << std::endl;
+  // unsigned long long total_entries_in_cfd = std::get<0>(details);
+  // std::string all_level_details = std::get<1>(details);
+
+  std::cout << cfd_details.str() << std::endl;
+  // << ", Entries Count: " << total_entries_in_cfd
+  // << ", Invalid Entries Count: "
+  // << total_entries_in_cfd - env->num_inserts << std::endl
+  // << all_level_details << std::endl;
 
   std::cout << "Rocksdb Statistics: " << std::endl;
   std::cout << "rocksdb.compact.read.bytes: "
@@ -827,7 +844,7 @@ int runWorkload(DBEnv* env) {
   // Write data from range_queries_time to CSV
   for (int i = 0; i < range_queries_.size(); ++i) {
     std::tuple<unsigned long, unsigned long, unsigned long, unsigned long,
-      unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, 
+      unsigned long, unsigned long, unsigned long, unsigned long, unsigned long,
       unsigned long, unsigned long, unsigned long, unsigned long>
       rq = range_queries_[i];
     rq_time_file << i + 1 << ", " << std::get<0>(rq) << ", " <<

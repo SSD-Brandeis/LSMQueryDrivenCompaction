@@ -1,14 +1,15 @@
-#include <rocksdb/db.h>
 #include <rocksdb/filter_policy.h>
+#include <rocksdb/iostats_context.h>
 #include <rocksdb/options.h>
+#include <rocksdb/perf_context.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 
 #include <iostream>
 
 #include "db_env.h"
-
-using namespace rocksdb;
+#include "event_listners.h"
+#include "fluid_lsm.h"
 
 void configOptions(DBEnv *env, Options *options,
                    BlockBasedTableOptions *table_options,
@@ -34,24 +35,24 @@ void configOptions(DBEnv *env, Options *options,
   options->allow_mmap_writes = env->allow_mmap_writes;
 
   switch (env->verbosity) {
-    case 0:
-      options->verbosity = Verbosity::NO_PRINTS;
-      break;
-    case 1:
-      options->verbosity = Verbosity::LOW;
-      break;
-    case 2:
-      options->verbosity = Verbosity::MEDIUM;
-      break;
-    case 3:
-      options->verbosity = Verbosity::HIGH;
-      break;
-    case 4:
-      options->verbosity = Verbosity::EXTREME;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid verbosity level!" << std::endl;
+  case 0:
+    options->verbosity = Verbosity::NO_PRINTS;
+    break;
+  case 1:
+    options->verbosity = Verbosity::LOW;
+    break;
+  case 2:
+    options->verbosity = Verbosity::MEDIUM;
+    break;
+  case 3:
+    options->verbosity = Verbosity::HIGH;
+    break;
+  case 4:
+    options->verbosity = Verbosity::EXTREME;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid verbosity level!" << std::endl;
   }
 #pragma endregion
 
@@ -62,7 +63,7 @@ void configOptions(DBEnv *env, Options *options,
   options->max_write_buffer_number = env->max_write_buffer_number;
 
   if (env->bits_per_key == 0) {
-    ;  // do nothing
+    ; // do nothing
   } else {
     // currently build full filter instead of block-based filter
     table_options->filter_policy.reset(
@@ -70,63 +71,63 @@ void configOptions(DBEnv *env, Options *options,
   }
 
   switch (env->compaction_pri) {
-    case 1:
-      options->compaction_pri = CompactionPri::kMinOverlappingRatio;
-      break;
-    case 2:
-      options->compaction_pri = CompactionPri::kByCompensatedSize;
-      break;
-    case 3:
-      options->compaction_pri = CompactionPri::kOldestLargestSeqFirst;
-      break;
-    case 4:
-      options->compaction_pri = CompactionPri::kOldestSmallestSeqFirst;
-      break;
-    case 5:
-      options->compaction_pri = CompactionPri::kRoundRobin;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid data movement policy!" << std::endl;
+  case 1:
+    options->compaction_pri = CompactionPri::kMinOverlappingRatio;
+    break;
+  case 2:
+    options->compaction_pri = CompactionPri::kByCompensatedSize;
+    break;
+  case 3:
+    options->compaction_pri = CompactionPri::kOldestLargestSeqFirst;
+    break;
+  case 4:
+    options->compaction_pri = CompactionPri::kOldestSmallestSeqFirst;
+    break;
+  case 5:
+    options->compaction_pri = CompactionPri::kRoundRobin;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid data movement policy!" << std::endl;
   }
 
   switch (env->memtable_factory) {
-    case 1:
-      options->memtable_factory.reset(new SkipListFactory);
-      break;
-    case 2:
-      options->memtable_factory.reset(new VectorRepFactory);
-      break;
-    case 3:
-      options->memtable_factory.reset(NewHashSkipListRepFactory());
-      break;
-    case 4:
-      options->memtable_factory.reset(NewHashLinkListRepFactory());
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid memtable factory!" << std::endl;
+  case 1:
+    options->memtable_factory.reset(new SkipListFactory);
+    break;
+  case 2:
+    options->memtable_factory.reset(new VectorRepFactory);
+    break;
+  case 3:
+    options->memtable_factory.reset(NewHashSkipListRepFactory());
+    break;
+  case 4:
+    options->memtable_factory.reset(NewHashLinkListRepFactory());
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid memtable factory!" << std::endl;
   }
 
   options->level_compaction_dynamic_level_bytes =
       env->level_compaction_dynamic_level_bytes;
 
   switch (env->compaction_style) {
-    case 1:
-      options->compaction_style = CompactionStyle::kCompactionStyleLevel;
-      break;
-    case 2:
-      options->compaction_style = CompactionStyle::kCompactionStyleUniversal;
-      break;
-    case 3:
-      options->compaction_style = CompactionStyle::kCompactionStyleFIFO;
-      break;
-    case 4:
-      options->compaction_style = CompactionStyle::kCompactionStyleNone;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid compaction eagerness!" << std::endl;
+  case 1:
+    options->compaction_style = CompactionStyle::kCompactionStyleLevel;
+    break;
+  case 2:
+    options->compaction_style = CompactionStyle::kCompactionStyleUniversal;
+    break;
+  case 3:
+    options->compaction_style = CompactionStyle::kCompactionStyleFIFO;
+    break;
+  case 4:
+    options->compaction_style = CompactionStyle::kCompactionStyleNone;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid compaction eagerness!" << std::endl;
   }
 
   options->disable_auto_compactions = env->disable_auto_compactions;
@@ -165,36 +166,36 @@ void configOptions(DBEnv *env, Options *options,
   table_options->read_amp_bytes_per_bit = env->read_amp_bytes_per_bit;
 
   switch (env->data_block_index_type) {
-    case 1:
-      table_options->data_block_index_type =
-          BlockBasedTableOptions::kDataBlockBinarySearch;
-      break;
-    case 2:
-      table_options->data_block_index_type =
-          BlockBasedTableOptions::kDataBlockBinaryAndHash;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid index type for data block!" << std::endl;
+  case 1:
+    table_options->data_block_index_type =
+        BlockBasedTableOptions::kDataBlockBinarySearch;
+    break;
+  case 2:
+    table_options->data_block_index_type =
+        BlockBasedTableOptions::kDataBlockBinaryAndHash;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid index type for data block!" << std::endl;
   }
 
   switch (env->index_type) {
-    case 1:
-      table_options->index_type = BlockBasedTableOptions::kBinarySearch;
-      break;
-    case 2:
-      table_options->index_type = BlockBasedTableOptions::kHashSearch;
-      break;
-    case 3:
-      table_options->index_type = BlockBasedTableOptions::kTwoLevelIndexSearch;
-      break;
-    case 4:
-      table_options->index_type =
-          BlockBasedTableOptions::kBinarySearchWithFirstKey;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid index type!" << std::endl;
+  case 1:
+    table_options->index_type = BlockBasedTableOptions::kBinarySearch;
+    break;
+  case 2:
+    table_options->index_type = BlockBasedTableOptions::kHashSearch;
+    break;
+  case 3:
+    table_options->index_type = BlockBasedTableOptions::kTwoLevelIndexSearch;
+    break;
+  case 4:
+    table_options->index_type =
+        BlockBasedTableOptions::kBinarySearchWithFirstKey;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid index type!" << std::endl;
   }
 
   table_options->partition_filters = env->partition_filters;
@@ -204,63 +205,63 @@ void configOptions(DBEnv *env, Options *options,
       env->pin_top_level_index_and_filter;
 
   switch (env->index_shortening) {
-    case 1:
-      table_options->index_shortening =
-          BlockBasedTableOptions::IndexShorteningMode::kNoShortening;
-      break;
-    case 2:
-      table_options->index_shortening =
-          BlockBasedTableOptions::IndexShorteningMode::kShortenSeparators;
-      break;
-    case 3:
-      table_options->index_shortening = BlockBasedTableOptions::
-          IndexShorteningMode::kShortenSeparatorsAndSuccessor;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid index shortening!" << std::endl;
+  case 1:
+    table_options->index_shortening =
+        BlockBasedTableOptions::IndexShorteningMode::kNoShortening;
+    break;
+  case 2:
+    table_options->index_shortening =
+        BlockBasedTableOptions::IndexShorteningMode::kShortenSeparators;
+    break;
+  case 3:
+    table_options->index_shortening = BlockBasedTableOptions::
+        IndexShorteningMode::kShortenSeparatorsAndSuccessor;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid index shortening!" << std::endl;
   }
   table_options->block_size_deviation = env->block_size_deviation;
   table_options->enable_index_compression = env->enable_index_compression;
 
   options->table_factory.reset(NewBlockBasedTableFactory(*table_options));
-#pragma endregion  // [TableOptions]
+#pragma endregion // [TableOptions]
 
   switch (env->compression) {
-    case 1:
-      options->compression = CompressionType::kNoCompression;
-      break;
-    case 2:
-      options->compression = CompressionType::kSnappyCompression;
-      break;
-    case 3:
-      options->compression = CompressionType::kZlibCompression;
-      break;
-    case 4:
-      options->compression = CompressionType::kBZip2Compression;
-      break;
-    case 5:
-      options->compression = CompressionType::kLZ4Compression;
-      break;
-    case 6:
-      options->compression = CompressionType::kLZ4HCCompression;
-      break;
-    case 7:
-      options->compression = CompressionType::kXpressCompression;
-      break;
-    case 8:
-      options->compression = CompressionType::kZSTD;
-      break;
-    case 9:
-      options->compression = CompressionType::kZSTDNotFinalCompression;
-      break;
-    case 10:
-      options->compression = CompressionType::kDisableCompressionOption;
-      break;
+  case 1:
+    options->compression = CompressionType::kNoCompression;
+    break;
+  case 2:
+    options->compression = CompressionType::kSnappyCompression;
+    break;
+  case 3:
+    options->compression = CompressionType::kZlibCompression;
+    break;
+  case 4:
+    options->compression = CompressionType::kBZip2Compression;
+    break;
+  case 5:
+    options->compression = CompressionType::kLZ4Compression;
+    break;
+  case 6:
+    options->compression = CompressionType::kLZ4HCCompression;
+    break;
+  case 7:
+    options->compression = CompressionType::kXpressCompression;
+    break;
+  case 8:
+    options->compression = CompressionType::kZSTD;
+    break;
+  case 9:
+    options->compression = CompressionType::kZSTDNotFinalCompression;
+    break;
+  case 10:
+    options->compression = CompressionType::kDisableCompressionOption;
+    break;
 
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid compression type!" << std::endl;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid compression type!" << std::endl;
   }
 
 #pragma region[ReadOptions]
@@ -268,23 +269,24 @@ void configOptions(DBEnv *env, Options *options,
   read_options->fill_cache = env->fill_cache;
   read_options->ignore_range_deletions = env->ignore_range_deletions;
   switch (env->read_tier) {
-    case 1:
-      read_options->read_tier = ReadTier::kReadAllTier;
-      break;
-    case 2:
-      read_options->read_tier = ReadTier::kBlockCacheTier;
-      break;
-    case 3:
-      read_options->read_tier = ReadTier::kPersistedTier;
-      break;
-    case 4:
-      read_options->read_tier = ReadTier::kMemtableTier;
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid read tier!" << std::endl;
+  case 1:
+    read_options->read_tier = ReadTier::kReadAllTier;
+    break;
+  case 2:
+    read_options->read_tier = ReadTier::kBlockCacheTier;
+    break;
+  case 3:
+    read_options->read_tier = ReadTier::kPersistedTier;
+    break;
+  case 4:
+    read_options->read_tier = ReadTier::kMemtableTier;
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid read tier!" << std::endl;
   }
-#pragma endregion  // [ReadOptions]
+  read_options->range_query_stat->initiate();
+#pragma endregion // [ReadOptions]
 
 #pragma region[WriteOptions]
   write_options->low_pri = env->low_pri;
@@ -293,19 +295,19 @@ void configOptions(DBEnv *env, Options *options,
   write_options->no_slowdown = env->no_slowdown;
   write_options->ignore_missing_column_families =
       env->ignore_missing_column_families;
-#pragma endregion  // [WriteOptions]
+#pragma endregion // [WriteOptions]
 
 #pragma region[ColumnFamilyOptions]
   switch (env->comparator) {
-    case 1:
-      options->comparator = BytewiseComparator();
-      break;
-    case 2:
-      options->comparator = ReverseBytewiseComparator();
-      break;
-    default:
-      std::cerr << "Error[" << __FILE__ << " : " << __LINE__
-                << "]: Invalid comparator!" << std::endl;
+  case 1:
+    options->comparator = BytewiseComparator();
+    break;
+  case 2:
+    options->comparator = ReverseBytewiseComparator();
+    break;
+  default:
+    std::cerr << "Error[" << __FILE__ << " : " << __LINE__
+              << "]: Invalid comparator!" << std::endl;
   }
 
   options->max_sequential_skip_in_iterations =
@@ -324,12 +326,12 @@ void configOptions(DBEnv *env, Options *options,
   options->ignore_max_compaction_bytes_for_input =
       env->ignore_max_compaction_bytes_for_input;
   options->max_multi_trivial_move = env->max_multi_trivial_move;
-#pragma endregion  // [ColumnFamilyOptions]
+#pragma endregion // [ColumnFamilyOptions]
 
 #pragma region[FlushOptions]
   flush_options->wait = env->wait;
   flush_options->allow_write_stall = env->allow_write_stall;
-#pragma endregion  // [FlushOptions]
+#pragma endregion // [FlushOptions]
 
 #pragma region[RangeReduce]
   read_options->enable_range_query_compaction =
@@ -337,5 +339,23 @@ void configOptions(DBEnv *env, Options *options,
   read_options->lower_threshold = env->lower_threshold;
   read_options->upper_threshold = env->upper_threshold;
   options->enable_level_renaming = env->enable_level_renaming;
-#pragma endregion  // [RangeReduce]
+
+#pragma endregion // [RangeReduce]
+
+  if (env->IsPerfIOStatEnabled()) {
+    rocksdb::SetPerfLevel(
+        rocksdb::PerfLevel::kEnableTimeAndCPUTimeExceptForMutex);
+    rocksdb::get_perf_context()->Reset();
+    rocksdb::get_perf_context()->ClearPerLevelPerfContext();
+    rocksdb::get_perf_context()->EnablePerLevelPerfContext();
+    rocksdb::get_iostats_context()->Reset();
+  }
+
+  // NOTE: Keep this block in last of this file
+#ifdef DOSTO
+  std::shared_ptr<FluidLSM> tree = std::make_shared<FluidLSM>(
+      env->size_ratio, env->smaller_lvl_runs_count, env->larger_lvl_runs_count,
+      env->GetTargetFileSizeBase(), options);
+  options->listeners.emplace_back(tree);
+#endif // DOSTO
 }

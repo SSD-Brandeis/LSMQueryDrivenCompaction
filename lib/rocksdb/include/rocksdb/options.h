@@ -1469,8 +1469,8 @@ enum ReadTier {
   kMemtableTier = 0x3     // data in memtable. used for memtable-only iterators.
 };
 
-// Options that collect range query stats
-struct RangeQueryOptions{
+// collect range query stats
+struct RangeQueryStat{
   bool is_range_query_running = false;
   uint64_t count_of_entries = 0;  // total entries that fall in range query
   uint64_t count_of_total_invalid = 0;  // invalid entries that exists in entries that fall in range
@@ -1661,7 +1661,7 @@ struct ReadOptions {
 
   // Used to check if the range query compaction is enabled
   bool enable_range_query_compaction = false;
-  RangeQueryOptions *range_query_options = new RangeQueryOptions();
+  RangeQueryStat *range_query_stat = new RangeQueryStat();
 
   // number of entries overlap from lower to upper level 
   float upper_threshold = 0;  // default: [inf]

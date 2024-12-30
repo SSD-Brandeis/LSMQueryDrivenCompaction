@@ -3,6 +3,8 @@
 
 #include <mutex>
 
+#include "buffer.h"
+
 namespace Default {
 
 const unsigned int ENTRY_SIZE = 64;
@@ -17,12 +19,12 @@ const int MAX_WRITE_BUFFER_NUMBER = 2;
 const int LEVEL0_FILE_NUM_COMPACTION_TRIGGER = 1;
 
 // kMaxMultiTrivialMove, default is 4 for RocksDB
-const size_t MAX_MULTI_TRIVIAL_MOVE = 1; 
+const size_t MAX_MULTI_TRIVIAL_MOVE = 1;
 
 const int MAX_OPEN_FILES = 50;
 const int MAX_FILE_OPENING_THREADS = 80;
 
-}  // namespace Default
+} // namespace Default
 
 /**
  * RocksDB is an emulator environment that let the user set bunch
@@ -31,21 +33,22 @@ const int MAX_FILE_OPENING_THREADS = 80;
  * For more information, look at options.h, advanced_options.h
  */
 class DBEnv {
- private:
+private:
   DBEnv() = default;
 
-  static DBEnv* instance_;
+  static DBEnv *instance_;
   static std::mutex mutex_;
 
   // buffer size in bytes
-  size_t buffer_size_ = 0;           // [M]
-  bool enable_perf_iostat_ = false;  // [stat]
-  bool destroy_database_ = true;     // [d]
+  size_t buffer_size_ = 0;          // [M]
+  bool enable_perf_iostat_ = false; // [stat]
+  bool destroy_database_ = true;    // [d]
 
- public:
-  static DBEnv* GetInstance() {
+public:
+  static DBEnv *GetInstance() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (instance_ == nullptr) instance_ = new DBEnv();
+    if (instance_ == nullptr)
+      instance_ = new DBEnv();
     return instance_;
   }
 
@@ -121,15 +124,15 @@ class DBEnv {
 #pragma endregion
 
   // entry size including key and value size in bytes
-  unsigned int entry_size = Default::ENTRY_SIZE;  // [E]
+  unsigned int entry_size = Default::ENTRY_SIZE; // [E]
   // number of entries one page/block stores
-  unsigned int entries_per_page = Default::ENTRIES_PER_PAGE;  // [B]
+  unsigned int entries_per_page = Default::ENTRIES_PER_PAGE; // [B]
   // number of pages in one buffer
-  unsigned int buffer_size_in_pages = Default::BUFFER_SIZE_IN_PAGES;  // [P]
+  unsigned int buffer_size_in_pages = Default::BUFFER_SIZE_IN_PAGES; // [P]
 
-  double size_ratio = Default::SIZE_RATIO;  // [T]
+  double size_ratio = Default::SIZE_RATIO; // [T]
   unsigned int file_to_memtable_size_ratio =
-      Default::FILE_TO_MEMTABLE_SIZE_RATIO;  // [f]
+      Default::FILE_TO_MEMTABLE_SIZE_RATIO; // [f]
 
   // The maximum number of write buffers that are built up in memory.
   // The default and the minimum number is 2, so that when 1 write buffer
@@ -138,7 +141,7 @@ class DBEnv {
   int max_write_buffer_number = Default::MAX_WRITE_BUFFER_NUMBER;
 
   // bloom filter bits per key
-  double bits_per_key = 10;  // [b]
+  double bits_per_key = 10; // [b]
 
   /**
    * Compaction Priority
@@ -148,7 +151,7 @@ class DBEnv {
    * 4 for kOldestSmallestSeqFirst
    * 5 for kRoundRobin
    */
-  uint16_t compaction_pri = 1;  // [c] lower case
+  uint16_t compaction_pri = 1; // [c] lower case
 
   /**
    * Memtable Factory
@@ -157,7 +160,7 @@ class DBEnv {
    * 3 for hash skip list
    * 4 for hash linked list
    */
-  uint16_t memtable_factory = 1;  // [m]
+  uint16_t memtable_factory = 1; // [m]
 
   // if true, RocksDB will pick target size of each level dynamically
   bool level_compaction_dynamic_level_bytes = false;
@@ -169,7 +172,7 @@ class DBEnv {
    * 3 for kCompactionStyleFIFO
    * 4 for kCompactionStyleNone
    */
-  uint64_t compaction_style = 1;  // [C] upper case
+  uint64_t compaction_style = 1; // [C] upper case
 
   // if true, RocksDB disables auto compactions.
   bool disable_auto_compactions = false;
@@ -317,7 +320,7 @@ class DBEnv {
 
   // if true, the write will be flushed from the operating system buffer cache
   // before the write is considered complete. If true, write will be slower.
-  bool sync = false;  // FIXME: (shubham) Isn't this should be true.
+  bool sync = false; // FIXME: (shubham) Isn't this should be true.
 
   // if true, write will not first go to the write ahead log.
   bool disableWAL = true;
@@ -424,6 +427,13 @@ class DBEnv {
   // number of runs(tiers) in larger levels
   int num_runs_in_larger_level = 1;
 #pragma endregion
+
+#pragma region[FluidLSM]
+  // * K *
+  int smaller_lvl_runs_count = 1;
+  // * Z *
+  int larger_lvl_runs_count = size_ratio;
+#pragma endregion
 };
 
-#endif  // DB_ENV_H_
+#endif // DB_ENV_H_

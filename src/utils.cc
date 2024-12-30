@@ -64,6 +64,28 @@ void PrintRocksDBPerfStats(DBEnv *env, Buffer *buffer) {
   }
 }
 
+void UpdateProgressBar(DBEnv *env, size_t current, size_t total,
+                       size_t update_interval = 100, size_t bar_width = 50) {
+  if (env->IsShowProgressEnabled() &&
+      (current % update_interval == 0 || current == total)) {
+    double progress = static_cast<double>(current) / total;
+    size_t pos = static_cast<size_t>(bar_width * progress);
+
+    std::cout << "[";
+    for (size_t i = 0; i < bar_width; ++i) {
+      if (i < pos)
+        std::cout << "=";
+      else if (i == pos)
+        std::cout << ">";
+      else
+        std::cout << " ";
+    }
+    std::cout << "] " << std::fixed << std::setprecision(2)
+              << (progress * 100.0) << "%\r";
+    std::cout.flush();
+  }
+}
+
 #ifdef PROFILE
 void LogTreeState(rocksdb::DB *db, Buffer *buffer) {
   // Wait for compactions and get live files

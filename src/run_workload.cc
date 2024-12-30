@@ -30,7 +30,7 @@ int runWorkload(DBEnv *env) {
 
   if (env->IsDestroyDatabaseEnabled()) {
     DestroyDB(kDBPath, options);
-    std::cout << "Destroying database ..." << std::endl;
+    std::cout << "Destroying database ... done" << std::endl;
   }
 
   Buffer *buffer = new Buffer(buffer_file);
@@ -51,16 +51,27 @@ int runWorkload(DBEnv *env) {
 
   // Clearing the system cache
   if (env->clear_system_cache) {
-    std::cout << "Clearing system cache ..." << std::endl;
 #ifdef __linux__
+    std::cout << "Clearing system cache ...";
     std::cout << system("sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'")
-              << std::endl;
+              << "done" << std::endl;
 #endif
   }
 
   std::ifstream workload_file;
   workload_file.open("workload.txt");
   assert(workload_file);
+
+  size_t total_operations = 0;
+  if (env->IsShowProgressEnabled()) {
+    std::string line;
+    while (std::getline(workload_file, line)) {
+      ++total_operations;
+    }
+  }
+
+  workload_file.clear();
+  workload_file.seekg(0, std::ios::beg);
 
 #ifdef PROFILE
   unsigned long num_epochs = 11;
@@ -69,8 +80,8 @@ int runWorkload(DBEnv *env) {
 #endif // PROFILE
 
 #ifdef TIMER
-  unsigned long inserts_exec_time, updates_exec_time, pq_exec_time,
-      pdelete_exec_time, rq_exec_time = 0;
+  unsigned long inserts_exec_time = 0, updates_exec_time = 0, pq_exec_time = 0,
+                pdelete_exec_time = 0, rq_exec_time = 0;
   std::vector<std::tuple<
       unsigned long /*total execution time for RQ*/,
       unsigned long /*useful data bytes*/,
@@ -86,8 +97,8 @@ int runWorkload(DBEnv *env) {
       unsigned long /*reset time for range query*/,
       unsigned long /*actual range query time*/>>
       rq_stats;
-  auto exec_start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
+  auto exec_start = std::chrono::high_resolution_clock::now();
 
   std::string line;
   unsigned long ith_op = 0;
@@ -234,6 +245,7 @@ int runWorkload(DBEnv *env) {
     }
 
     ith_op += 1;
+    UpdateProgressBar(env, ith_op, total_operations);
 #ifdef PROFILE
     if (ith_op == env->num_inserts) {
       (*buffer) << "=====================" << std::endl;
@@ -259,11 +271,11 @@ int runWorkload(DBEnv *env) {
   LogRocksDBStatistics(db, options, buffer);
 #endif // PROFILE
 
-#ifdef TIMER
   auto total_exec_time =
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::high_resolution_clock::now() - exec_start)
           .count();
+#ifdef TIMER
   (*buffer) << "=====================" << std::endl;
   (*buffer) << "Workload Execution Time: " << total_exec_time << std::endl;
   (*buffer) << "Inserts Execution Time: " << inserts_exec_time << std::endl;
@@ -319,6 +331,9 @@ int runWorkload(DBEnv *env) {
   buffer = nullptr;
 
   PrintRocksDBPerfStats(env, buffer);
-  std::cout << "End of experiment - TEST !!\n";
+  long long total_seconds = total_exec_time / 1e9;
+  std::cout << "Experiment completed in " << total_seconds / 3600 << "h "
+            << (total_seconds % 3600) / 60 << "m " << total_seconds % 60 << "s "
+            << std::endl;
   return 0;
 }

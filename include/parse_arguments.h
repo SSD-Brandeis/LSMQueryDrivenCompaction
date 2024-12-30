@@ -66,6 +66,8 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
   args::ValueFlag<int> enable_perf_iostat_cmd(
       group1, "enable_perf_iostat",
       "Enable RocksDB's internal Perf and IOstat [def: 0]", {"stat"});
+  args::ValueFlag<int> show_progress_cmd(
+      group1, "show_progress_bar", "Shows progress bar [def: 0]", {"progress"});
 
   // Range Query Driven Compaction Options
   args::ValueFlag<long> num_inserts_cmd(
@@ -155,6 +157,8 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
       block_cache_cmd ? args::get(block_cache_cmd) : env->block_cache;
   env->SetPerfIOStat(enable_perf_iostat_cmd ? args::get(enable_perf_iostat_cmd)
                                             : env->IsPerfIOStatEnabled());
+  env->SetShowProgress(show_progress_cmd ? args::get(show_progress_cmd)
+                                         : env->IsShowProgressEnabled());
 
   // Range Query Driven Compaction Options
   env->num_inserts =

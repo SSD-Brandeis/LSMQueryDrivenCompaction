@@ -43,6 +43,7 @@ private:
   size_t buffer_size_ = 0;          // [M]
   bool enable_perf_iostat_ = false; // [stat]
   bool destroy_database_ = true;    // [d]
+  bool show_progress_bar_ = false;  // [progress]
 
 public:
   static DBEnv *GetInstance() {
@@ -57,6 +58,7 @@ public:
   void SetBufferSize(size_t buffer_size) { buffer_size_ = buffer_size; }
   void SetPerfIOStat(bool value) { enable_perf_iostat_ = value; }
   void SetDestroyDatabase(bool value) { destroy_database_ = value; }
+  void SetShowProgress(bool value) { show_progress_bar_ = value; }
 
   size_t GetBufferSize() const {
     // usually buffer_size = P * B * E
@@ -66,6 +68,7 @@ public:
   }
   bool IsPerfIOStatEnabled() const { return enable_perf_iostat_; }
   bool IsDestroyDatabaseEnabled() const { return destroy_database_; }
+  bool IsShowProgressEnabled() const { return show_progress_bar_; }
 
   long GetTargetFileSizeBase() const { return GetBufferSize(); }
 

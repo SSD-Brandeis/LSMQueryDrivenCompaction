@@ -114,9 +114,7 @@ class Iterator : public Cleanable {
     return Status::NotSupported("Refresh() is not supported");
   }
 
-  // If supported, behave similar to Refresh() except the read opetion would be
-  // updated read_options.iterate_lower_bound and
-  // read_options.iterate_upper_bound would be updated
+  // If supported, behave similar to Refresh() with RangeReduce
   virtual Status Refresh(const std::string& /*start_key*/,
                          const std::string& /*end_key*/, uint64_t& /*entries_count*/, bool /*rqdc_enabled*/) {
     return Status::NotSupported(

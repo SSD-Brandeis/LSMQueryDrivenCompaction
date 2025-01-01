@@ -8,6 +8,7 @@
 
 std::string kDBPath = "./db";
 std::string buffer_file = "workload.log";
+std::string rqstats_file = "range_queries.csv";
 
 int runWorkload(DBEnv *env) {
   DB *db;
@@ -82,21 +83,16 @@ int runWorkload(DBEnv *env) {
 #ifdef TIMER
   unsigned long inserts_exec_time = 0, updates_exec_time = 0, pq_exec_time = 0,
                 pdelete_exec_time = 0, rq_exec_time = 0;
-  std::vector<std::tuple<
-      unsigned long /*total execution time for RQ*/,
-      unsigned long /*useful data bytes*/,
-      unsigned long /*useful total bytes (data + index + filter)*/,
-      unsigned long /*useful entries count*/,
-      unsigned long /*total entries read for RQ*/,
-      unsigned long /*un-useful data bytes*/,
-      unsigned long /*un-useful total bytes (data + index + filter)*/,
-      unsigned long /*un-useful entries count*/,
-      unsigned long /*entries dropped*/,
-      unsigned long /*entries qualified for compaction*/,
-      unsigned long /*refresh time for range query*/,
-      unsigned long /*reset time for range query*/,
-      unsigned long /*actual range query time*/>>
-      rq_stats;
+  Buffer rqstats(rqstats_file);
+  rqstats // adds a header
+      << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
+         "uBytes Written Back, uEntries Count Written Back, Total "
+         "Entries Read, Data unBytes Written Back, Total unBytes "
+         "Written Back, unEntries Count Written Back, Skipped Entries Count, "
+         "Entries Qualified For Compaction Count, RQ Refresh Time, "
+         "RQ Reset Time, Actual RQ Time"
+      << std::endl;
+  unsigned long rqnumber = 0;
 #endif // TIMER
   auto exec_start = std::chrono::high_resolution_clock::now();
 
@@ -227,14 +223,17 @@ int runWorkload(DBEnv *env) {
       auto duration =
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
-      rq_stats.emplace_back(std::make_tuple(
-          duration.count(), range_reduce_listener->useful_data_blocks_size_,
-          range_reduce_listener->useful_file_size_,
-          range_reduce_listener->useful_entries_, total_entries_read,
-          range_reduce_listener->un_useful_data_blocks_size_,
-          range_reduce_listener->un_useful_file_size_,
-          range_reduce_listener->un_useful_entries_, keys_skipped,
-          keys_compacted, refresh_duration, reset_duration, actual_range_time));
+      rqstats << ++rqnumber << ", " << duration.count() << ", "
+              << range_reduce_listener->useful_data_blocks_size_ << ", "
+              << range_reduce_listener->useful_file_size_ << ", "
+              << range_reduce_listener->useful_entries_ << ", "
+              << total_entries_read << ", "
+              << range_reduce_listener->un_useful_data_blocks_size_ << ", "
+              << range_reduce_listener->un_useful_file_size_ << ", "
+              << range_reduce_listener->un_useful_entries_ << ", "
+              << keys_skipped << keys_compacted << ", " << refresh_duration
+              << ", " << reset_duration << ", " << actual_range_time
+              << std::endl;
       range_reduce_listener->reset();
 #endif // TIMER
       break;
@@ -283,36 +282,6 @@ int runWorkload(DBEnv *env) {
   (*buffer) << "PointQuery Execution Time: " << pq_exec_time << std::endl;
   (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time << std::endl;
   (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
-
-  std::ofstream rq_time_file("range_queries.csv");
-
-  rq_time_file
-      << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
-         "uBytes Written Back, uEntries Count Written Back, Total "
-         "Entries Read, Data unBytes Written Back, Total unBytes "
-         "Written Back, unEntries Count Written Back, Skipped Entries Count, "
-         "Entries Qualified For Compaction Count, RQ Refresh Time, "
-         "RQ Reset Time, Actual RQ Time"
-      << std::endl;
-
-  for (int i = 0; i < rq_stats.size(); ++i) {
-    std::tuple<unsigned long, unsigned long, unsigned long, unsigned long,
-               unsigned long, unsigned long, unsigned long, unsigned long,
-               unsigned long, unsigned long, unsigned long, unsigned long,
-               unsigned long>
-        rq = rq_stats[i];
-    rq_time_file << i + 1 << ", " << std::get<0>(rq) << ", " << std::get<1>(rq)
-                 << ", " << std::get<2>(rq) << ", " << std::get<3>(rq) << ", "
-                 << std::get<4>(rq) << ", " << std::get<5>(rq) << ", "
-                 << std::get<6>(rq) << ", " << std::get<7>(rq) << ", "
-                 << std::get<8>(rq) << ", " << std::get<9>(rq) << ", "
-                 << std::get<10>(rq) << ", " << std::get<11>(rq) << ", "
-                 << std::get<12>(rq) << std::endl;
-  }
-
-  // Close the file
-  rq_time_file.close();
-
 #endif // TIMER
 
   // delete iterator and close db
@@ -325,12 +294,13 @@ int runWorkload(DBEnv *env) {
     std::cerr << s.ToString() << std::endl;
   assert(s.ok());
 
+  PrintRocksDBPerfStats(env, buffer, options);
+
   // flush final stats and delete ptr
   buffer->flush();
   delete buffer;
   buffer = nullptr;
 
-  PrintRocksDBPerfStats(env, buffer);
   long long total_seconds = total_exec_time / 1e9;
   std::cout << "Experiment completed in " << total_seconds / 3600 << "h "
             << (total_seconds % 3600) / 60 << "m " << total_seconds % 60 << "s "

@@ -46,11 +46,11 @@ void PrintExperimentalSetup(DBEnv *env, Buffer *buffer) {
   (*buffer) << std::endl;
 }
 
-void PrintRocksDBPerfStats(DBEnv *env, Buffer *buffer) {
+void PrintRocksDBPerfStats(DBEnv *env, Buffer *buffer, Options options) {
   if (env->IsPerfIOStatEnabled()) {
     rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
 
-    (*buffer) << "===============================\n";
+    (*buffer) << "\n\n===============================\n";
     (*buffer) << "     RocksDB Performance Stats \n";
     (*buffer) << "===============================\n";
 
@@ -60,6 +60,8 @@ void PrintRocksDBPerfStats(DBEnv *env, Buffer *buffer) {
     (*buffer) << "\n[IO Stats Context]\n";
     (*buffer) << rocksdb::get_iostats_context()->ToString() << "\n";
 
+    (*buffer) << "\n[Rocksdb Stats]\n";
+    (*buffer) << options.statistics->ToString();
     (*buffer) << "===============================\n";
   }
 }

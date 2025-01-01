@@ -349,6 +349,7 @@ void configOptions(DBEnv *env, Options *options,
     rocksdb::get_perf_context()->ClearPerLevelPerfContext();
     rocksdb::get_perf_context()->EnablePerLevelPerfContext();
     rocksdb::get_iostats_context()->Reset();
+    options->statistics = rocksdb::CreateDBStatistics();
   }
 
   // NOTE: Keep this block in last of this file

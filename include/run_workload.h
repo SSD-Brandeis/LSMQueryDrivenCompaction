@@ -5,6 +5,7 @@
 
 extern std::string kDBPath;
 extern std::string buffer_file;
+extern std::string rqstats_file;
 
 int runWorkload(DBEnv *env);
 

@@ -15,7 +15,6 @@ void configOptions(DBEnv *env, Options *options,
                    BlockBasedTableOptions *table_options,
                    WriteOptions *write_options, ReadOptions *read_options,
                    FlushOptions *flush_options) {
-  options->statistics = CreateDBStatistics();
 
 #pragma region[DBOptions]
   options->create_if_missing = env->create_if_missing;
@@ -350,6 +349,10 @@ void configOptions(DBEnv *env, Options *options,
     rocksdb::get_perf_context()->EnablePerLevelPerfContext();
     rocksdb::get_iostats_context()->Reset();
     options->statistics = rocksdb::CreateDBStatistics();
+  } else {
+#ifdef PROFILE
+    options->statistics = rocksdb::CreateDBStatistics();
+#endif // PROFILE
   }
 
   // NOTE: Keep this block in last of this file

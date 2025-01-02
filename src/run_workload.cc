@@ -177,7 +177,7 @@ int runWorkload(DBEnv *env) {
       std::string start_key, end_key;
       stream >> start_key >> end_key;
 
-      uint64_t keys_returned, keys_skipped, keys_compacted, keys_read = 0;
+      uint64_t keys_returned = 0, keys_skipped = 0, keys_compacted = 0, keys_read = 0;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
       range_reduce_listener->reset();

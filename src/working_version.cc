@@ -2,13 +2,14 @@
  *  Created on: May 13, 2019
  *  Author: Subhadeep
  */
+#include <memory>
 
 #include <db_env.h>
 #include <parse_arguments.h>
 #include <run_workload.h>
 
 int main(int argc, char *argv[]) {
-  DBEnv *env = DBEnv::GetInstance();
+  std::unique_ptr<DBEnv> env = DBEnv::GetInstance();
 
   if (parse_arguments(argc, argv, env)) {
     std::cerr << "Failed to parse arguments. Exiting." << std::endl;

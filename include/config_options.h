@@ -11,7 +11,7 @@
 #include "event_listners.h"
 #include "fluid_lsm.h"
 
-void configOptions(DBEnv *env, Options *options,
+void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
                    BlockBasedTableOptions *table_options,
                    WriteOptions *write_options, ReadOptions *read_options,
                    FlushOptions *flush_options) {

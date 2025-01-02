@@ -10,7 +10,7 @@ std::string kDBPath = "./db";
 std::string buffer_file = "workload.log";
 std::string rqstats_file = "range_queries.csv";
 
-int runWorkload(DBEnv *env) {
+int runWorkload(std::unique_ptr<DBEnv> &env) {
   DB *db;
   Options options;
   WriteOptions write_options;
@@ -34,7 +34,7 @@ int runWorkload(DBEnv *env) {
     std::cout << "Destroying database ... done" << std::endl;
   }
 
-  Buffer *buffer = new Buffer(buffer_file);
+  std::unique_ptr<Buffer> buffer = std::make_unique<Buffer>(buffer_file);
   PrintExperimentalSetup(env, buffer);
 
   Status s = DB::Open(options, kDBPath, &db);
@@ -244,7 +244,7 @@ int runWorkload(DBEnv *env) {
     }
 
     ith_op += 1;
-    UpdateProgressBar(env, ith_op, total_operations);
+    UpdateProgressBar(env, ith_op, total_operations, (int)total_operations*0.02);
 #ifdef PROFILE
     if (ith_op == env->num_inserts) {
       (*buffer) << "=====================" << std::endl;
@@ -298,9 +298,6 @@ int runWorkload(DBEnv *env) {
 
   // flush final stats and delete ptr
   buffer->flush();
-  delete buffer;
-  buffer = nullptr;
-
   long long total_seconds = total_exec_time / 1e9;
   std::cout << "Experiment completed in " << total_seconds / 3600 << "h "
             << (total_seconds % 3600) / 60 << "m " << total_seconds % 60 << "s "

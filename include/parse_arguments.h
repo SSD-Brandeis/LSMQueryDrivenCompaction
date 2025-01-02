@@ -3,7 +3,7 @@
 #include "args.hxx"
 #include "db_env.h"
 
-int parse_arguments(int argc, char *argv[], DBEnv *env) {
+int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
   args::ArgumentParser parser("RocksDB_parser.", "");
   args::Group group1(parser, "This group is all exclusive:",
                      args::Group::Validators::DontCare);

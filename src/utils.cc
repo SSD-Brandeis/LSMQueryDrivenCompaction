@@ -11,11 +11,12 @@
 
 using namespace rocksdb;
 
-template <typename T> void PrintColumn(T value, int width, Buffer *buffer) {
+template <typename T>
+void PrintColumn(T value, int width, std::unique_ptr<Buffer> &buffer) {
   (*buffer) << std::setfill(' ') << std::setw(width) << value;
 }
 
-void PrintExperimentalSetup(DBEnv *env, Buffer *buffer) {
+void PrintExperimentalSetup(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer> &buffer) {
   constexpr int colWidth = 10;
   constexpr int smallColWidth = 4;
 
@@ -46,7 +47,8 @@ void PrintExperimentalSetup(DBEnv *env, Buffer *buffer) {
   (*buffer) << std::endl;
 }
 
-void PrintRocksDBPerfStats(DBEnv *env, Buffer *buffer, Options options) {
+void PrintRocksDBPerfStats(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer> &buffer,
+                           Options options) {
   if (env->IsPerfIOStatEnabled()) {
     rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
 
@@ -66,8 +68,8 @@ void PrintRocksDBPerfStats(DBEnv *env, Buffer *buffer, Options options) {
   }
 }
 
-void UpdateProgressBar(DBEnv *env, size_t current, size_t total,
-                       size_t update_interval = 100, size_t bar_width = 50) {
+void UpdateProgressBar(std::unique_ptr<DBEnv> &env, size_t current, size_t total,
+                       size_t update_interval, size_t bar_width) {
   if (env->IsShowProgressEnabled() &&
       (current % update_interval == 0 || current == total)) {
     double progress = static_cast<double>(current) / total;
@@ -89,7 +91,7 @@ void UpdateProgressBar(DBEnv *env, size_t current, size_t total,
 }
 
 #ifdef PROFILE
-void LogTreeState(rocksdb::DB *db, Buffer *buffer) {
+void LogTreeState(rocksdb::DB *db, std::unique_ptr<Buffer> &buffer) {
   // Wait for compactions and get live files
   {
     std::vector<std::string> live_files;
@@ -126,7 +128,7 @@ void LogTreeState(rocksdb::DB *db, Buffer *buffer) {
 }
 
 void LogRocksDBStatistics(rocksdb::DB *db, const rocksdb::Options &options,
-                          Buffer *buffer) {
+                          std::unique_ptr<Buffer> &buffer) {
   auto printProperty = [&](const std::string &propertyName) {
     std::string value;
     bool status = db->GetProperty(propertyName, &value);

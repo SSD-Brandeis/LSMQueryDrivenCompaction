@@ -2,6 +2,7 @@
 #define DB_ENV_H_
 
 #include <mutex>
+#include <memory>
 
 #include "buffer.h"
 
@@ -35,8 +36,13 @@ const int MAX_FILE_OPENING_THREADS = 80;
 class DBEnv {
 private:
   DBEnv() = default;
+  ~DBEnv() = default;
+  DBEnv(const DBEnv&) = default;
+  DBEnv& operator=(const DBEnv&) = delete;
 
-  static DBEnv *instance_;
+  friend struct std::default_delete<DBEnv>;
+
+  static std::unique_ptr<DBEnv> instance_;
   static std::mutex mutex_;
 
   // buffer size in bytes
@@ -46,11 +52,11 @@ private:
   bool show_progress_bar_ = false;  // [progress]
 
 public:
-  static DBEnv *GetInstance() {
+  static std::unique_ptr<DBEnv> GetInstance() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (instance_ == nullptr)
-      instance_ = new DBEnv();
-    return instance_;
+      instance_ = std::unique_ptr<DBEnv>(new DBEnv());
+    return std::move(instance_);
   }
 
   uint64_t GetBlockSize() const { return entries_per_page * entry_size; }

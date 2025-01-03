@@ -33,7 +33,8 @@ std::string DBImpl::GetLevelsState() {
 
 /**
  * (shubham) Deprecated, as it throws errors when accessing VersionStorageInfo.
- * The compactions updates the VersionStorageInfo which is not protected with mutex.
+ * The compactions updates the VersionStorageInfo which is not protected with
+ * mutex.
  */
 std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
   using TypedHandle = TableCache::TypedHandle;
@@ -62,7 +63,8 @@ std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
     unsigned long long total_entries_in_one_level = 0;
     std::stringstream level_sst_file_details;
 
-    for (size_t file_index = 0; file_index < level_files_brief_.num_files; file_index++) {
+    for (size_t file_index = 0; file_index < level_files_brief_.num_files;
+         file_index++) {
       table_reader = nullptr;
       handle = nullptr;
       // auto fd = storage_info->LevelFilesBrief(l).files[file_index];
@@ -124,16 +126,15 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
   long long overlapping_count = 0;
 
   Status s;
-  TableReader* table_reader = nullptr;
+  TableReader* table_reader = file_meta->fd.table_reader;
   TypedHandle* handle = nullptr;
-  auto& fd = file_meta->fd;
-  table_reader = fd.table_reader;
 
   if (table_reader == nullptr) {
     auto mutable_cf_options_ = cfd->GetLatestMutableCFOptions();
     auto file_read_hist = cfd->internal_stats()->GetFileReadHist(0);
     auto max_file_size_for_l0_meta_pin_ =
         MaxFileSizeForL0MetaPin(*mutable_cf_options_);
+
     s = cfd->table_cache()->FindTable(
         read_options_, file_options_, cfd->internal_comparator(), *file_meta,
         &(handle), mutable_cf_options_->block_protection_bytes_per_key,
@@ -142,84 +143,85 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
         false, level, true, max_file_size_for_l0_meta_pin_,
         file_meta->temperature);
 
-    if (s.ok()) {
+    if (s.ok() && handle != nullptr) {
       table_reader = cfd->table_cache()->get_cache().Value(handle);
-    }  // (Shubham) What if table_reader is still null?
+    }
   }
 
-  if (s.ok()) {
-    const ReadOptions read_options;
-    auto table_properties = table_reader->GetTableProperties();
-    auto num_entries = table_properties->num_entries;
-    uint64_t raw_key_size = table_properties->raw_key_size;
-    uint64_t raw_value_size = table_properties->raw_value_size;
-    uint64_t avg_raw_key_size =
-        num_entries != 0 ? 1.0 * raw_key_size / num_entries : 0.0;
-    uint64_t avg_raw_value_size =
-        num_entries != 0 ? 1.0 * raw_value_size / num_entries : 0.0;
-    
-    SequenceNumber seq = GetLatestSequenceNumber();
+  // # TODO: Check if this is appropriate
+  // If table_reader is still null, return 0
+  if (table_reader == nullptr) {
+    return 0;
+  }
 
-    if (given_start_key != "" && given_end_key == "") {
-      // start key comes when tail is overlapping
-      //
-      //          |-----|
-      //    |----------|
-      //    |          |
-      //    |          |
-      //    |----------|
+  const ReadOptions read_options;
+  auto table_properties = table_reader->GetTableProperties();
+  auto num_entries = table_properties->num_entries;
+  uint64_t avg_raw_key_size =
+      num_entries != 0 ? 1.0 * table_properties->raw_key_size / num_entries
+                       : 0.0;
+  uint64_t avg_raw_value_size =
+      num_entries != 0 ? 1.0 * table_properties->raw_value_size / num_entries
+                       : 0.0;
 
-      InternalKey internal_start_key(Slice(given_start_key), seq, kValueTypeForSeek);
-      Slice target = internal_start_key.Encode();
-      auto skip_count_with_key =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
-                                                                target);
-      overlapping_count =
-          file_meta->num_entries - (std::get<0>(skip_count_with_key) /
-                                    (avg_raw_key_size + avg_raw_value_size));
-      useful_min_key = std::get<1>(skip_count_with_key);
-    } else if (given_start_key == "" && given_end_key != "") {
-      // end key comes when head is overlapping
-      //
-      //    |-----|
-      //     |----------|
-      //     |          |
-      //     |          |
-      //     |----------|
+  if (avg_raw_key_size + avg_raw_value_size == 0) {
+    return 0;
+  }
 
-      InternalKey internal_end_key(Slice(given_end_key), seq, kValueTypeForSeek);
-      Slice target = internal_end_key.Encode();
-      auto skip_count_with_key =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
-                                                                target);
-      overlapping_count = (std::get<0>(skip_count_with_key) /
-                           (avg_raw_key_size + avg_raw_value_size));
-      useful_max_key = std::get<1>(skip_count_with_key);
-    } else if (given_start_key != "" && given_end_key != "") {
-      // both start and end key comes when file middle portion is overlapping
-      //
-      //            |-----|
-      //          |----------|
-      //          |          |
-      //          |          |
-      //          |----------|
+  SequenceNumber seq = GetLatestSequenceNumber();
 
-      InternalKey internal_start_key(Slice(given_start_key), seq, kValueTypeForSeek);
-      InternalKey internal_end_key(Slice(given_end_key), seq, kValueTypeForSeek);
-      Slice start = internal_start_key.Encode();
-      Slice end = internal_end_key.Encode();
-      auto start_overlapping =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
-                                                                start);
-      auto end_overlapping =
-          table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
-                                                                end);
-      overlapping_count =
-          ((std::get<0>(end_overlapping) - std::get<0>(start_overlapping)) /
-           (avg_raw_key_size + avg_raw_value_size));
-      useful_min_key = std::get<1>(start_overlapping);
-      useful_max_key = std::get<1>(end_overlapping);
-    }
+  if (!given_start_key.empty() && given_end_key.empty()) {
+    //          |-----|
+    //    |----------|
+    //    |          |
+    //    |          |
+    //    |----------|
+
+    InternalKey internal_start_key(Slice(given_start_key), seq,
+                                   kValueTypeForSeek);
+    Slice target = internal_start_key.Encode();
+    auto [skip_count, min_key] =
+        table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                              target);
+    overlapping_count = file_meta->num_entries -
+                        (skip_count / (avg_raw_key_size + avg_raw_value_size));
+    useful_min_key = min_key;
+  } else if (given_start_key.empty() && !given_end_key.empty()) {
+    //    |-----|
+    //     |----------|
+    //     |          |
+    //     |          |
+    //     |----------|
+
+    InternalKey internal_end_key(Slice(given_end_key), seq, kValueTypeForSeek);
+    Slice target = internal_end_key.Encode();
+    auto [skip_count, max_key] =
+        table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                              target);
+    overlapping_count = (skip_count / (avg_raw_key_size + avg_raw_value_size));
+    useful_max_key = max_key;
+  } else if (!given_start_key.empty() && !given_end_key.empty()) {
+    //            |-----|
+    //          |----------|
+    //          |          |
+    //          |          |
+    //          |----------|
+
+    InternalKey internal_start_key(Slice(given_start_key), seq,
+                                   kValueTypeForSeek);
+    InternalKey internal_end_key(Slice(given_end_key), seq, kValueTypeForSeek);
+    Slice start = internal_start_key.Encode();
+    Slice end = internal_end_key.Encode();
+    auto [start_skip, min_key] =
+        table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                              start);
+    auto [end_skip, max_key] =
+        table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
+                                                              end);
+    overlapping_count =
+        ((end_skip - start_skip) / (avg_raw_key_size + avg_raw_value_size));
+    useful_min_key = min_key;
+    useful_max_key = max_key;
   }
 
   return overlapping_count;
@@ -654,11 +656,12 @@ void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
   }
   if (!immutable_db_options_.atomic_flush) {
     assert(flush_req.cfd_to_max_mem_id_to_persist.size() == 1);
-    ColumnFamilyData* cfd = flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
+    ColumnFamilyData* cfd =
+        flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
     assert(cfd);
-      cfd->Ref();
-      ++unscheduled_partial_or_range_flushes_;
-      flush_queue_.push_back(flush_req);
+    cfd->Ref();
+    ++unscheduled_partial_or_range_flushes_;
+    flush_queue_.push_back(flush_req);
   }
 }
 
@@ -694,12 +697,13 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
 
   MemTable* memtable_to_flush = mem_range;
 
-  // std::cout << "FlushReason: " << (flush_reason==FlushReason::kRangeFlush ? "RangeFlush" : "PartialFlush") << std::endl << std::flush;
+  // std::cout << "FlushReason: " << (flush_reason==FlushReason::kRangeFlush ?
+  // "RangeFlush" : "PartialFlush") << std::endl << std::flush;
 
   // switch new range memtable
   if (flush_reason == FlushReason::kRangeFlush) {
     mutex_.Lock();
-    cfd->SetMemtableRange(cfd->ConstructNewMemtable(
+    cfd->SetMemtableRange(cfd->ConstructNewVectorMemtable(
         *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber()));
     this->num_entries_compacted += memtable_to_flush->num_entries();
     mutex_.Unlock();

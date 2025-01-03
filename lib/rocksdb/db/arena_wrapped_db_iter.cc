@@ -70,17 +70,6 @@ long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
                                               useful_min_key, useful_max_key);
 }
 
-// long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
-//     const std::string given_start_key, const std::string given_end_key,
-//     int level, FileMetaData* file_meta, Slice& useful_min_key,
-//     Slice& useful_max_key) {
-//   // Let's guess the lexicographic difference between two strings
-//   return db_impl_->GetRoughOverlappingEntries(given_start_key, given_end_key,
-//                                               level, file_meta, cfd_,
-//                                               useful_min_key,
-//                                               useful_max_key);
-// }
-
 bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     uint64_t& entries_count) {
   auto storage_info = cfd_->current()->storage_info();
@@ -102,8 +91,10 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     Slice useful_max_key = "";
 
     SequenceNumber seq = db_impl_->GetLatestSequenceNumber();
-    InternalKey internal_start_key(Slice(read_options_.range_start_key), seq, kValueTypeForSeek);
-    InternalKey internal_end_key(Slice(read_options_.range_end_key), seq, kValueTypeForSeek);
+    InternalKey internal_start_key(Slice(read_options_.range_start_key), seq,
+                                   kValueTypeForSeek);
+    InternalKey internal_end_key(Slice(read_options_.range_end_key), seq,
+                                 kValueTypeForSeek);
     size_t file_index_ = FindFile(cfd_->internal_comparator(), level_files,
                                   internal_start_key.Encode());
 
@@ -258,8 +249,8 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
                                    const std::string& end_key,
                                    uint64_t& entries_count, bool rqdc_enabled) {
   read_options_.range_query_stat->is_range_query_running = true;
+
   if (!rqdc_enabled) {
-    // db_impl_->PauseBackgroundWork();
     return Refresh();
   }
 
@@ -273,42 +264,23 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
   read_options_.enable_range_query_compaction = rqdc_enabled;
   db_impl_->read_options_ = read_options_;
 
-// #ifdef TIMEBREAK
-//   auto tp1 = std::chrono::high_resolution_clock::now();
-// #endif
-
-  db_impl_->PauseBackgroundWork();
-
-// #ifdef TIMEBREAK
-//   auto tp2 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "pauseTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-//       << std::endl
-//       << std::flush;
-// #endif
-
-  if (!CanPerformRangeQueryCompaction(entries_count)) {
-    db_impl_->ContinueBackgroundWork();
-    read_options_.enable_range_query_compaction = false;
-    read_options_.range_start_key.clear();
-    read_options_.range_end_key.clear();
-    db_impl_->read_options_ = read_options_;
+  auto pause_status = db_impl_->PauseBackgroundWork();
+  if (!pause_status.ok() || !CanPerformRangeQueryCompaction(entries_count)) {
+    ResumeBackgroundWork();
   } else {
     db_impl_->was_decision_true = true;
     db_impl_->added_last_table = false;
   }
 
-// #ifdef TIMEBREAK
-//   auto tp3 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "decisionMakingTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp3 - tp2).count()
-//       << std::endl
-//       << std::flush;
-// #endif
-
   return Refresh();
+}
+
+void ArenaWrappedDBIter::ResumeBackgroundWork() {
+    db_impl_->ContinueBackgroundWork();
+    read_options_.enable_range_query_compaction = false;
+    read_options_.range_start_key.clear();
+    read_options_.range_end_key.clear();
+    db_impl_->read_options_ = read_options_;
 }
 
 Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
@@ -321,9 +293,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
     // db_impl_->ContinueBackgroundWork();
     return Status::OK();
   }
-// #ifdef TIMEBREAK
-//   auto tp1 = std::chrono::high_resolution_clock::now();
-// #endif  // TIMEBREAK
+
   if (db_impl_->read_options_.enable_range_query_compaction) {
     if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
         cfd_->mem_range()->num_entries() > 0) {
@@ -338,22 +308,6 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
       db_impl_->range_queries_complete_cv_.Wait();
     }
   }
-
-// #ifdef TIMEBREAK
-//   auto tp2 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "waitForFinishingCompactionTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-//       << std::endl
-//       << std::flush;
-// #endif  // TIMEBREAK
-
-  // std::ofstream compacted_vs_skipped;
-  // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv",
-  // std::ios_base::app); compacted_vs_skipped <<
-  // db_impl_->num_entries_compacted << ","
-  //                      << db_impl_->num_entries_skipped;
-  // compacted_vs_skipped.close();
 
   entries_skipped = db_impl_->num_entries_skipped;
   entries_to_compact = db_impl_->num_entries_read_to_compact;
@@ -402,9 +356,6 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
 }
 
 Status ArenaWrappedDBIter::Refresh() {
-// #ifdef TIMEBREAK
-//   auto tp1 = std::chrono::high_resolution_clock::now();
-// #endif  // TIMEBREAK
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
   }
@@ -516,14 +467,6 @@ Status ArenaWrappedDBIter::Refresh() {
     }
   }
 
-// #ifdef TIMEBREAK
-//   auto tp2 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "refreshingIteratorTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-//       << std::endl
-//       << std::flush;
-// #endif  // TIMER
   return Status::OK();
 }
 

@@ -444,36 +444,57 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
   return true;
 }
 
-// Seek till the given start/end key of the range and 
+// Seek till the given start/end key of the range and
 // return the number of keys we have skipped.
+// if (data_ == nullptr) {  // Not init yet
+//   return std::make_tuple(0, Slice());
+// }
+// this->SeekToFirst();
+
+// if (this->status().ok()) {
+//   SeekImpl(target);
+//   Slice key = this->key();
+//   InternalKey ikey;
+
+//   ikey.DecodeFrom(key);
+//   auto offset = this->value().handle.offset();
+//   Slice last_key;
+
+//   while (this->Valid() && CompareCurrentKey(target) <= 0) {
+//     last_key = this->key();
+//     this->Next();
+//     if (this->Valid()){
+//       InternalKey next_ikey;
+//       next_ikey.DecodeFrom(this->key());
+//       offset = this->value().handle.offset();
+//     }
+//   }
+//   return std::make_tuple(offset, last_key);
+// }
+// return std::make_tuple(0, Slice());
 std::tuple<uint64_t, Slice> IndexBlockIter::SeekAndReturnSkipCount(
     const Slice& target) {
-  if (data_ == nullptr) {  // Not init yet
+  if (data_ == nullptr) {
     return std::make_tuple(0, Slice());
   }
+
   this->SeekToFirst();
-
-  if (this->status().ok()) {
-    SeekImpl(target);
-    Slice key = this->key();
-    InternalKey ikey;
-
-    ikey.DecodeFrom(key);
-    auto offset = this->value().handle.offset();
-    Slice last_key;
-
-    while (this->Valid() && CompareCurrentKey(target) <= 0) {
-      last_key = this->key();
-      this->Next();
-      if (this->Valid()){
-        InternalKey next_ikey;
-        next_ikey.DecodeFrom(this->key());
-        offset = this->value().handle.offset();
-      }
-    }
-    return std::make_tuple(offset, last_key);
+  if (!this->status().ok() || !this->Valid()) {
+    return std::make_tuple(0, Slice());
   }
-  return std::make_tuple(0, Slice());
+
+  SeekImpl(target);
+  Slice last_key;
+  auto offset = this->value().handle.offset();
+
+  while (this->Valid() && CompareCurrentKey(target) <= 0) {
+    last_key = this->key();
+    this->Next();
+    if (this->Valid()) {
+      offset = this->value().handle.offset();
+    }
+  }
+  return std::make_tuple(offset, last_key);
 }
 
 void IndexBlockIter::SeekImpl(const Slice& target) {

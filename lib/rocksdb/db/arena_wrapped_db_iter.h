@@ -84,6 +84,7 @@ class ArenaWrappedDBIter : public Iterator {
       const std::string& given_start_key, const std::string& given_end_key,
       int level, FileMetaData* file_meta, Slice& useful_min_key,
       Slice& useful_max_key);
+  void ResumeBackgroundWork();
 
   Status GetProperty(std::string prop_name, std::string* prop) override;
 

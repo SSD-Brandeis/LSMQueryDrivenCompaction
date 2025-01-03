@@ -1098,6 +1098,15 @@ MemTable* ColumnFamilyData::ConstructNewMemtable(
                       write_buffer_manager_, earliest_seq, id_);
 }
 
+MemTable* ColumnFamilyData::ConstructNewVectorMemtable(
+    const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq) {
+  ImmutableOptions original(ioptions_);
+  ImmutableOptions ioptions_copy_ = original;
+  ioptions_copy_.memtable_factory.reset(new VectorRepFactory);
+  return new MemTable(internal_comparator_, ioptions_copy_, mutable_cf_options,
+                      write_buffer_manager_, earliest_seq, id_);
+}
+
 void ColumnFamilyData::CreateNewMemtable(
     const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq) {
   if (mem_ != nullptr) {
@@ -1109,7 +1118,7 @@ void ColumnFamilyData::CreateNewMemtable(
   if (mem_range_ != nullptr) {
     delete mem_range_->Unref();
   }
-  SetMemtableRange(ConstructNewMemtable(mutable_cf_options, earliest_seq));
+  SetMemtableRange(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq));
   mem_range_->Ref();
 }
 

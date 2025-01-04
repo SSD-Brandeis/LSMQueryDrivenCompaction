@@ -156,76 +156,220 @@ class EpochStats:
                     grabbing_data = True
                     epoch_data.append(line)
 
+    # def _parse_one_epoch_v2(self, epoch_stats: List[str]) -> Dict[str, List]:
+    #     columnfamilydata = {"Levels": list()}
+    #     i = 0
+
+    #     while i < len(epoch_stats):
+    #         currentline = epoch_stats[i]
+
+    #         if currentline.startswith("Column Family Name"):
+    #             key_val = currentline.split(",")
+    #             columnfamilydata["Column Family Name"] = (
+    #                 key_val[0].split(":")[1].strip().strip(",")
+    #             )
+    #             columnfamilydata["Size"] = int(
+    #                 key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
+    #             )
+    #             columnfamilydata["Files Count"] = int(
+    #                 key_val[2].split(":")[1].strip().strip(",")
+    #             )
+    #         if currentline.startswith("Level:"):
+    #             key_val = currentline.split(",")
+    #             level = int(key_val[0].split(":")[1].strip().strip(","))
+    #             level_files_count = int(key_val[1].split(":")[1].strip().strip(","))
+    #             level_size = int(
+    #                 key_val[2].split(":")[1].strip().strip(",").strip(" bytes")
+    #             )
+
+    #             columnfamilydata["Levels"].append(
+    #                 {
+    #                     "Level": level,
+    #                     "LevelFilesCount": level_files_count,
+    #                     "LevelSize": level_size,
+    #                 }
+    #             )
+    #         i += 1
+
+    #     return columnfamilydata
+
+    # def _parse_one_epoch(self, epoch_stats: List[str]) -> Dict[str, List]:
+    #     columnfamilydata = {"Levels": list()}
+    #     sst_files = {}
+    #     i = 0
+
+    #     while i < len(epoch_stats):
+    #         currentline = epoch_stats[i]
+    #         # Check if the line contains column family data
+    #         if currentline.startswith("Column Family Name"):
+    #             key_val = currentline.split(",")
+    #             columnfamilydata["Column Family Name"] = (
+    #                 key_val[0].split(":")[1].strip().strip(",")
+    #             )
+    #             columnfamilydata["Size"] = int(
+    #                 key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
+    #             )
+    #             columnfamilydata["Files Count"] = int(
+    #                 key_val[2].split(":")[1].strip().strip(",")
+    #             )
+    #             columnfamilydata["Entries Count"] = int(
+    #                 key_val[3].split(":")[1].strip().strip(",")
+    #             )
+    #             columnfamilydata["Invalid Entries Count"] = int(
+    #                 key_val[4].split(":")[1].strip().strip(",")
+    #             )
+    #         if "Level:" in currentline:
+    #             key_val = currentline.strip().split(",")
+    #             level = int(key_val[0].split(":")[1].strip().strip(","))
+    #             level_size = int(
+    #                 key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
+    #             )
+    #             level_files_count = int(key_val[2].split(":")[1].strip().strip(","))
+
+    #             key_val_sst_files = epoch_stats[i + 1].split("],")[:-1]
+    #             sst_files = []
+
+    #             for sst_file_string in key_val_sst_files:
+    #                 # Extract SST file details
+    #                 file_number = int(
+    #                     sst_file_string.split(":")[0].split("[#")[1].strip()
+    #                 )
+    #                 file_details = sst_file_string.split(":")[1].strip().split()
+    #                 file_size = int(file_details[0].strip())
+    #                 smallest_key = file_details[1].strip(",").strip("(")
+    #                 largest_key = file_details[2].strip(")")
+    #                 entries_count = int(file_details[3].strip("]"))
+
+    #                 sst_files.append(
+    #                     {
+    #                         "FNo": file_number,
+    #                         "FileSize": file_size,
+    #                         "SmallesKey": smallest_key,
+    #                         "LargestKey": largest_key,
+    #                         "EntriesCount": entries_count,
+    #                     }
+    #                 )
+
+    #             # if len(sst_files) > 0:
+    #             columnfamilydata["Levels"].append(
+    #                 {
+    #                     "Level": level,
+    #                     "LevelSize": level_size,
+    #                     "LevelFilesCount": level_files_count,
+    #                     "SSTFiles": sst_files,
+    #                 }
+    #             )
+    #             #
+    #             i += 1
+    #         i += 1
+    #     return columnfamilydata
+
     def _parse_one_epoch(self, epoch_stats: List[str]) -> Dict[str, List]:
         columnfamilydata = {"Levels": list()}
         sst_files = {}
         i = 0
+        fallback_used = False  # Flag to determine if fallback is used
 
         while i < len(epoch_stats):
             currentline = epoch_stats[i]
-            # Check if the line contains column family data
-            if currentline.startswith("Column Family Name"):
-                key_val = currentline.split(",")
-                columnfamilydata["Column Family Name"] = (
-                    key_val[0].split(":")[1].strip().strip(",")
-                )
-                columnfamilydata["Size"] = int(
-                    key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
-                )
-                columnfamilydata["Files Count"] = int(
-                    key_val[2].split(":")[1].strip().strip(",")
-                )
-                columnfamilydata["Entries Count"] = int(
-                    key_val[3].split(":")[1].strip().strip(",")
-                )
-                columnfamilydata["Invalid Entries Count"] = int(
-                    key_val[4].split(":")[1].strip().strip(",")
-                )
-            if "Level:" in currentline:
-                key_val = currentline.strip().split(",")
-                level = int(key_val[0].split(":")[1].strip().strip(","))
-                level_size = int(
-                    key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
-                )
-                level_files_count = int(key_val[2].split(":")[1].strip().strip(","))
 
-                key_val_sst_files = epoch_stats[i + 1].split("],")[:-1]
-                sst_files = []
-
-                for sst_file_string in key_val_sst_files:
-                    # Extract SST file details
-                    file_number = int(
-                        sst_file_string.split(":")[0].split("[#")[1].strip()
+            try:
+                # Primary parsing logic (_parse_one_epoch_v2)
+                if currentline.startswith("Column Family Name"):
+                    key_val = currentline.split(",")
+                    columnfamilydata["Column Family Name"] = (
+                        key_val[0].split(":")[1].strip().strip(",")
                     )
-                    file_details = sst_file_string.split(":")[1].strip().split()
-                    file_size = int(file_details[0].strip())
-                    smallest_key = file_details[1].strip(",").strip("(")
-                    largest_key = file_details[2].strip(")")
-                    entries_count = int(file_details[3].strip("]"))
+                    columnfamilydata["Size"] = int(
+                        key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
+                    )
+                    columnfamilydata["Files Count"] = int(
+                        key_val[2].split(":")[1].strip().strip(",")
+                    )
+                if currentline.startswith("Level:"):
+                    key_val = currentline.split(",")
+                    level = int(key_val[0].split(":")[1].strip().strip(","))
+                    level_files_count = int(key_val[1].split(":")[1].strip().strip(","))
+                    level_size = int(
+                        key_val[2].split(":")[1].strip().strip(",").strip(" bytes")
+                    )
 
-                    sst_files.append(
+                    columnfamilydata["Levels"].append(
                         {
-                            "FNo": file_number,
-                            "FileSize": file_size,
-                            "SmallesKey": smallest_key,
-                            "LargestKey": largest_key,
-                            "EntriesCount": entries_count,
+                            "Level": level,
+                            "LevelFilesCount": level_files_count,
+                            "LevelSize": level_size,
                         }
                     )
-
-                # if len(sst_files) > 0:
-                columnfamilydata["Levels"].append(
-                    {
-                        "Level": level,
-                        "LevelSize": level_size,
-                        "LevelFilesCount": level_files_count,
-                        "SSTFiles": sst_files,
-                    }
-                )
-                #
                 i += 1
-            i += 1
+
+            except (IndexError, ValueError, KeyError):
+                # Fallback parsing logic (_parse_one_epoch)
+                fallback_used = True
+                if currentline.startswith("Column Family Name"):
+                    key_val = currentline.split(",")
+                    columnfamilydata["Column Family Name"] = (
+                        key_val[0].split(":")[1].strip().strip(",")
+                    )
+                    columnfamilydata["Size"] = int(
+                        key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
+                    )
+                    columnfamilydata["Files Count"] = int(
+                        key_val[2].split(":")[1].strip().strip(",")
+                    )
+                    columnfamilydata["Entries Count"] = int(
+                        key_val[3].split(":")[1].strip().strip(",")
+                    )
+                    columnfamilydata["Invalid Entries Count"] = int(
+                        key_val[4].split(":")[1].strip().strip(",")
+                    )
+                if "Level:" in currentline:
+                    key_val = currentline.strip().split(",")
+                    level = int(key_val[0].split(":")[1].strip().strip(","))
+                    level_size = int(
+                        key_val[1].split(":")[1].strip().strip(",").strip(" bytes")
+                    )
+                    level_files_count = int(key_val[2].split(":")[1].strip().strip(","))
+
+                    key_val_sst_files = epoch_stats[i + 1].split("],")[:-1]
+                    sst_files = []
+
+                    for sst_file_string in key_val_sst_files:
+                        # Extract SST file details
+                        file_number = int(
+                            sst_file_string.split(":")[0].split("[#")[1].strip()
+                        )
+                        file_details = sst_file_string.split(":")[1].strip().split()
+                        file_size = int(file_details[0].strip())
+                        smallest_key = file_details[1].strip(",").strip("(")
+                        largest_key = file_details[2].strip(")")
+                        entries_count = int(file_details[3].strip("]"))
+
+                        sst_files.append(
+                            {
+                                "FNo": file_number,
+                                "FileSize": file_size,
+                                "SmallesKey": smallest_key,
+                                "LargestKey": largest_key,
+                                "EntriesCount": entries_count,
+                            }
+                        )
+
+                    columnfamilydata["Levels"].append(
+                        {
+                            "Level": level,
+                            "LevelSize": level_size,
+                            "LevelFilesCount": level_files_count,
+                            "SSTFiles": sst_files,
+                        }
+                    )
+                    i += 1
+                i += 1
+
+        if fallback_used:
+            print("Fallback logic was applied during parsing.")
         return columnfamilydata
+
 
     def _parse_logfile(self):
         epoch = self.NUMEPOCHS
@@ -256,14 +400,14 @@ class EpochStats:
                             "WriteAmpDebtPartial": self._writeamppartial_debt(
                                 sorted_cfd, self.FILESIZE
                             ),
-                            "AvgEntriesPerFile": columnfamilydata["Entries Count"]
-                            / columnfamilydata["Files Count"],
+                            # "AvgEntriesPerFile": columnfamilydata["Entries Count"]
+                            # / columnfamilydata["Files Count"],
                             "FilesCount": columnfamilydata["Files Count"],
                             "DBSize": columnfamilydata["Size"],
-                            "ValidEntriesCount": columnfamilydata["Entries Count"],
-                            "InvalidEntriesCount": columnfamilydata[
-                                "Invalid Entries Count"
-                            ],
+                            # "ValidEntriesCount": columnfamilydata["Entries Count"],
+                            # "InvalidEntriesCount": columnfamilydata[
+                            #     "Invalid Entries Count"
+                            # ],
                             "CompactionWrittenBytes": compaction_write_bytes,
                             "CompactionReadBytes": compaction_read,
                             "RangeReduceWrittenBytes": rangereduce_write_bytes,

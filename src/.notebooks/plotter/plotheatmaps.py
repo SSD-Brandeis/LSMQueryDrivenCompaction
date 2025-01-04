@@ -118,7 +118,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
-
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
         plotting_df = pd.DataFrame.from_dict(plotting_data)
@@ -139,7 +141,6 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
-
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
         plotting_df = pd.DataFrame.from_dict(plotting_data)
@@ -162,6 +163,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100, " -- no flush bytes")
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
@@ -206,6 +210,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
@@ -225,7 +232,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
-
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
         plotting_df = pd.DataFrame.from_dict(plotting_data)
@@ -242,6 +251,10 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
+
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
@@ -261,7 +274,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
-
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
@@ -282,6 +297,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
@@ -327,7 +345,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
-
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
         plotting_df = pd.DataFrame.from_dict(plotting_data)
@@ -349,7 +369,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
-
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
         plotting_df = pd.DataFrame.from_dict(plotting_data)
@@ -368,6 +390,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 
@@ -394,6 +419,9 @@ class PlotHeatMaps:
             }
             for stat in self._stats
         ]
+        vanilla_value = [stat[plotting] for stat in plotting_data if stat["lb"] == 0 and stat["ub"] == 0][0]
+        rr_value = [stat[plotting] for stat in plotting_data if stat["lb"] != 0 and stat["ub"] != 0][0]
+        print(f"{plotting} \t\t% \tdiff: ", ((rr_value - vanilla_value)/vanilla_value)*100)
 
         # plotting_data = self.normalize_plotting_data(plotting_data, plotting)
 

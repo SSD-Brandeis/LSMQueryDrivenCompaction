@@ -1118,8 +1118,7 @@ void ColumnFamilyData::CreateNewMemtable(
   if (mem_range_ != nullptr) {
     delete mem_range_->Unref();
   }
-  SetMemtableRange(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq));
-  mem_range_->Ref();
+  SetMemtableRange(std::shared_ptr<MemTable>(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq)));
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {
@@ -1687,7 +1686,7 @@ MemTable* ColumnFamilyMemTablesImpl::GetMemTable() const {
   return current_->mem();
 }
 
-MemTable* ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
+std::shared_ptr<MemTable> ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
   assert(current_ != nullptr);
   return current_->mem_range();
 }

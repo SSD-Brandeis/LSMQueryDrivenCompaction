@@ -1122,7 +1122,7 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
     const SeqnoToTimeMapping& seqno_time_mapping,
     const ReadOptions& read_options, const std::string& db_id,
     const std::string& db_session_id, std::string full_history_ts_low,
-    BlobFileCompletionCallback* blob_callback, MemTable* memtable, int level,
+    BlobFileCompletionCallback* blob_callback, std::shared_ptr<MemTable> memtable, int level,
     FileMetaData* file_meta, DBImpl *db_impl)
     : FlushJob(dbname, cfd, db_options, mutable_cf_options, max_memtable_id,
                file_options, versions, db_mutex, shutting_down,
@@ -1147,6 +1147,10 @@ PartialOrRangeFlushJob::PartialOrRangeFlushJob(
 
 PartialOrRangeFlushJob::~PartialOrRangeFlushJob() {
   ThreadStatusUtil::ResetThreadStatus();
+  if (edit_) {
+    delete edit_;
+    edit_ = nullptr;
+  }
 }
 
 void PartialOrRangeFlushJob::SetFlushJobInfo() {
@@ -1611,6 +1615,7 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
            cfd_->internal_comparator().user_comparator()->Compare(
                read_options_.range_end_key, file_meta_->smallest.user_key()) >
                0)) {
+        delete range_options.iterate_upper_bound;
         range_options.iterate_upper_bound = nullptr;
         range_options.range_query_partial_block_read = true;
         range_options.range_start_key = read_options_.range_start_key;
@@ -1795,6 +1800,9 @@ Status PartialOrRangeFlushJob::WritePartialTable() {
     // ############## dump old file to human readable format #############
 
     ReadOptions range_options = read_options_;
+    if (range_options.iterate_upper_bound != nullptr) {
+      delete range_options.iterate_upper_bound;
+    }
     range_options.iterate_upper_bound = nullptr;
     range_options.range_query_partial_block_read = true;
     range_options.range_start_key = read_options_.range_start_key;

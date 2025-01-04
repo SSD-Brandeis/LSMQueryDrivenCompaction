@@ -234,7 +234,7 @@ Status DBImpl::FlushPartialOrRangeFile(
     std::vector<SequenceNumber>& snapshot_seqs,
     SequenceNumber earliest_write_conflict_snapshot,
     SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
-    Env::Priority thread_pri, MemTable* memtable, int level,
+    Env::Priority thread_pri, std::shared_ptr<MemTable> memtable, int level,
     FileMetaData* meta_data) {
   mutex_.AssertHeld();
   assert(cfd);
@@ -360,7 +360,7 @@ Status DBImpl::FlushPartialOrRangeFiles(
   SuperVersionContext* superversion_context =
       bg_flush_arg.superversion_context_;
   FlushReason flush_reason = bg_flush_arg.flush_reason_;
-  MemTable* memtable_to_flush = bg_flush_arg.memtable_;
+  std::shared_ptr<MemTable> memtable_to_flush = bg_flush_arg.memtable_;
   int level = bg_flush_arg.level_;
   FileMetaData* file_meta = bg_flush_arg.meta_data_;
 
@@ -404,7 +404,7 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
     FlushRequest flush_req = flush_queue_.front();
     flush_queue_.pop_front();
     FlushReason flush_reason = flush_req.flush_reason;
-    MemTable* memtable = flush_req.mem_to_flush;
+    std::shared_ptr<MemTable> memtable = flush_req.mem_to_flush;
     int level = flush_req.level;
     bool just_delete = flush_req.just_delete;
     FileMetaData* file_meta = flush_req.meta_data;
@@ -667,7 +667,7 @@ void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
 
 void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
                                                ColumnFamilyData* cfd,
-                                               MemTable* mem_range, int level,
+                                               std::shared_ptr<MemTable> mem_range, int level,
                                                bool just_delete,
                                                FileMetaData* file_meta) {
   // if FlushReason is kPartialFlush then *mem_range must be nullptr
@@ -695,23 +695,21 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     cfd = cfh->cfd();
   }
 
-  MemTable* memtable_to_flush = mem_range;
-
   // std::cout << "FlushReason: " << (flush_reason==FlushReason::kRangeFlush ?
   // "RangeFlush" : "PartialFlush") << std::endl << std::flush;
 
   // switch new range memtable
   if (flush_reason == FlushReason::kRangeFlush) {
     mutex_.Lock();
-    cfd->SetMemtableRange(cfd->ConstructNewVectorMemtable(
-        *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber()));
-    this->num_entries_compacted += memtable_to_flush->num_entries();
+    cfd->SetMemtableRange(std::shared_ptr<MemTable>(cfd->ConstructNewVectorMemtable(
+        *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber())));
+    this->num_entries_compacted += mem_range->num_entries();
     mutex_.Unlock();
     if (immutable_db_options().verbosity > 1) {
-      std::cout << "{\"MemtableId\": " << memtable_to_flush->GetID()
+      std::cout << "{\"MemtableId\": " << mem_range->GetID()
                 << ", \"Level\": " << decision_cell_.end_level_
                 << ", \"entriesCompacted\": "
-                << memtable_to_flush->num_entries() << "}," << std::endl
+                << mem_range->num_entries() << "}," << std::endl
                 << std::flush;
     }
   } else {
@@ -725,7 +723,7 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     this->num_entries_read_to_compact += file_meta->num_entries;
   }
 
-  FlushRequest req{flush_reason, {{cfd, 0}},  memtable_to_flush,
+  FlushRequest req{flush_reason, {{cfd, 0}},  mem_range,
                    level,        just_delete, file_meta};
 
   {

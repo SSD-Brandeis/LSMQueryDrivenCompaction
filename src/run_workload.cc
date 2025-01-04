@@ -203,10 +203,10 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         (*buffer) << it->status().ToString() << std::endl << std::flush;
       }
 #ifdef TIMER
-      read_options.range_query_stat->count_of_total_invalid =
-          (read_options.range_query_stat->count_of_entries - keys_returned);
+      read_options.range_query_stat.count_of_total_invalid =
+          (read_options.range_query_stat.count_of_entries - keys_returned);
       auto reset_start = std::chrono::high_resolution_clock::now();
-      auto total_entries_read = read_options.range_query_stat->count_of_entries;
+      auto total_entries_read = read_options.range_query_stat.count_of_entries;
 #endif // TIMER
       it->Reset(keys_skipped, keys_compacted);
 #ifdef TIMER
@@ -295,6 +295,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   assert(s.ok());
 
   PrintRocksDBPerfStats(env, buffer, options);
+  table_options.block_cache.reset();
+  options.table_factory.reset();
 
   // flush final stats and delete ptr
   buffer->flush();

@@ -248,7 +248,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
 Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
                                    const std::string& end_key,
                                    uint64_t& entries_count, bool rqdc_enabled) {
-  read_options_.range_query_stat->is_range_query_running = true;
+  read_options_.range_query_stat.is_range_query_running = true;
 
   if (!rqdc_enabled) {
     return Refresh();
@@ -288,18 +288,16 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
   // Check if the last table is added to the queue
 
   if (!read_options_.enable_range_query_compaction) {
-    read_options_.range_query_stat->is_range_query_running = false;
-    read_options_.range_query_stat->reset();
-    // db_impl_->ContinueBackgroundWork();
+    read_options_.range_query_stat.is_range_query_running = false;
+    read_options_.range_query_stat.reset();
     return Status::OK();
   }
 
   if (db_impl_->read_options_.enable_range_query_compaction) {
     if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
         cfd_->mem_range()->num_entries() > 0) {
-      MemTable* imm_range = cfd_->mem_range();
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, imm_range);
+                                                  cfd_, cfd_->mem_range());
       db_impl_->added_last_table = true;
     }
     while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
@@ -336,8 +334,8 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
   ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
                  levels_state_before.c_str());
 
-  read_options_.range_query_stat->is_range_query_running = false;
-  read_options_.range_query_stat->reset();
+  read_options_.range_query_stat.is_range_query_running = false;
+  read_options_.range_query_stat.reset();
   // check if range query compaction was enabled, set to true
   // otherwise background compaction is already running
   if (db_impl_->read_options_.enable_range_query_compaction) {

@@ -345,7 +345,7 @@ class ColumnFamilyData {
   MemTableList* imm() { return &imm_; }
   MemTable* mem() { return mem_; }
 
-  MemTable* mem_range() { return mem_range_; }
+  std::shared_ptr<MemTable> mem_range() { return mem_range_; }
 
   bool IsEmpty() {
     return mem()->GetFirstSequenceNumber() == 0 && imm()->NumNotFlushed() == 0;
@@ -364,7 +364,7 @@ class ColumnFamilyData {
     mem_ = new_mem;
   }
 
-  void SetMemtableRange(MemTable* new_mem_range) {
+  void SetMemtableRange(std::shared_ptr<MemTable> new_mem_range) {
     uint64_t memtable_id = last_memtable_id_.fetch_add(1) + 1;
     new_mem_range->SetID(memtable_id);
     mem_range_ = new_mem_range;
@@ -593,7 +593,7 @@ class ColumnFamilyData {
 
   MemTable* mem_;
   MemTableList imm_;
-  MemTable* mem_range_;
+  std::shared_ptr<MemTable> mem_range_;
   SuperVersion* super_version_;
 
   // An ordinal representing the current SuperVersion. Updated by
@@ -861,7 +861,7 @@ class ColumnFamilyMemTablesImpl : public ColumnFamilyMemTables {
   // REQUIRES: Seek() called first
   // REQUIRES: use this function of DBImpl::column_family_memtables_ should be
   //           under a DB mutex OR from a write thread
-  virtual MemTable* GetRangeMemTable() const override;
+  virtual std::shared_ptr<MemTable> GetRangeMemTable() const override;
 
   // Returns column family handle for the selected column family
   // REQUIRES: use this function of DBImpl::column_family_memtables_ should be

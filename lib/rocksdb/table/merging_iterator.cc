@@ -419,8 +419,8 @@ class MergingIterator : public InternalIterator {
     assert(Valid());
     Slice slice = current_->key();
     slice.level_ = current_->GetLevel();
-    if (db_impl_->read_options_.range_query_stat->is_range_query_running) {
-      db_impl_->read_options_.range_query_stat->count_of_entries++;
+    if (db_impl_->read_options_.range_query_stat.is_range_query_running) {
+      db_impl_->read_options_.range_query_stat.count_of_entries++;
     }
     return slice;
   }

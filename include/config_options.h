@@ -284,7 +284,6 @@ void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
     std::cerr << "Error[" << __FILE__ << " : " << __LINE__
               << "]: Invalid read tier!" << std::endl;
   }
-  read_options->range_query_stat->initiate();
 #pragma endregion // [ReadOptions]
 
 #pragma region[WriteOptions]
@@ -338,6 +337,8 @@ void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
   read_options->lower_threshold = env->lower_threshold;
   read_options->upper_threshold = env->upper_threshold;
   options->enable_level_renaming = env->enable_level_renaming;
+  read_options->range_query_stat = RangeQueryStat();
+  read_options->range_query_stat.initiate();
 
 #pragma endregion // [RangeReduce]
 
@@ -348,9 +349,11 @@ void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
     rocksdb::get_perf_context()->ClearPerLevelPerfContext();
     rocksdb::get_perf_context()->EnablePerLevelPerfContext();
     rocksdb::get_iostats_context()->Reset();
+    options->statistics.reset();
     options->statistics = rocksdb::CreateDBStatistics();
   } else {
 #ifdef PROFILE
+    options->statistics.reset();
     options->statistics = rocksdb::CreateDBStatistics();
 #endif // PROFILE
   }

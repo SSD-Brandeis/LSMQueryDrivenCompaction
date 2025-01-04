@@ -1661,7 +1661,7 @@ struct ReadOptions {
 
   // Used to check if the range query compaction is enabled
   bool enable_range_query_compaction = false;
-  RangeQueryStat *range_query_stat = new RangeQueryStat();
+  RangeQueryStat range_query_stat;
 
   // number of entries overlap from lower to upper level 
   float upper_threshold = 0;  // default: [inf]

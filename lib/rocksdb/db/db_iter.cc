@@ -145,9 +145,8 @@ void DBIter::Next() {
     // uint64_t n87_percent_of_max_size = max_size * 7/8;
 
     if (cfd_->mem_range()->get_data_size() >= max_size) {
-      MemTable* imm_range = cfd_->mem_range();
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, imm_range);
+                                                  cfd_, cfd_->mem_range());
     }
   }
 
@@ -211,17 +210,15 @@ void DBIter::Next() {
                              Slice(key().data(), key().size()),
                              Slice(value().data(), value().size()), nullptr);
     }
-    MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                imm_range);
+                                                cfd_->mem_range());
     db_impl_->added_last_table = true;
   } else if (user_comparator_.Compare(
                  key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
              read_options_mutable_.enable_range_query_compaction &&
              key().level_ == 0) {
-    MemTable* imm_range = cfd_->mem_range();
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                imm_range);
+                                                cfd_->mem_range());
     db_impl_->added_last_table = true;
   }
 }

@@ -486,11 +486,11 @@ class DBImpl : public DB {
       std::vector<SequenceNumber>& snapshot_seqs,
       SequenceNumber earliest_write_conflict_snapshot,
       SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
-      Env::Priority thread_pri, MemTable* memtable, int level,
+      Env::Priority thread_pri, std::shared_ptr<MemTable> memtable, int level,
       FileMetaData* meta_data);
   void AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
                                          ColumnFamilyData* cfd,
-                                         MemTable* mem_range = nullptr,
+                                         std::shared_ptr<MemTable> mem_range = nullptr,
                                          int level = -1,
                                          bool just_delete = false,
                                          FileMetaData* file_meta = nullptr);
@@ -1780,7 +1780,7 @@ class DBImpl : public DB {
 
     BGFlushArg(ColumnFamilyData* cfd, uint64_t max_memtable_id,
                SuperVersionContext* superversion_context,
-               FlushReason flush_reason, MemTable* memtable, int level,
+               FlushReason flush_reason, std::shared_ptr<MemTable> memtable, int level,
                bool just_delete, FileMetaData* meta_data)
         : cfd_(cfd),
           max_memtable_id_(max_memtable_id),
@@ -1801,7 +1801,7 @@ class DBImpl : public DB {
     // requires a SuperVersionContext object (currently embedded in JobContext).
     SuperVersionContext* superversion_context_;
     FlushReason flush_reason_;
-    MemTable* memtable_ = nullptr;
+    std::shared_ptr<MemTable> memtable_ = nullptr;
     int level_ = -1;
     bool just_delete_ = false;
     FileMetaData* meta_data_ = nullptr;
@@ -2169,7 +2169,7 @@ class DBImpl : public DB {
     // flush is considered complete.
     std::unordered_map<ColumnFamilyData*, uint64_t>
         cfd_to_max_mem_id_to_persist;
-    MemTable* mem_to_flush = nullptr;
+    std::shared_ptr<MemTable> mem_to_flush = nullptr;
     int level = -1;                     // For partial/range file flush
     bool just_delete = false;           // For partial/range file flush
     FileMetaData* meta_data = nullptr;  // For partial/range file flush

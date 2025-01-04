@@ -16,7 +16,8 @@ void PrintColumn(T value, int width, std::unique_ptr<Buffer> &buffer) {
   (*buffer) << std::setfill(' ') << std::setw(width) << value;
 }
 
-void PrintExperimentalSetup(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer> &buffer) {
+void PrintExperimentalSetup(std::unique_ptr<DBEnv> &env,
+                            std::unique_ptr<Buffer> &buffer) {
   constexpr int colWidth = 10;
   constexpr int smallColWidth = 4;
 
@@ -47,8 +48,8 @@ void PrintExperimentalSetup(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer>
   (*buffer) << std::endl;
 }
 
-void PrintRocksDBPerfStats(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer> &buffer,
-                           Options options) {
+void PrintRocksDBPerfStats(std::unique_ptr<DBEnv> &env,
+                           std::unique_ptr<Buffer> &buffer, Options options) {
   if (env->IsPerfIOStatEnabled()) {
     rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
 
@@ -64,12 +65,16 @@ void PrintRocksDBPerfStats(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer> 
 
     (*buffer) << "\n[Rocksdb Stats]\n";
     (*buffer) << options.statistics->ToString();
+    options.statistics.reset();
     (*buffer) << "===============================\n";
   }
+#ifdef PROFILE
+  options.statistics.reset();
+#endif // PROFILE
 }
 
-void UpdateProgressBar(std::unique_ptr<DBEnv> &env, size_t current, size_t total,
-                       size_t update_interval, size_t bar_width) {
+void UpdateProgressBar(std::unique_ptr<DBEnv> &env, size_t current,
+                       size_t total, size_t update_interval, size_t bar_width) {
   if (env->IsShowProgressEnabled() &&
       (current % update_interval == 0 || current == total)) {
     double progress = static_cast<double>(current) / total;

@@ -222,7 +222,7 @@ class PartialOrRangeFlushJob : public FlushJob {
       const std::string& db_session_id = "",
       std::string full_history_ts_low = "",
       BlobFileCompletionCallback* blob_callback = nullptr,
-      MemTable* memtable = nullptr, int level = -1,
+      std::shared_ptr<MemTable> memtable = nullptr, int level = -1,
       FileMetaData* file_meta = nullptr, DBImpl* db_impl = nullptr);
 
   ~PartialOrRangeFlushJob();
@@ -239,7 +239,7 @@ class PartialOrRangeFlushJob : public FlushJob {
   Status WriteLevelNTable();
   Status WritePartialTable();
   const ReadOptions read_options_;
-  MemTable* memtable_ = nullptr;
+  std::shared_ptr<MemTable> memtable_ = nullptr;
   int level_ = -1;
   uint64_t file_number_ = -1;
   FileMetaData* file_meta_;

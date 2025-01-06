@@ -130,18 +130,17 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (read_options_mutable_.enable_range_query_compaction &&
+  if (read_options_mutable_.enable_range_query_compaction && Valid() &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
     cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                            Slice(key().data(), key().size()),
                            Slice(value().data(), value().size()), nullptr);
-    
-    const MutableCFOptions mutable_cf_options = *cfd_->GetLatestMutableCFOptions();
-    uint64_t max_size = MaxFileSizeForLevel(
-            mutable_cf_options, db_impl_->decision_cell_.end_level_,
-            cfd_->ioptions()
-                ->compaction_style);
+    const MutableCFOptions mutable_cf_options =
+        *cfd_->GetLatestMutableCFOptions();
+    uint64_t max_size = MaxFileSizeForLevel(mutable_cf_options,
+                                            db_impl_->decision_cell_.end_level_,
+                                            cfd_->ioptions()->compaction_style);
     // uint64_t n87_percent_of_max_size = max_size * 7/8;
 
     if (cfd_->mem_range()->get_data_size() >= max_size) {
@@ -199,13 +198,13 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
 
-  if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) >=
-          0 &&
-      read_options_mutable_.enable_range_query_compaction &&
+  if (read_options_mutable_.enable_range_query_compaction && Valid() &&
+      user_comparator_.Compare(
+          key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) ==
-        0) {
+    if (user_comparator_.Compare(
+            key(), Slice(read_options_mutable_.range_end_key)) == 0) {
       cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
                              Slice(key().data(), key().size()),
                              Slice(value().data(), value().size()), nullptr);
@@ -213,9 +212,9 @@ void DBIter::Next() {
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 cfd_->mem_range());
     db_impl_->added_last_table = true;
-  } else if (user_comparator_.Compare(
+  } else if (read_options_mutable_.enable_range_query_compaction && Valid() &&
+             user_comparator_.Compare(
                  key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
-             read_options_mutable_.enable_range_query_compaction &&
              key().level_ == 0) {
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
                                                 cfd_->mem_range());

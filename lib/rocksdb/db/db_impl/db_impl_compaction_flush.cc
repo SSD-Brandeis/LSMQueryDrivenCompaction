@@ -8,7 +8,6 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #include <cinttypes>
 #include <deque>
-#include <iostream>
 
 #include "db/builder.h"
 #include "db/db_impl/db_impl.h"
@@ -3532,9 +3531,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                                        *c->mutable_cf_options());
     c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
                                                              moved_bytes);
-    std::cout << "Level Renaming: [moving " << moved_files << " files] "
-              << std::endl
-              << std::flush;
     VersionStorageInfo::LevelSummaryStorage tmp;
     {
       event_logger_.LogToBuffer(log_buffer)
@@ -3549,14 +3545,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         c->column_family_data()->current()->storage_info()->LevelSummary(&tmp));
     *made_progress = true;
 
-    // auto after = std::chrono::steady_clock::now();
-    // std::cout << "TIME TO Level Renaming: "
-    //           << (std::chrono::duration_cast<std::chrono::nanoseconds>(after
-    //           -
-    //                                                                    before))
-    //                  .count()
-    //           << std::endl
-    //           << std::flush;
     RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
     // Clear Instrument
     ThreadStatusUtil::ResetThreadStatus();
@@ -3627,9 +3615,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                                        *c->mutable_cf_options());
     c->column_family_data()->internal_stats()->IncBytesMoved(c->output_level(),
                                                              moved_bytes);
-    // std::cout << "Trivially Moving: [moving " << moved_files << " files]"
-    //           << std::endl
-    //           << std::endl;
+
     VersionStorageInfo::LevelSummaryStorage tmp;
     {
       event_logger_.LogToBuffer(log_buffer)
@@ -3645,14 +3631,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         c->column_family_data()->current()->storage_info()->LevelSummary(&tmp));
     *made_progress = true;
 
-    // auto after = std::chrono::steady_clock::now();
-    // std::cout << "TIME TO TRIVIALLY MOVE: "
-    //           << (std::chrono::duration_cast<std::chrono::nanoseconds>(after
-    //           -
-    //                                                                    before))
-    //                  .count()
-    //           << std::endl
-    //           << std::flush;
     RecordTick(stats_, NUM_FILES_TRIVALLY_MOVED, moved_files);
     // Clear Instrument
     ThreadStatusUtil::ResetThreadStatus();

@@ -66,7 +66,6 @@ void PrintRocksDBPerfStats(std::unique_ptr<DBEnv> &env,
     (*buffer) << "\n[Rocksdb Stats]\n";
     (*buffer) << options.statistics->ToString();
     options.statistics.reset();
-    (*buffer) << "===============================\n";
   }
 #ifdef PROFILE
   options.statistics.reset();

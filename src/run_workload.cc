@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <x86intrin.h>
 
 #include "config_options.h"
 #include "utils.h"
@@ -88,9 +89,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
          "uBytes Written Back, uEntries Count Written Back, Total "
          "Entries Read, Data unBytes Written Back, Total unBytes "
-         "Written Back, unEntries Count Written Back, Skipped Entries Count, "
-         "Entries Qualified For Compaction Count, RQ Refresh Time, "
-         "RQ Reset Time, Actual RQ Time"
+         "Written Back, unEntries Count Written Back, Total Entries Returned, "
+         "RQ Refresh Time, RQ Reset Time, Actual RQ Time, CPU Cycles"
       << std::endl;
   unsigned long rqnumber = 0;
 #endif // TIMER
@@ -177,9 +177,10 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       std::string start_key, end_key;
       stream >> start_key >> end_key;
 
-      uint64_t keys_returned = 0, keys_skipped = 0, keys_compacted = 0, keys_read = 0;
+      uint64_t keys_returned = 0, keys_read = 0;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
+      const uint64_t begin = __rdtsc();
       range_reduce_listener->reset();
 #endif // TIMER
 
@@ -203,12 +204,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         (*buffer) << it->status().ToString() << std::endl << std::flush;
       }
 #ifdef TIMER
-      read_options.range_query_stat.count_of_total_invalid =
-          (read_options.range_query_stat.count_of_entries - keys_returned);
       auto reset_start = std::chrono::high_resolution_clock::now();
-      auto total_entries_read = read_options.range_query_stat.count_of_entries;
 #endif // TIMER
-      it->Reset(keys_skipped, keys_compacted);
+      it->Reset(keys_read);
 #ifdef TIMER
       auto reset_end = std::chrono::high_resolution_clock::now();
       auto actual_range_time =
@@ -220,19 +218,19 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
                                                                reset_start)
               .count();
       auto stop = std::chrono::high_resolution_clock::now();
+      const uint64_t end = __rdtsc() - begin;
       auto duration =
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
       rqstats << ++rqnumber << ", " << duration.count() << ", "
               << range_reduce_listener->useful_data_blocks_size_ << ", "
               << range_reduce_listener->useful_file_size_ << ", "
-              << range_reduce_listener->useful_entries_ << ", "
-              << total_entries_read << ", "
-              << range_reduce_listener->un_useful_data_blocks_size_ << ", "
-              << range_reduce_listener->un_useful_file_size_ << ", "
+              << range_reduce_listener->useful_entries_ << ", " << keys_read
+              << ", " << range_reduce_listener->un_useful_data_blocks_size_
+              << ", " << range_reduce_listener->un_useful_file_size_ << ", "
               << range_reduce_listener->un_useful_entries_ << ", "
-              << keys_skipped << keys_compacted << ", " << refresh_duration
-              << ", " << reset_duration << ", " << actual_range_time
+              << keys_returned << ", " << refresh_duration << ", "
+              << reset_duration << ", " << actual_range_time << ", " << end
               << std::endl;
       range_reduce_listener->reset();
 #endif // TIMER
@@ -244,7 +242,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     }
 
     ith_op += 1;
-    UpdateProgressBar(env, ith_op, total_operations, (int)total_operations*0.02);
+    UpdateProgressBar(env, ith_op, total_operations,
+                      (int)total_operations * 0.02);
 #ifdef PROFILE
     if (ith_op == env->num_inserts) {
       (*buffer) << "=====================" << std::endl;
@@ -265,7 +264,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   }
 
 #ifdef PROFILE
-  (*buffer) << "===========END HERE=========" << std::endl;
+  (*buffer) << "=====================" << std::endl;
   LogTreeState(db, buffer);
   LogRocksDBStatistics(db, options, buffer);
 #endif // PROFILE
@@ -297,6 +296,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   PrintRocksDBPerfStats(env, buffer, options);
   table_options.block_cache.reset();
   options.table_factory.reset();
+  (*buffer) << "===========END HERE=========\n";
 
   // flush final stats and delete ptr
   buffer->flush();

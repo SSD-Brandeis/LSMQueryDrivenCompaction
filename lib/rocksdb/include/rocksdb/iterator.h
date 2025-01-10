@@ -121,8 +121,8 @@ class Iterator : public Cleanable {
         "Refresh(const std::string, const std::string) is not supported");
   }
 
-  // If supported, reset the start_key & end_key back to previous value
-  virtual Status Reset(uint64_t& /*entries_skipped*/, uint64_t& /*entries_to_compact*/) {
+  // If supported, reset the start_key & end_key to empty string
+  virtual Status Reset(uint64_t& /*total_keys_read*/) {
     return Status::NotSupported("Reset() is not supported");
   }
 

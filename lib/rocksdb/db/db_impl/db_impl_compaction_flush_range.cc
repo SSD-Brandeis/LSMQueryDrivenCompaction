@@ -703,7 +703,6 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     mutex_.Lock();
     cfd->SetMemtableRange(std::shared_ptr<MemTable>(cfd->ConstructNewVectorMemtable(
         *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber())));
-    this->num_entries_compacted += mem_range->num_entries();
     mutex_.Unlock();
     if (immutable_db_options().verbosity > 1) {
       std::cout << "{\"MemtableId\": " << mem_range->GetID()
@@ -720,7 +719,6 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
                 << std::endl
                 << std::flush;
     }
-    this->num_entries_read_to_compact += file_meta->num_entries;
   }
 
   FlushRequest req{flush_reason, {{cfd, 0}},  mem_range,

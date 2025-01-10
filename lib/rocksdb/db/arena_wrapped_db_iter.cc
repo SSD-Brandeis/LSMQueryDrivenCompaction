@@ -9,9 +9,7 @@
 
 #include "db/arena_wrapped_db_iter.h"
 
-// #include <iomanip>
 #include <chrono>
-#include <iostream>
 
 #include "logging/logging.h"
 #include "memory/arena.h"
@@ -248,20 +246,14 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
 Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
                                    const std::string& end_key,
                                    uint64_t& entries_count, bool rqdc_enabled) {
-  read_options_.range_query_stat.is_range_query_running = true;
-
   if (!rqdc_enabled) {
     return Refresh();
   }
 
-  db_impl_->num_entries_skipped = 0;
-  db_impl_->num_entries_compacted = 0;
-
-  // Assign read options once to avoid multiple assignments
-  read_options_.range_end_key = end_key;
-  read_options_.range_start_key = start_key;
-  read_options_.seq = db_impl_->GetLatestSequenceNumber();
   read_options_.enable_range_query_compaction = rqdc_enabled;
+  read_options_.range_start_key = start_key;
+  read_options_.range_end_key = end_key;
+  read_options_.seq = db_impl_->GetLatestSequenceNumber();
   db_impl_->read_options_ = read_options_;
 
   auto pause_status = db_impl_->PauseBackgroundWork();
@@ -276,20 +268,17 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
 }
 
 void ArenaWrappedDBIter::ResumeBackgroundWork() {
-    db_impl_->ContinueBackgroundWork();
-    read_options_.enable_range_query_compaction = false;
-    read_options_.range_start_key.clear();
-    read_options_.range_end_key.clear();
-    db_impl_->read_options_ = read_options_;
+  read_options_.enable_range_query_compaction = false;
+  read_options_.range_start_key.clear();
+  read_options_.range_end_key.clear();
+  db_impl_->read_options_ = read_options_;
+  db_impl_->ContinueBackgroundWork();
 }
 
-Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
-                                 uint64_t& entries_to_compact) {
-  // Check if the last table is added to the queue
+Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
+  total_keys_read = db_iter_->GetKeysReadCount();
 
   if (!read_options_.enable_range_query_compaction) {
-    read_options_.range_query_stat.is_range_query_running = false;
-    read_options_.range_query_stat.reset();
     return Status::OK();
   }
 
@@ -298,7 +287,6 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
         cfd_->mem_range()->num_entries() > 0) {
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
                                                   cfd_, cfd_->mem_range());
-      db_impl_->added_last_table = true;
     }
     while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
            db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
@@ -307,49 +295,8 @@ Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
     }
   }
 
-  entries_skipped = db_impl_->num_entries_skipped;
-  entries_to_compact = db_impl_->num_entries_read_to_compact;
-  std::string levels_state_before =
-      "Range Query Complete: Compacted << " +
-      std::to_string(db_impl_->num_entries_compacted) +
-      " Skipped: " + std::to_string(db_impl_->num_entries_skipped) +
-      " Read to Compact: " +
-      std::to_string(db_impl_->num_entries_read_to_compact);
-  auto storage_info_before = cfd_->current()->storage_info();
-  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-    uint64_t total_entries = 0;
-    levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
-    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-    for (size_t file_index = 0; file_index < num_files; file_index++) {
-      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-      levels_state_before +=
-          "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-          fd.file_metadata->smallest.user_key().ToString() + ", " +
-          fd.file_metadata->largest.user_key().ToString() + ")" +
-          std::to_string(fd.file_metadata->num_entries) + "] ";
-      total_entries += fd.file_metadata->num_entries;
-    }
-    levels_state_before += " = " + std::to_string(total_entries);
-  }
-  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                 levels_state_before.c_str());
-
-  read_options_.range_query_stat.is_range_query_running = false;
-  read_options_.range_query_stat.reset();
-  // check if range query compaction was enabled, set to true
-  // otherwise background compaction is already running
-  if (db_impl_->read_options_.enable_range_query_compaction) {
-    // db_impl_->RenameLevels();
-    read_options_.range_end_key = "";
-    read_options_.range_start_key = "";
-    read_options_.enable_range_query_compaction = false;
-    db_impl_->read_options_ = read_options_;
-  }
   db_impl_->was_decision_true = false;
-  db_impl_->num_entries_skipped = 0;
-  db_impl_->num_entries_compacted = 0;
-  db_impl_->num_entries_read_to_compact = 0;
-  db_impl_->ContinueBackgroundWork();
+  ResumeBackgroundWork();
   return Status::OK();
 }
 
@@ -384,36 +331,18 @@ Status ArenaWrappedDBIter::Refresh() {
     InternalIterator* internal_iter = db_impl_->NewInternalIterator(
         read_options_, cfd_, sv, &arena_, latest_seq,
         /* allow_unprepared_value */ true, /* db_iter */ this);
+    internal_iter->is_rq_running = true;
+    internal_iter->keys_read.store(0);
     SetIterUnderDBIter(internal_iter);
-
-    std::string levels_state = "Range Query Started:";
-    auto storage_info = cfd_->current()->storage_info();
-    for (int l = 0; l < storage_info->num_non_empty_levels(); l++) {
-      uint64_t total_entries = 0;
-      levels_state += "\n\tLevel-" + std::to_string(l) + ": ";
-      auto num_files = storage_info->LevelFilesBrief(l).num_files;
-      for (size_t file_index = 0; file_index < num_files; file_index++) {
-        auto fd = storage_info->LevelFilesBrief(l).files[file_index];
-        levels_state += "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-                        fd.file_metadata->smallest.user_key().ToString() +
-                        ", " + fd.file_metadata->largest.user_key().ToString() +
-                        ")" + std::to_string(fd.file_metadata->num_entries) +
-                        "] ";
-        total_entries += fd.file_metadata->num_entries;
-      }
-      levels_state += " = " + std::to_string(total_entries);
-    }
-
-    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                   levels_state.c_str());
   };
   while (true) {
     if (sv_number_ != cur_sv_number) {
       reinit_internal_iter();
       break;
     } else {
-      db_iter_->JustResetDbImpl(db_impl_);
-      db_iter_->JustResetReadOptions(read_options_);
+      db_iter_->ResetKeysRead();
+      db_iter_->ResetDbImpl(db_impl_);
+      db_iter_->ResetReadOptions(read_options_);
       SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();
       // Refresh range-tombstones in MemTable
       if (!read_options_.ignore_range_deletions) {

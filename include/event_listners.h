@@ -10,7 +10,6 @@ using namespace rocksdb;
 extern std::mutex mtx;
 extern std::condition_variable cv;
 extern bool compaction_complete;
-extern uint64_t flush_count;
 
 /*
  * Wait for compactions that are running (or will run) to make the
@@ -31,7 +30,18 @@ public:
 
   void OnCompactionCompleted(DB *db, const CompactionJobInfo &ci) override {
     std::lock_guard<std::mutex> lock(mtx);
-    compaction_complete = true;
+    uint64_t num_running_compactions;
+    uint64_t pending_compaction_bytes;
+    uint64_t num_pending_compactions;
+    db->GetIntProperty("rocksdb.num-running-compactions",
+                       &num_running_compactions);
+    db->GetIntProperty("rocksdb.estimate-pending-compaction-bytes",
+                       &pending_compaction_bytes);
+    db->GetIntProperty("rocksdb.compaction-pending", &num_pending_compactions);
+    if (num_running_compactions == 0 && pending_compaction_bytes == 0 &&
+        num_pending_compactions == 0) {
+      compaction_complete = true;
+    }
     cv.notify_one();
   }
 };
@@ -64,7 +74,6 @@ public:
       un_useful_data_blocks_size_ += tp.data_size;
       un_useful_entries_ += tp.num_entries;
     }
-    flush_count++;
   }
 
   uint64_t useful_data_blocks_size_;

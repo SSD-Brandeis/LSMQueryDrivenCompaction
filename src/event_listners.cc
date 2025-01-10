@@ -3,7 +3,6 @@
 std::mutex mtx;
 std::condition_variable cv;
 bool compaction_complete = false;
-uint64_t flush_count = 1;
 
 void WaitForCompactions(DB *db) {
   std::unique_lock<std::mutex> lock(mtx);
@@ -22,6 +21,6 @@ void WaitForCompactions(DB *db) {
         num_pending_compactions == 0) {
       break;
     }
-    cv.wait_for(lock, std::chrono::nanoseconds(200));
+    cv.wait_for(lock, std::chrono::milliseconds(10));
   }
 }

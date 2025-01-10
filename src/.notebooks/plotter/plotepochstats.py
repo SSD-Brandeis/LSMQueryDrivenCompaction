@@ -31,8 +31,9 @@ class PlotEpochStats:
         self._rqdc: List[PlottingStats] = deepcopy(rqdc)
 
     def plot_total_bytes_written(self):
-        vanilla_writes = [van.TotalWriteBytes for van in self._vanilla]
-        rqdc_writes = [rqdc.TotalWriteBytes for rqdc in self._rqdc]
+        convert_to_ = 1024 ** 3
+        vanilla_writes = [(van.CompactionWrittenBytes) / convert_to_ for van in self._vanilla]
+        rqdc_writes = [(rqdc.CompactionWrittenBytes + rqdc.RangeReduceWrittenBytes) / convert_to_ for rqdc in self._rqdc]
 
         fig_size = (6, 4)
         bar_width = 0.35
@@ -58,18 +59,18 @@ class PlotEpochStats:
         ax.set_ylabel("total write (GB)", fontsize=12)
         ax.set_xlabel("epoch", fontsize=12)
 
-        ax.set_ylim(bottom=0)
+        ax.set_ylim(bottom=0, top=max(rqdc_writes) + max(rqdc_writes) * 0.15)
 
         ax.set_xticks(range(epochs))
         ax.set_xticklabels([f"{epoch}" for epoch in range(1, epochs + 1)], fontsize=12)
 
-        ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
-        ax.set_yticklabels(
-            [f"{int(i/(1000 ** 3))}" if i != 0 else "0" for i in ax.get_yticks()],
-            fontsize=12,
-        )
+        # ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
+        # ax.set_yticklabels(
+        #     [f"{int(i/(1000 ** 3))}" if i != 0 else "0" for i in ax.get_yticks()],
+        #     fontsize=12,
+        # )
 
-        ax.set_title("total write (compaction + flushes)", fontsize=12)
+        ax.set_title("total write (compaction + RangeReduce compactions)", fontsize=12)
 
         fig.legend(
             loc="upper center",
@@ -427,8 +428,9 @@ class PlotEpochStats:
     #     plt.show()
 
     def plot_compaction_read(self):
-        vanilla_compaction_read = [van.CompactionReadBytes for van in self._vanilla]
-        rqdc_compaction_read = [rqdc.CompactionReadBytes for rqdc in self._rqdc]
+        convert_to_ = 1024 ** 3
+        vanilla_compaction_read = [(van.CompactionReadBytes) / convert_to_ for van in self._vanilla]
+        rqdc_compaction_read = [(rqdc.CompactionReadBytes) / convert_to_ for rqdc in self._rqdc]
 
         fig_size = (6, 4)
         bar_width = 0.35
@@ -454,16 +456,16 @@ class PlotEpochStats:
         ax.set_ylabel("compaction read (GB)", fontsize=12)
         ax.set_xlabel("epoch", fontsize=12)
 
-        ax.set_ylim(bottom=0)
+        ax.set_ylim(bottom=0, top=max(vanilla_compaction_read) + max(vanilla_compaction_read) * 0.15)
 
         ax.set_xticks(range(epochs))
         ax.set_xticklabels([f"{epoch}" for epoch in range(1, epochs + 1)], fontsize=12)
 
-        ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
-        ax.set_yticklabels(
-            [f"{int(i/(1000 ** 3))}" if i != 0 else "0" for i in ax.get_yticks()],
-            fontsize=12,
-        )
+        # ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
+        # ax.set_yticklabels(
+        #     [f"{int(i/(1000 ** 3))}" if i != 0 else "0" for i in ax.get_yticks()],
+        #     fontsize=12,
+        # )
 
         fig.legend(
             loc="upper center",
@@ -729,11 +731,11 @@ class PlotRangeQueryStats:
         ax.xaxis.set_major_locator(ticker.FixedLocator(ax.get_xticks()))
         ax.set_xticklabels([f"{int(tick)}" for tick in ax.get_xticks()], fontsize=12)
 
-        ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
-        ax.set_yticklabels(
-            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
-            fontsize=12,
-        )
+        # ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
+        # ax.set_yticklabels(
+        #     [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
+        #     fontsize=12,
+        # )
         ax.set_title("total read", fontsize=12)
 
         fig.legend(
@@ -792,6 +794,76 @@ class PlotRangeQueryStats:
         )
 
         ax.set_ylabel("latency (ms)", fontsize=12)
+        ax.set_xlabel("range query number", fontsize=12)
+
+        ax.set_ylim(bottom=0)
+
+        ax.xaxis.set_major_locator(ticker.FixedLocator(ax.get_xticks()))
+        ax.set_xticklabels([f"{int(tick)}" for tick in ax.get_xticks()], fontsize=12)
+
+        ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
+        ax.set_yticklabels(
+            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
+            fontsize=12,
+        )
+
+        fig.legend(
+            loc="lower center",
+            ncol=2,
+            fontsize=12,
+            bbox_to_anchor=(0.5, 0.1),
+            frameon=False,
+        )
+
+        ax.annotate(
+            f"avg vanilla: {self._vanilla[plotting_column].mean()/convert_to_:_.2f} ms",
+            xy=(int(len(rqdc_rq_time) * 0.10), int(max(rqdc_rq_time) * 0.05)),
+            fontsize=12,
+        )
+        ax.annotate(
+            f"avg RQDC: {self._rqdc[plotting_column].mean()/convert_to_:_.2f} ms",
+            xy=(int(len(rqdc_rq_time) * 0.80), int(max(rqdc_rq_time) * 0.05)),
+            fontsize=12,
+        )
+
+        self._plot_percentiles(
+            self._get_percentiles(pd.Series([x/convert_to_ for x in vanilla_rq_time])),
+            self._get_percentiles(pd.Series([x/convert_to_ for x in rqdc_rq_time])),
+            ax,
+        )
+
+        plt.show()
+
+    def plot_cpu_cycles(self, range_query_pattern=""):
+
+        plotting_column = str(RQColumn.CPU_CYCLES)
+        convert_to_ = 1
+
+        vanilla_rq_time = self._vanilla[plotting_column].to_list()
+        rqdc_rq_time = self._rqdc[plotting_column].to_list()
+
+        if len(vanilla_rq_time) != len(rqdc_rq_time):
+            raise Exception("found different number of range queries")
+
+        fig_size = (20, 4)
+        fig, ax = plt.subplots(figsize=fig_size)
+
+        ax.plot(
+            range(len(vanilla_rq_time)),
+            vanilla_rq_time,
+            label=f"{self.vanilla_plot_kwargs['label']} {range_query_pattern}",
+            color=self.vanilla_plot_kwargs["color"],
+            alpha=0.8,
+        )
+        ax.plot(
+            range(len(rqdc_rq_time)),
+            rqdc_rq_time,
+            label=f"{self.rqdc_plot_kwargs['label']} {range_query_pattern}",
+            color=self.rqdc_plot_kwargs["color"],
+            alpha=0.8,
+        )
+
+        ax.set_ylabel("cpu cycles", fontsize=12)
         ax.set_xlabel("range query number", fontsize=12)
 
         ax.set_ylim(bottom=0)

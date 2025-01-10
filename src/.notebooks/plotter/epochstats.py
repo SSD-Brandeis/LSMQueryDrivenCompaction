@@ -137,7 +137,7 @@ class EpochStats:
                 break
         return execution_time
 
-    def _read_one_epoch(self, string_to_check=["===========", "===========", "Operations Execution Time:"], i=0):
+    def _read_one_epoch(self, string_to_check=["===========", "===========", "===========END HERE========="], i=0):
         with open(self.filepath, "r") as file:
             epoch_data = list()
             grabbing_data = False
@@ -380,6 +380,7 @@ class EpochStats:
         try:
             while epoch > 0:
                 one_epoch_stats_lines = next(filereader)
+                print(one_epoch_stats_lines)
                 columnfamilydata = self._parse_one_epoch(one_epoch_stats_lines)
 
                 self._epoch_stats.append(columnfamilydata)

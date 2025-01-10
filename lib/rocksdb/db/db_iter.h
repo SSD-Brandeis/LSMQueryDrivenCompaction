@@ -141,6 +141,14 @@ class DBIter final : public Iterator {
     iter_.iter()->SetPinnedItersMgr(&pinned_iters_mgr_);
   }
 
+  long long GetKeysReadCount() {
+    return iter_.iter()->keys_read.load();
+  }
+
+  void ResetKeysRead() {
+    iter_.iter()->keys_read.store(0);
+  }
+
   bool Valid() const override {
 #ifdef ROCKSDB_ASSERT_STATUS_CHECKED
     if (valid_) {
@@ -212,8 +220,8 @@ class DBIter final : public Iterator {
     }
   }
   void set_valid(bool v) { valid_ = v; }
-  void JustResetDbImpl(DBImpl* db_impl) { db_impl_ = db_impl; }
-  void JustResetReadOptions(const ReadOptions& read_options) {
+  void ResetDbImpl(DBImpl* db_impl) { db_impl_ = db_impl; }
+  void ResetReadOptions(const ReadOptions& read_options) {
     read_options_mutable_ = read_options;
   }
 

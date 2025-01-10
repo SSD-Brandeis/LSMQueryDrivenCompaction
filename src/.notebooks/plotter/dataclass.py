@@ -61,6 +61,7 @@ class RQColumn(Enum):
     RQ_REFRESH_TIME = ("RQ Refresh Time",)
     RQ_RESET_TIME = ("RQ Reset Time",)
     RQ_TIME = ("Actual RQ Time",)
+    CPU_CYCLES = ("CPU Cycles",)
 
     def __str__(self):
         return "%s" % self.value

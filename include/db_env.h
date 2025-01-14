@@ -193,7 +193,7 @@ public:
       Default::LEVEL0_FILE_NUM_COMPACTION_TRIGGER;
 
   // number of levels for this database
-  int num_levels = 10;
+  int num_levels = 20;
 
   // by default target_file_size_multiplier is 1, which means
   // by default files in different levels will have similar size.

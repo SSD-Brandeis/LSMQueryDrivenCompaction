@@ -387,6 +387,15 @@ class EpochStats:
                 sorted_cfd = sorted(
                     columnfamilydata["Levels"], key=lambda x: x["Level"]
                 )
+
+                n = len(sorted_cfd)-1
+                while len(sorted_cfd) > 0:
+                    if sorted_cfd[n]["LevelSize"] == 0:
+                        sorted_cfd.pop(-1)
+                    else:
+                        break
+                    n-=1
+
                 compaction_write_bytes = self._compaction_written_bytes(one_epoch_stats_lines)
                 compaction_read = self._compaction_read_bytes(one_epoch_stats_lines)
                 rangereduce_write_bytes = self._rangereduce_written_bytes(one_epoch_stats_lines)

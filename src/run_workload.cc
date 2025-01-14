@@ -2,7 +2,6 @@
 
 #include <chrono>
 #include <fstream>
-#include <x86intrin.h>
 
 #include "config_options.h"
 #include "utils.h"
@@ -90,7 +89,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
          "uBytes Written Back, uEntries Count Written Back, Total "
          "Entries Read, Data unBytes Written Back, Total unBytes "
          "Written Back, unEntries Count Written Back, Total Entries Returned, "
-         "RQ Refresh Time, RQ Reset Time, Actual RQ Time, CPU Cycles"
+         "RQ Refresh Time, RQ Reset Time, Actual RQ Time"
       << std::endl;
   unsigned long rqnumber = 0;
 #endif // TIMER
@@ -180,7 +179,6 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       uint64_t keys_returned = 0, keys_read = 0;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
-      const uint64_t begin = __rdtsc();
       range_reduce_listener->reset();
 #endif // TIMER
 
@@ -218,7 +216,6 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
                                                                reset_start)
               .count();
       auto stop = std::chrono::high_resolution_clock::now();
-      const uint64_t end = __rdtsc() - begin;
       auto duration =
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
@@ -230,7 +227,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
               << ", " << range_reduce_listener->un_useful_file_size_ << ", "
               << range_reduce_listener->un_useful_entries_ << ", "
               << keys_returned << ", " << refresh_duration << ", "
-              << reset_duration << ", " << actual_range_time << ", " << end
+              << reset_duration << ", " << actual_range_time
               << std::endl;
       range_reduce_listener->reset();
 #endif // TIMER

@@ -1,96 +1,86 @@
 #!/bin/bash
 
-TAG=heatmap4
-ENTRY_SIZE=16
-ENTRIES_PER_PAGE=64
-PAGES_PER_FILE=64
+TAG=paperplots2
+ENTRY_SIZE=1024
+LAMBDA=0.125
+ENTRIES_PER_PAGE=4
+PAGES_PER_FILE=16
 SIZE_RATIO=6
 
-INSERTS=4500000
-UPDATES=1125000
-RANGE_QUERIES=9000
+INSERTS=1048576
+UPDATES=262144
+RANGE_QUERIES=900
 SELECTIVITY=0.1
-OVERLAPPING_RANGE_QUERIES=100
-OVERLAPPING_PERCENTAGE=0.98
 
-LOWER_BOUND=$(echo "scale=9; ${SIZE_RATIO}/(2^6)" | bc)
-UPPER_BOUND=$(echo "scale=9; ${SIZE_RATIO}/(2^5)" | bc)
+SHOW_PROGRESS=1
 
-EXP_DIR="experiments-${TAG}-E${ENTRY_SIZE}-B${ENTRIES_PER_PAGE}-S${RANGE_QUERIES}-Y${SELECTIVITY}-T${SIZE_RATIO}"
+echo "Starting experiments with TAG=${TAG}, ENTRY_SIZE=${ENTRY_SIZE}"
+echo "Debug: INSERTS=${INSERTS}, UPDATES=${UPDATES}, RANGE_QUERIES=${RANGE_QUERIES}"
+
+LOWER_BOUND=$(echo "scale=9; 1/(${SIZE_RATIO})" | bc)
+
+EXP_DIR="experiments-${TAG}-U${UPDATES}-E${ENTRY_SIZE}-B${ENTRIES_PER_PAGE}-S${RANGE_QUERIES}-Y${SELECTIVITY}-T${SIZE_RATIO}"
+echo "Debug: EXP_DIR=${EXP_DIR}"
 
 cd .vstats
 mkdir -p $EXP_DIR
 cd $EXP_DIR
 
-mkdir -p VanillaRandom RangeReduceRandom VanillaOverlappingFull RangeReduceOverlappingFull VanillaOverlappingPartial RangeReduceOverlappingPartial
+mkdir -p VanillaRandom "RangeReduceRandom" RangeReduceRandomRE1 # RangeReduceRandom0
 
-echo "Generating VanillaRandom workload..."
+echo "Generating workload..."
 cd VanillaRandom
-../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE}
+echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
+../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}
 
-echo "Copying VanillaRandom workload to RangeReduceRandom..."
+# echo "Copying workload to RangeReduceRandom0..."
+# cd ../RangeReduceRandom0
+# if [ -f "../VanillaRandom/workload.txt" ]; then
+#     cp ../VanillaRandom/workload.txt ./workload.txt
+#     echo "workload.txt copied successfully"
+# else
+#     echo "Error: workload.txt not found in VanillaRandom"
+#     exit 1
+# fi
+
+echo "Copying workload to RangeReduceRandom..."
 cd ../RangeReduceRandom
 if [ -f "../VanillaRandom/workload.txt" ]; then
     cp ../VanillaRandom/workload.txt ./workload.txt
+    echo "workload.txt copied successfully"
 else
     echo "Error: workload.txt not found in VanillaRandom"
     exit 1
 fi
 
-echo "Generating VanillaOverlappingFull workload..."
-cd ../VanillaOverlappingFull
-../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -O ${OVERLAPPING_RANGE_QUERIES}
-
-echo "Copying VanillaOverlappingFull workload to RangeReduceOverlappingFull..."
-cd ../RangeReduceOverlappingFull
-if [ -f "../VanillaOverlappingFull/workload.txt" ]; then
-    cp ../VanillaOverlappingFull/workload.txt ./workload.txt
+echo "Copying workload to RangeReduceRandomRE1..."
+cd ../RangeReduceRandomRE1
+if [ -f "../VanillaRandom/workload.txt" ]; then
+    cp ../VanillaRandom/workload.txt ./workload.txt
+    echo "workload.txt copied successfully"
 else
-    echo "Error: workload.txt not found in VanillaOverlappingFull"
+    echo "Error: workload.txt not found in VanillaRandom"
     exit 1
 fi
-
-echo "Generating VanillaOverlappingPartial workload..."
-cd ../VanillaOverlappingPartial
-../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -O ${OVERLAPPING_RANGE_QUERIES} --PO ${OVERLAPPING_PERCENTAGE}
-
-echo "Copying VanillaOverlappingPartial workload to RangeReduceOverlappingPartial..."
-cd ../RangeReduceOverlappingPartial
-if [ -f "../VanillaOverlappingPartial/workload.txt" ]; then
-    cp ../VanillaOverlappingPartial/workload.txt ./workload.txt
-else
-    echo "Error: workload.txt not found in VanillaOverlappingPartial"
-    exit 1
-fi
-
-echo "Workload generation completed successfully."
 
 echo "Running VanillaRandom workload..."
 cd ../VanillaRandom
-../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 > workload.log
+../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS}
 rm -rf db
 
-echo "Running RangeReduceRandom workload..."
+# echo "Running RangeReduceRandom workload [with lb=0]..."
+# cd ../RangeReduceRandom0
+# ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb 0 --re 0
+# rm -rf db
+
+echo "Running RangeReduceRandom workload [with lb=${LOWER_BOUND}]..."
 cd ../RangeReduceRandom
-../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --ub ${UPPER_BOUND} > workload.log
+../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 0 --progress ${SHOW_PROGRESS}
 rm -rf db
 
-echo "Running VanillaOverlappingFull workload..."
-cd ../VanillaOverlappingFull
-../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 > workload.log
+echo "Running RangeReduceRandomRE1 workload [with lb=${LOWER_BOUND} && re=1]..."
+cd ../RangeReduceRandomRE1
+../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 1 --progress ${SHOW_PROGRESS}
 rm -rf db
 
-echo "Running RangeReduceOverlappingFull workload..."
-cd ../RangeReduceOverlappingFull
-../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --ub ${UPPER_BOUND} > workload.log
-rm -rf db
-
-echo "Running VanillaOverlappingPartial workload..."
-cd ../VanillaOverlappingPartial
-../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 > workload.log
-rm -rf db
-
-echo "Running RangeReduceOverlappingPartial workload..."
-cd ../RangeReduceOverlappingPartial
-../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --ub ${UPPER_BOUND} > workload.log
-rm -rf db
+cd ../../..

@@ -1303,8 +1303,8 @@ void LevelIterator::Seek(const Slice& target) {
   CheckMayBeOutOfLowerBound();
 
   /*
-    NOTE: how partial file flush works for level file
-    We can 6 scenario's
+    NOTE: how partial file flush works
+    We can have 6 scenario's
 
     1.  No overlapping  -- (No action)
 

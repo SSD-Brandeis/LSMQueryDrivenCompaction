@@ -1,5 +1,8 @@
 #include "buffer.h"
 
+std::list<Buffer *> Buffer::instances_;
+std::mutex Buffer::mutex_;
+
 Buffer::Buffer(const std::string &filename, size_t limit)
     : buffer_limit(limit) {
   output_file.open(filename, std::ios::out | std::ios::trunc);

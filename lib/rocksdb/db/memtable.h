@@ -134,6 +134,11 @@ class MemTable {
     return nullptr;
   }
 
+  // Should this memtable bypass earliest sequence number check
+  void SetByPassEarliestSeqCheck(bool value) {
+    bypass_earliest_seq_check_ = value;
+  }
+
   // Returns an estimate of the number of bytes of data in use by this
   // data structure.
   //
@@ -538,6 +543,8 @@ class MemTable {
   friend class MemTableIterator;
   friend class MemTableBackwardIterator;
   friend class MemTableList;
+
+  bool bypass_earliest_seq_check_ = false;
 
   KeyComparator comparator_;
   const ImmutableMemTableOptions moptions_;

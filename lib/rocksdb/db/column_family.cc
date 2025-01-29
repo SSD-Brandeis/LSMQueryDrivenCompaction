@@ -1098,13 +1098,15 @@ MemTable* ColumnFamilyData::ConstructNewMemtable(
                       write_buffer_manager_, earliest_seq, id_);
 }
 
-MemTable* ColumnFamilyData::ConstructNewVectorMemtable(
-    const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq) {
+void ColumnFamilyData::ConstructNewVectorMemtable(
+    const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq,
+    int level) {
   ImmutableOptions original(ioptions_);
   ImmutableOptions ioptions_copy_ = original;
   ioptions_copy_.memtable_factory.reset(new VectorRepFactory);
-  return new MemTable(internal_comparator_, ioptions_copy_, mutable_cf_options,
+  auto new_memtable_ = new MemTable(internal_comparator_, ioptions_copy_, mutable_cf_options,
                       write_buffer_manager_, earliest_seq, id_);
+  levels_memtable_map_[level] = std::shared_ptr<MemTable>(new_memtable_);
 }
 
 void ColumnFamilyData::CreateNewMemtable(
@@ -1114,7 +1116,8 @@ void ColumnFamilyData::CreateNewMemtable(
   }
   SetMemtable(ConstructNewMemtable(mutable_cf_options, earliest_seq));
   mem_->Ref();
-  SetMemtableRange(std::shared_ptr<MemTable>(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq)));
+  // SetMemtableRange(std::shared_ptr<MemTable>(
+  //     ConstructNewVectorMemtable(mutable_cf_options, earliest_seq)));
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {

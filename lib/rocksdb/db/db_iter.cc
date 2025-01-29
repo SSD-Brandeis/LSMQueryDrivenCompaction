@@ -133,9 +133,35 @@ void DBIter::Next() {
   if (read_options_mutable_.enable_range_query_compaction && Valid() &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                           Slice(key().data(), key().size()),
-                           Slice(value().data(), value().size()), nullptr);
+    // cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
+    //                        Slice(key().data(), key().size()),
+    //                        Slice(value().data(), value().size()), nullptr);
+    // const MutableCFOptions mutable_cf_options =
+    //     *cfd_->GetLatestMutableCFOptions();
+    // uint64_t max_size = MaxFileSizeForLevel(mutable_cf_options,
+    //                                         db_impl_->decision_cell_.end_level_,
+    //                                         cfd_->ioptions()->compaction_style);
+    // // uint64_t n87_percent_of_max_size = max_size * 7/8;
+
+    // if (cfd_->mem_range()->get_data_size() >= max_size) {
+    //   db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
+    //                                               cfd_, cfd_->mem_range());
+    // }
+    std::shared_ptr<MemTable> tmp_memtable = nullptr;
+    auto level = db_impl_->decision_cell_.end_level_;
+    if (cfd_->levels_memtable_map().find(level) !=
+        cfd_->levels_memtable_map().end()) {
+      tmp_memtable = cfd_->levels_memtable_map()[level];
+    } else {
+      cfd_->levels_memtable_map()[level] =
+          std::shared_ptr<MemTable>(cfd_->ConstructNewMemtable(
+              *cfd_->GetCurrentMutableCFOptions(), sequence_));
+      tmp_memtable = cfd_->levels_memtable_map()[level];
+    }
+    tmp_memtable->Add(sequence_, ValueType::kTypeValue,
+                      Slice(key().data(), key().size()),
+                      Slice(value().data(), value().size()), nullptr);
+
     const MutableCFOptions mutable_cf_options =
         *cfd_->GetLatestMutableCFOptions();
     uint64_t max_size = MaxFileSizeForLevel(mutable_cf_options,
@@ -143,9 +169,9 @@ void DBIter::Next() {
                                             cfd_->ioptions()->compaction_style);
     // uint64_t n87_percent_of_max_size = max_size * 7/8;
 
-    if (cfd_->mem_range()->get_data_size() >= max_size) {
+    if (tmp_memtable->get_data_size() >= max_size) {
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, cfd_->mem_range());
+                                                  cfd_, tmp_memtable);
     }
   }
 
@@ -198,27 +224,50 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
 
+  std::shared_ptr<MemTable> tmp_memtable = nullptr;
+  auto level = db_impl_->decision_cell_.end_level_;
   if (read_options_mutable_.enable_range_query_compaction && Valid() &&
       user_comparator_.Compare(
           key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
+    if (cfd_->levels_memtable_map().find(level) !=
+        cfd_->levels_memtable_map().end()) {
+      tmp_memtable = cfd_->levels_memtable_map()[level];
+    } else {
+      cfd_->levels_memtable_map()[level] =
+          std::shared_ptr<MemTable>(cfd_->ConstructNewMemtable(
+              *cfd_->GetCurrentMutableCFOptions(), sequence_));
+      tmp_memtable = cfd_->levels_memtable_map()[level];
+    }
     if (user_comparator_.Compare(
             key(), Slice(read_options_mutable_.range_end_key)) == 0) {
-      cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                             Slice(key().data(), key().size()),
-                             Slice(value().data(), value().size()), nullptr);
+      tmp_memtable->Add(sequence_, ValueType::kTypeValue,
+                        Slice(key().data(), key().size()),
+                        Slice(value().data(), value().size()), nullptr);
     }
     db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                cfd_->mem_range());
+                                                tmp_memtable);
+
+    //   cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
+    //                          Slice(key().data(), key().size()),
+    //                          Slice(value().data(), value().size()), nullptr);
+    // }
+    // db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
+    // cfd_,
+    //                                             cfd_->mem_range());
     db_impl_->added_last_table = true;
   } else if (read_options_mutable_.enable_range_query_compaction && Valid() &&
              user_comparator_.Compare(
                  key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
              key().level_ == 0) {
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                cfd_->mem_range());
-    db_impl_->added_last_table = true;
+    if (cfd_->levels_memtable_map().find(level) !=
+        cfd_->levels_memtable_map().end()) {
+      tmp_memtable = cfd_->levels_memtable_map()[level];
+      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
+                                                  cfd_, tmp_memtable);
+      db_impl_->added_last_table = true;
+    }
   }
 }
 

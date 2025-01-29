@@ -346,6 +346,9 @@ class ColumnFamilyData {
   MemTable* mem() { return mem_; }
 
   std::shared_ptr<MemTable> mem_range() { return mem_range_; }
+  std::unordered_map<int, std::shared_ptr<MemTable>> levels_memtable_map() {
+    return levels_memtable_map_;
+  }
 
   bool IsEmpty() {
     return mem()->GetFirstSequenceNumber() == 0 && imm()->NumNotFlushed() == 0;
@@ -377,8 +380,9 @@ class ColumnFamilyData {
   MemTable* ConstructNewMemtable(const MutableCFOptions& mutable_cf_options,
                                  SequenceNumber earliest_seq);
   // always construct new vector memtable.
-  MemTable* ConstructNewVectorMemtable(
-      const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq);
+  void ConstructNewVectorMemtable(
+      const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq,
+      int level);
   void CreateNewMemtable(const MutableCFOptions& mutable_cf_options,
                          SequenceNumber earliest_seq);
 
@@ -594,6 +598,8 @@ class ColumnFamilyData {
   MemTable* mem_;
   MemTableList imm_;
   std::shared_ptr<MemTable> mem_range_;
+  std::unordered_map<int /* level */, std::shared_ptr<MemTable>>
+      levels_memtable_map_;
   SuperVersion* super_version_;
 
   // An ordinal representing the current SuperVersion. Updated by

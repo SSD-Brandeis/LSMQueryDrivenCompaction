@@ -377,6 +377,8 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
                                              LogBuffer* log_buffer,
                                              FlushReason* reason,
                                              Env::Priority thread_pri) {
+  std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__ << std::endl
+            << std::flush;
   mutex_.AssertHeld();
 
   Status status;
@@ -430,41 +432,223 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
 
       // if reason is kPartialFlush and just_delete is true
       // add this file to the edits Delete and we are done!
-      if (flush_reason == FlushReason::kPartialFlush && just_delete) {
-        if (immutable_db_options().verbosity > 1) {
-          std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
-                    << ", \"Level\": " << level
-                    << ", \"ToCompactAccurate\": " << file_meta->num_entries
-                    << "}," << std::endl
+      if (flush_reason == FlushReason::kPartialFlush) {
+        if (just_delete) {
+          if (immutable_db_options().verbosity > 1) {
+            std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
+                      << ", \"Level\": " << level
+                      << ", \"ToCompactAccurate\": " << file_meta->num_entries
+                      << "}," << std::endl
+                      << std::flush;
+          }
+          assert(file_meta != nullptr);
+          VersionEdit* edit_ = new VersionEdit();
+          // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since
+          // LogandApply will set it anyway edit_->SetLogNumber(0);
+          edit_->SetColumnFamily(cfd->GetID());
+          uint64_t file_number = file_meta->fd.GetNumber();
+          edit_->DeleteFile(level, file_number);
+          Status ios = versions_->LogAndApply(
+              cfd, *cfd->GetLatestMutableCFOptions(), read_options_, edit_,
+              &mutex_, directories_.GetDbDir());
+          flush_queue_.size() > 1 ? --unscheduled_partial_or_range_flushes_
+                                  : unscheduled_partial_or_range_flushes_;
+          // InstallSuperVersionAndScheduleWork(cfd,
+          // &(superversion_contexts.back()),
+          //                                    mutable_cf_options);
+          cfd->UnrefAndTryDelete();
+          break;
+        } else {
+          std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__
+                    << std::endl
                     << std::flush;
+          std::shared_ptr<MemTable> tmp_memtable = nullptr;
+          std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__
+                    << std::endl
+                    << std::flush;
+          uint64_t max_size =
+              MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
+                                  cfd->ioptions()->compaction_style);
+          std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__
+                    << std::endl
+                    << std::flush;
+          if (cfd->levels_memtable_map().find(level) !=
+              cfd->levels_memtable_map().end()) {
+            std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__
+                      << std::endl
+                      << std::flush;
+            tmp_memtable = cfd->levels_memtable_map()[level];
+          } else {
+            cfd->ConstructNewVectorMemtable(*cfd->GetLatestMutableCFOptions(),
+                                            GetLatestSequenceNumber(), level);
+            tmp_memtable = cfd->levels_memtable_map()[level];
+            std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__
+                      << " PTR: " << tmp_memtable << std::endl
+                      << std::flush;
+          }
+
+          std::cout << __FILE__ << "[" << __FUNCTION__ << "]: " << __LINE__
+                    << " PTR: " << tmp_memtable << std::endl
+                    << std::flush;
+          Arena arena;
+          uint64_t sv_number = GetLatestSequenceNumber(); // cfd->GetSuperVersionNumber();
+          auto file_iter = cfd->table_cache()->NewIterator(
+              read_options_, file_options_, cfd->internal_comparator(),
+              *file_meta,
+              /*range_del_agg=*/nullptr,
+              cfd->GetLatestMutableCFOptions()->prefix_extractor, nullptr,
+              cfd->internal_stats()->GetFileReadHist(0),
+              TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
+              level,
+              MaxFileSizeForL0MetaPin((*cfd->GetLatestMutableCFOptions())),
+              /*smallest_compaction_key=*/nullptr,
+              /*largest_compaction_key=*/nullptr,
+              /*allow_unprepared_value=*/true,
+              cfd->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
+              /*range_del_iter=*/nullptr);
+          file_iter->SeekToFirst();
+
+          /*
+            6. Range fits inside file overlap -- (Partial Partial Flush)
+
+                        |---|
+                      ---------
+                      |       |
+                      ---------
+          */
+          if (cfd->internal_comparator()
+                      .user_comparator()
+                      ->CompareWithoutTimestamp(
+                          read_options_.range_start_key,
+                          file_meta->smallest.user_key()) > 0 &&
+              cfd->internal_comparator()
+                      .user_comparator()
+                      ->CompareWithoutTimestamp(read_options_.range_end_key,
+                                                file_meta->largest.user_key()) <
+                  0) {
+            for (; file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_start_key,
+                               file_iter->key()) > 0;
+                 file_iter->Next()) {
+              ParsedInternalKey parsed_key;
+              if (ParseInternalKey(file_iter->key(), &parsed_key, true).ok()) {
+                const Slice& key = file_iter->key();
+                const Slice& value = file_iter->value();
+                tmp_memtable->Add(parsed_key.sequence, ValueType::kTypeValue,
+                                  key, value, nullptr);
+              } else {
+                std::cout << __FILE__ << "[" << __FUNCTION__
+                          << "]: " << __LINE__ << "ERROR: parsing internal key"
+                          << std::endl
+                          << std::flush;
+              }
+            }
+            while (file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_end_key, file_iter->key()) <
+                       0) {
+              file_iter->Next();
+            }
+            for (; file_iter->Valid(); file_iter->Next()) {
+              const Slice& key = file_iter->key();
+              const Slice& value = file_iter->value();
+              tmp_memtable->Add(sv_number, ValueType::kTypeValue, key, value,
+                                nullptr);
+            }
+
+            superversion_contexts.emplace_back(SuperVersionContext(true));
+            bg_flush_args.emplace_back(cfd, iter.second,
+                                       &(superversion_contexts.back()),
+                                       FlushReason::kRangeFlush, tmp_memtable,
+                                       level, just_delete, nullptr);
+          } else if ((cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_start_key,
+                          file_meta->smallest.user_key()) < 0 &&
+                      cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_end_key,
+                          file_meta->smallest.user_key()) == 0) ||
+                     (cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_start_key,
+                          file_meta->smallest.user_key()) <= 0 &&
+                      cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_end_key,
+                          file_meta->largest.user_key()) < 0 &&
+                      cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_end_key,
+                          file_meta->smallest.user_key()) > 0)) {
+            while (file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_end_key, file_iter->key()) <
+                       0) {
+              file_iter->Next();
+            }
+            for (; file_iter->Valid(); file_iter->Next()) {
+              const Slice& key = file_iter->key();
+              const Slice& value = file_iter->value();
+              tmp_memtable->Add(sv_number, ValueType::kTypeValue, key, value,
+                                nullptr);
+              if (tmp_memtable->get_data_size() >= max_size) {
+                superversion_contexts.emplace_back(SuperVersionContext(true));
+                bg_flush_args.emplace_back(
+                    cfd, iter.second, &(superversion_contexts.back()),
+                    FlushReason::kRangeFlush, tmp_memtable, level, just_delete,
+                    nullptr);
+                cfd->ConstructNewVectorMemtable(
+                    *cfd->GetLatestMutableCFOptions(),
+                    GetLatestSequenceNumber(), level);
+                tmp_memtable = cfd->levels_memtable_map()[level];
+              }
+            }
+          } else {
+            for (; file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_start_key,
+                               file_iter->key()) > 0;
+                 file_iter->Next()) {
+              const Slice& key = file_iter->key();
+              const Slice& value = file_iter->value();
+              tmp_memtable->Add(sv_number, ValueType::kTypeValue, key, value,
+                                nullptr);
+            }
+          }
+          assert(file_meta != nullptr);
+          VersionEdit* edit_ = new VersionEdit();
+          // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since
+          // LogandApply will set it anyway edit_->SetLogNumber(0);
+          edit_->SetColumnFamily(cfd->GetID());
+          uint64_t file_number = file_meta->fd.GetNumber();
+          edit_->DeleteFile(level, file_number);
+          Status ios = versions_->LogAndApply(
+              cfd, *cfd->GetLatestMutableCFOptions(), read_options_, edit_,
+              &mutex_, directories_.GetDbDir());
+          flush_queue_.size() > 1 ? --unscheduled_partial_or_range_flushes_
+                                  : unscheduled_partial_or_range_flushes_;
+          // InstallSuperVersionAndScheduleWork(cfd,
+          // &(superversion_contexts.back()),
+          //                                    mutable_cf_options);
+          cfd->UnrefAndTryDelete();
+          break;
         }
-        assert(file_meta != nullptr);
-        VersionEdit* edit_ = new VersionEdit();
-        // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since
-        // LogandApply will set it anyway edit_->SetLogNumber(0);
-        edit_->SetColumnFamily(cfd->GetID());
-        uint64_t file_number = file_meta->fd.GetNumber();
-        edit_->DeleteFile(level, file_number);
-        Status ios = versions_->LogAndApply(
-            cfd, *cfd->GetLatestMutableCFOptions(), read_options_, edit_,
-            &mutex_, directories_.GetDbDir());
-        flush_queue_.size() > 1 ? --unscheduled_partial_or_range_flushes_
-                                : unscheduled_partial_or_range_flushes_;
-        // InstallSuperVersionAndScheduleWork(cfd,
-        // &(superversion_contexts.back()),
-        //                                    mutable_cf_options);
-        cfd->UnrefAndTryDelete();
-        break;
       }
 
       if (cfd->IsDropped()) {
         column_families_not_to_flush.push_back(cfd);
         continue;
       }
-      superversion_contexts.emplace_back(SuperVersionContext(true));
-      bg_flush_args.emplace_back(cfd, iter.second,
-                                 &(superversion_contexts.back()), flush_reason,
-                                 memtable, level, just_delete, file_meta);
+      // superversion_contexts.emplace_back(SuperVersionContext(true));
+      // bg_flush_args.emplace_back(cfd, iter.second,
+      //                            &(superversion_contexts.back()),
+      //                            flush_reason, memtable, level, just_delete,
+      //                            file_meta);
     }
     if (!bg_flush_args.empty()) {
       break;
@@ -665,11 +849,10 @@ void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
   }
 }
 
-void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
-                                               ColumnFamilyData* cfd,
-                                               std::shared_ptr<MemTable> mem_range, int level,
-                                               bool just_delete,
-                                               FileMetaData* file_meta) {
+void DBImpl::AddPartialOrRangeFileFlushRequest(
+    FlushReason flush_reason, ColumnFamilyData* cfd,
+    std::shared_ptr<MemTable> mem_range, int level, bool just_delete,
+    FileMetaData* file_meta) {
   // if FlushReason is kPartialFlush then *mem_range must be nullptr
   // if FlushReason is kRangeFlush then *mem_range must be valid pointer
   // just_delete:
@@ -701,14 +884,15 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
   // switch new range memtable
   if (flush_reason == FlushReason::kRangeFlush) {
     mutex_.Lock();
-    cfd->SetMemtableRange(std::shared_ptr<MemTable>(cfd->ConstructNewVectorMemtable(
-        *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber())));
+    // cfd->SetMemtableRange(
+    //     std::shared_ptr<MemTable>(cfd->ConstructNewVectorMemtable(
+    //         *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber())));
     mutex_.Unlock();
     if (immutable_db_options().verbosity > 1) {
       std::cout << "{\"MemtableId\": " << mem_range->GetID()
                 << ", \"Level\": " << decision_cell_.end_level_
-                << ", \"entriesCompacted\": "
-                << mem_range->num_entries() << "}," << std::endl
+                << ", \"entriesCompacted\": " << mem_range->num_entries()
+                << "}," << std::endl
                 << std::flush;
     }
   } else {
@@ -729,6 +913,8 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     SchedulePendingPartialRangeFlush(req);
     SchedulePartialOrRangeFileFlush();
   }
+
+  // cfd->levels_memtable_map().erase(level);
 }
 
 }  // namespace ROCKSDB_NAMESPACE

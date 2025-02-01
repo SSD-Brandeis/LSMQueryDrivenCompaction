@@ -488,12 +488,10 @@ class DBImpl : public DB {
       SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
       Env::Priority thread_pri, std::shared_ptr<MemTable> memtable, int level,
       FileMetaData* meta_data);
-  void AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
-                                         ColumnFamilyData* cfd,
-                                         std::shared_ptr<MemTable> mem_range = nullptr,
-                                         int level = -1,
-                                         bool just_delete = false,
-                                         FileMetaData* file_meta = nullptr);
+  void AddPartialOrRangeFileFlushRequest(
+      FlushReason flush_reason, ColumnFamilyData* cfd,
+      std::shared_ptr<TableBuilder> piggyback_table = nullptr, int level = -1,
+      bool just_delete = false, FileMetaData* file_meta = nullptr);
 
   long long GetRoughOverlappingEntries(const std::string given_start_key,
                                        const std::string given_end_key,
@@ -503,6 +501,9 @@ class DBImpl : public DB {
                                        Slice& useful_max_key);
 
   std::string GetLevelsState() override;
+  std::shared_ptr<TableBuilder> GetRangeReduceTableForLevel(
+      int level, ColumnFamilyData* cfd, uint32_t job_id,
+      FileMetaData* file_meta, bool create_forcefully = false);
 
   std::tuple<unsigned long long, std::string> GetTreeState() override;
 
@@ -1777,13 +1778,13 @@ class DBImpl : public DB {
 
     BGFlushArg(ColumnFamilyData* cfd, uint64_t max_memtable_id,
                SuperVersionContext* superversion_context,
-               FlushReason flush_reason, std::shared_ptr<MemTable> memtable, int level,
-               bool just_delete, FileMetaData* meta_data)
+               FlushReason flush_reason, std::shared_ptr<TableBuilder> piggyback_table,
+               int level, bool just_delete, FileMetaData* meta_data)
         : cfd_(cfd),
           max_memtable_id_(max_memtable_id),
           superversion_context_(superversion_context),
           flush_reason_(flush_reason),
-          memtable_(memtable),
+          piggyback_table_(piggyback_table),
           level_(level),
           just_delete_(just_delete),
           meta_data_(meta_data) {}
@@ -1798,7 +1799,7 @@ class DBImpl : public DB {
     // requires a SuperVersionContext object (currently embedded in JobContext).
     SuperVersionContext* superversion_context_;
     FlushReason flush_reason_;
-    std::shared_ptr<MemTable> memtable_ = nullptr;
+    std::shared_ptr<TableBuilder> piggyback_table_ = nullptr;
     int level_ = -1;
     bool just_delete_ = false;
     FileMetaData* meta_data_ = nullptr;
@@ -2172,12 +2173,29 @@ class DBImpl : public DB {
     FileMetaData* meta_data = nullptr;  // For partial/range file flush
   };
 
+  struct RangeReduceFlushRequest {
+    FlushReason flush_reason;
+    // A map from column family to flush to largest memtable id to persist for
+    // each column family. Once all the memtables whose IDs are smaller than or
+    // equal to this per-column-family specified value, this flush request is
+    // considered to have completed its work of flushing this column family.
+    // After completing the work for all column families in this request, this
+    // flush is considered complete.
+    std::unordered_map<ColumnFamilyData*, uint64_t>
+        cfd_to_max_mem_id_to_persist;
+    std::shared_ptr<TableBuilder> piggyback_table = nullptr;
+    int level = -1;                     // For partial/range file flush
+    bool just_delete = false;           // For partial/range file flush
+    FileMetaData* meta_data = nullptr;  // For partial/range file flush
+  };
+
   void GenerateFlushRequest(const autovector<ColumnFamilyData*>& cfds,
                             FlushReason flush_reason, FlushRequest* req);
 
   void SchedulePendingFlush(const FlushRequest& req);
 
-  void SchedulePendingPartialRangeFlush(const FlushRequest& flush_req);
+  void SchedulePendingPartialRangeFlush(
+      const RangeReduceFlushRequest& flush_req);
 
   void SchedulePendingCompaction(ColumnFamilyData* cfd);
   void SchedulePendingPurge(std::string fname, std::string dir_to_sync,
@@ -2645,6 +2663,8 @@ class DBImpl : public DB {
   // invariant(column family present in compaction_queue_ <==>
   // ColumnFamilyData::pending_compaction_ == true)
   std::deque<ColumnFamilyData*> compaction_queue_;
+  // RangeReduce flush queue is used for piggybacking range query data
+  std::deque<RangeReduceFlushRequest> range_reduce_flush_queue_;
 
   // A map to store file numbers and filenames of the files to be purged
   std::unordered_map<uint64_t, PurgeFileInfo> purge_files_;

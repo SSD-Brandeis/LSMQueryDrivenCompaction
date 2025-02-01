@@ -133,9 +133,9 @@ void DBIter::Next() {
   if (read_options_mutable_.enable_range_query_compaction && Valid() &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                           Slice(key().data(), key().size()),
-                           Slice(value().data(), value().size()), nullptr);
+    cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]->Add(
+        Slice(key().data(), key().size()),
+        Slice(value().data(), value().size()));
     const MutableCFOptions mutable_cf_options =
         *cfd_->GetLatestMutableCFOptions();
     uint64_t max_size = MaxFileSizeForLevel(mutable_cf_options,
@@ -143,9 +143,11 @@ void DBIter::Next() {
                                             cfd_->ioptions()->compaction_style);
     // uint64_t n87_percent_of_max_size = max_size * 7/8;
 
-    if (cfd_->mem_range()->get_data_size() >= max_size) {
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, cfd_->mem_range());
+    if (cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]
+            ->FileSize() >= max_size) {
+      db_impl_->AddPartialOrRangeFileFlushRequest(
+          FlushReason::kRangeFlush, cfd_,
+          cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
     }
   }
 
@@ -205,19 +207,21 @@ void DBIter::Next() {
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
     if (user_comparator_.Compare(
             key(), Slice(read_options_mutable_.range_end_key)) == 0) {
-      cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                             Slice(key().data(), key().size()),
-                             Slice(value().data(), value().size()), nullptr);
+      cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]->Add(
+          Slice(key().data(), key().size()),
+          Slice(value().data(), value().size()));
     }
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                cfd_->mem_range());
+    db_impl_->AddPartialOrRangeFileFlushRequest(
+        FlushReason::kRangeFlush, cfd_,
+        cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
     db_impl_->added_last_table = true;
   } else if (read_options_mutable_.enable_range_query_compaction && Valid() &&
              user_comparator_.Compare(
                  key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
              key().level_ == 0) {
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                cfd_->mem_range());
+    db_impl_->AddPartialOrRangeFileFlushRequest(
+        FlushReason::kRangeFlush, cfd_,
+        cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
     db_impl_->added_last_table = true;
   }
 }

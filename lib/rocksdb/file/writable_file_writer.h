@@ -291,7 +291,9 @@ class WritableFileWriter {
   void reset_seen_error() {
     seen_error_.store(false, std::memory_order_relaxed);
   }
-  void set_seen_error() { seen_error_.store(true, std::memory_order_relaxed); }
+  void set_seen_error() { 
+    seen_error_.store(true, std::memory_order_relaxed); 
+  }
 
   IOStatus AssertFalseAndGetStatusForPrevError() {
     // This should only happen if SyncWithoutFlush() was called.

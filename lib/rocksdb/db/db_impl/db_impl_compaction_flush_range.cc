@@ -56,7 +56,6 @@ std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
     std::stringstream level_details;
     level_details.str("");
     auto level_files_brief_ = storage_info->LevelFilesBrief(l);
-    // auto num_files = storage_info->LevelFilesBrief(l).num_files;
     unsigned long long level_size_in_bytes = 0;
     level_details << "\tLevel: " << std::to_string(l);
 
@@ -67,7 +66,6 @@ std::tuple<unsigned long long, std::string> DBImpl::GetTreeState() {
          file_index++) {
       table_reader = nullptr;
       handle = nullptr;
-      // auto fd = storage_info->LevelFilesBrief(l).files[file_index];
       auto fd = level_files_brief_.files[file_index];
       auto file_meta = fd.file_metadata;
 
@@ -227,149 +225,143 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
   return overlapping_count;
 }
 
-Status DBImpl::FlushPartialOrRangeFile(
-    ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
-    bool* made_progress, JobContext* job_context, FlushReason flush_reason,
-    SuperVersionContext* superversion_context,
-    std::vector<SequenceNumber>& snapshot_seqs,
-    SequenceNumber earliest_write_conflict_snapshot,
-    SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
-    Env::Priority thread_pri, std::shared_ptr<MemTable> memtable, int level,
-    FileMetaData* meta_data) {
+void DBImpl::SchedulePendingPartialRangeFlush(
+    const RangeReduceFlushRequest& flush_req) {
+  // flush_req should contain reason and map of cfd to max file id if possible
+  // the `cfd_to_max_mem_id_to_persist` seems to be not used anywhere
   mutex_.AssertHeld();
-  assert(cfd);
-  assert(flush_reason == FlushReason::kRangeFlush ||
-         flush_reason == FlushReason::kPartialFlush);
-  assert(level > 0);
-
-  // Only works for single column family
-  uint64_t max_memtable_id = std::numeric_limits<uint64_t>::max();
-
-  PartialOrRangeFlushJob flush_job(
-      dbname_, cfd, immutable_db_options_, mutable_cf_options, max_memtable_id,
-      file_options_for_compaction_, versions_.get(), &mutex_, &shutting_down_,
-      snapshot_seqs, earliest_write_conflict_snapshot, snapshot_checker,
-      job_context, flush_reason, log_buffer, directories_.GetDbDir(),
-      GetDataDir(cfd, 0U),
-      GetCompressionFlush(*cfd->ioptions(), mutable_cf_options), stats_,
-      &event_logger_, mutable_cf_options.report_bg_io_stats,
-      true /* sync_output_directory */,
-      false /* write_manifest */,  // TODO: (shubham) Think more on
-                                   // write_manifest
-      thread_pri, io_tracer_, seqno_time_mapping_, read_options_, db_id_,
-      db_session_id_, cfd->GetFullHistoryTsLow(), &blob_callback_, memtable,
-      level, meta_data, this);
-  FileMetaData file_meta;
-
-  Status s = Status::OK();
-
-  flush_job.InitNewTable();
-
-  NotifyOnFlushBegin(cfd, &file_meta, mutable_cf_options, job_context->job_id,
-                     flush_reason);
-
-  bool switched_to_mempurge = false;
-  ++bg_partial_or_range_flush_running_;
-  s = flush_job.Run(&logs_with_prep_tracker_, &file_meta,
-                    &switched_to_mempurge);
-
-  if (s.ok()) {
-    // TODO: (shubham) Instead collect all edits and install it once in end of
-    // range query
-    Status ios = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
-                                        read_options_, flush_job.GetJobEdits(),
-                                        &mutex_, directories_.GetDbDir());
-    InstallSuperVersionAndScheduleWork(cfd, superversion_context,
-                                       mutable_cf_options);
-    if (made_progress) {
-      *made_progress = true;
-    }
-
-    const std::string& column_family_name = cfd->GetName();
-
-    Version* const current = cfd->current();
-    assert(current);
-
-    const VersionStorageInfo* const storage_info = current->storage_info();
-    assert(storage_info);
-
-    VersionStorageInfo::LevelSummaryStorage tmp;
-    ROCKS_LOG_BUFFER(log_buffer, "[%s] Level summary: %s\n",
-                     column_family_name.c_str(),
-                     storage_info->LevelSummary(&tmp));
-
-    const auto& blob_files = storage_info->GetBlobFiles();
-    if (!blob_files.empty()) {
-      assert(blob_files.front());
-      assert(blob_files.back());
-
-      ROCKS_LOG_BUFFER(
-          log_buffer,
-          "[%s] Blob file summary: head=%" PRIu64 ", tail=%" PRIu64 "\n",
-          column_family_name.c_str(), blob_files.front()->GetBlobFileNumber(),
-          blob_files.back()->GetBlobFileNumber());
-    }
-    flush_job.SetFlushJobInfo();
+  if (flush_req.cfd_to_max_mem_id_to_persist.empty()) {
+    return;
   }
-
-  if (!s.ok() && !s.IsShutdownInProgress() && !s.IsColumnFamilyDropped()) {
-    Status new_bg_error = s;
-    error_handler_.SetBGError(new_bg_error, BackgroundErrorReason::kFlush);
+  if (!immutable_db_options_.atomic_flush) {
+    assert(flush_req.cfd_to_max_mem_id_to_persist.size() == 1);
+    ColumnFamilyData* cfd =
+        flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
+    assert(cfd);
+    cfd->Ref();
+    ++unscheduled_partial_or_range_flushes_;
+    range_reduce_flush_queue_.push_back(flush_req);
   }
-
-  // If flush ran smoothly and no mempurge happened
-  // install new SST file path.
-  if (s.ok() && (!switched_to_mempurge)) {
-    // may temporarily unlock and lock the mutex.
-    NotifyOnFlushCompleted(cfd, mutable_cf_options,
-                           flush_job.GetCommittedFlushJobsInfo());
-    auto sfm = static_cast<SstFileManagerImpl*>(
-        immutable_db_options_.sst_file_manager.get());
-    if (sfm) {
-      // Notify sst_file_manager that a new file was added
-      std::string file_path = MakeTableFileName(
-          cfd->ioptions()->cf_paths[0].path, file_meta.fd.GetNumber());
-      // TODO (PR7798).  We should only add the file to the FileManager if it
-      // exists. Otherwise, some tests may fail.  Ignore the error in the
-      // interim.
-      sfm->OnAddFile(file_path).PermitUncheckedError();
-      if (sfm->IsMaxAllowedSpaceReached()) {
-        Status new_bg_error =
-            Status::SpaceLimit("Max allowed space was reached");
-        error_handler_.SetBGError(new_bg_error, BackgroundErrorReason::kFlush);
-      }
-    }
-  }
-  --bg_partial_or_range_flush_running_;
-  return s;
 }
 
-Status DBImpl::FlushPartialOrRangeFiles(
-    const autovector<BGFlushArg>& bg_flush_args, bool* made_progress,
-    JobContext* job_context, LogBuffer* log_buffer, Env::Priority thread_pri) {
-  assert(bg_flush_args.size() == 1);
-  std::vector<SequenceNumber> snapshot_seqs;
-  SequenceNumber earliest_write_conflict_snapshot;
-  SnapshotChecker* snapshot_checker;
-  GetSnapshotContext(job_context, &snapshot_seqs,
-                     &earliest_write_conflict_snapshot, &snapshot_checker);
-  const auto& bg_flush_arg = bg_flush_args[0];
-  ColumnFamilyData* cfd = bg_flush_arg.cfd_;
-  // intentional infrequent copy for each flush
-  MutableCFOptions mutable_cf_options_copy = *cfd->GetLatestMutableCFOptions();
-  SuperVersionContext* superversion_context =
-      bg_flush_arg.superversion_context_;
-  FlushReason flush_reason = bg_flush_arg.flush_reason_;
-  std::shared_ptr<MemTable> memtable_to_flush = bg_flush_arg.memtable_;
-  int level = bg_flush_arg.level_;
-  FileMetaData* file_meta = bg_flush_arg.meta_data_;
+std::shared_ptr<TableBuilder> DBImpl::GetRangeReduceTableForLevel(
+    int level, ColumnFamilyData* cfd, uint32_t job_id, FileMetaData* file_meta,
+    bool create_forcefully) {
+  // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__ <<
+  // std::endl
+  //           << std::flush;
+  std::shared_ptr<TableBuilder> piggyback_table = nullptr;
+  uint64_t max_size =
+      MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
+                          cfd->ioptions()->compaction_style);
+  if (!create_forcefully && cfd->piggyback_table_map().find(level) !=
+                                cfd->piggyback_table_map().end()) {
+    piggyback_table = cfd->piggyback_table_map()[level];
+  } else {
+    // create a new table and return that pointer
+    uint64_t file_number = versions_->NewFileNumber();
+    std::string fname = TableFileName(cfd->ioptions()->cf_paths, file_number,
+                                      0 /* output_path_id not applicable */);
+    EventHelpers::NotifyTableFileCreationStarted(
+        cfd->ioptions()->listeners, dbname_, cfd->GetName(), fname, job_id,
+        TableFileCreationReason::kCompaction);
+    std::unique_ptr<FSWritableFile> writable_file;
+    FileOptions fo_copy = file_options_;
 
-  Status s = FlushPartialOrRangeFile(
-      cfd, mutable_cf_options_copy, made_progress, job_context, flush_reason,
-      superversion_context, snapshot_seqs, earliest_write_conflict_snapshot,
-      snapshot_checker, log_buffer, thread_pri, memtable_to_flush, level,
-      file_meta);
-  return s;
+    std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+              << " file_name: " << fname
+              << " last_file_name: " << file_meta->fd.GetNumber() << std::endl
+              << std::flush;
+    Status s;
+    IOStatus io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
+    s = io_s;
+
+    if (!s.ok()) {
+      ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                      "[JOB %d] OpenCompactionOutputFiles for table #%" PRIu64
+                      " fails at NewWritableFile with status %s",
+                      job_id, file_number, s.ToString().c_str());
+      LogFlush(immutable_db_options_.info_log);
+      EventHelpers::LogAndNotifyTableFileCreationFinished(
+          &event_logger_, cfd->ioptions()->listeners, dbname_, cfd->GetName(),
+          fname, job_id, FileDescriptor(), kInvalidBlobFileNumber,
+          TableProperties(), TableFileCreationReason::kCompaction, s,
+          kUnknownFileChecksum, kUnknownFileChecksumFuncName);
+      return nullptr;
+    }
+
+    int64_t temp_current_time = 0;
+    auto get_time_status =
+        immutable_db_options_.clock->GetCurrentTime(&temp_current_time);
+    if (!get_time_status.ok()) {
+      ROCKS_LOG_WARN(immutable_db_options_.info_log,
+                     "Failed to get current time. Status: %s",
+                     get_time_status.ToString().c_str());
+    }
+    uint64_t current_time = static_cast<uint64_t>(temp_current_time);
+    uint64_t oldest_ancester_time = file_meta->TryGetOldestAncesterTime();
+    uint64_t min_oldest_ancester_time =
+        std::min(std::numeric_limits<uint64_t>::max(), oldest_ancester_time);
+    uint64_t epoch_number = file_meta->epoch_number;
+
+    {
+      FileMetaData meta;
+      meta.fd = FileDescriptor(file_number, 0, 0);
+      meta.oldest_ancester_time = oldest_ancester_time;
+      meta.file_creation_time = current_time;
+      meta.epoch_number = epoch_number;
+      meta.temperature = file_meta->temperature;
+
+      assert(!db_id_.empty());
+      assert(!db_session_id_.empty());
+      s = GetSstInternalUniqueId(db_id_, db_session_id_, meta.fd.GetNumber(),
+                                 &meta.unique_id);
+      if (!s.ok()) {
+        ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                        "[%s] [JOB %d] file #%" PRIu64
+                        " failed to generate unique id: %s.",
+                        cfd->GetName().c_str(), job_id, meta.fd.GetNumber(),
+                        s.ToString().c_str());
+        return nullptr;
+
+        // BUG (Shubham): what do we do with meta????
+      }
+    }
+      writable_file->SetIOPriority(Env::IOPriority::IO_USER);
+      writable_file->SetWriteLifeTimeHint(cfd->CalculateSSTWriteHint(level));
+      FileTypeSet tmp_set = immutable_db_options_.checksum_handoff_file_types;
+      writable_file->SetPreallocationBlockSize(max_size);
+      cfd->fswritable_file_map()[level] =
+          std::shared_ptr<WritableFileWriter>(new WritableFileWriter(
+              std::move(writable_file), fname, fo_copy,
+              immutable_db_options_.clock, io_tracer_,
+              immutable_db_options_.stats, cfd->ioptions()->listeners,
+              immutable_db_options_.file_checksum_gen_factory.get(),
+              tmp_set.Contains(FileType::kTableFile), false));
+
+      TableBuilderOptions tboptions(
+          *cfd->ioptions(), *(cfd->GetLatestMutableCFOptions()),
+          cfd->internal_comparator(), cfd->int_tbl_prop_collector_factories(),
+          cfd->GetLatestMutableCFOptions()->compression,
+          cfd->GetLatestMutableCFOptions()->compression_opts, cfd->GetID(),
+          cfd->GetName(), level, false, TableFileCreationReason::kCompaction,
+          0 /* oldest key time*/, current_time, db_id_, db_session_id_,
+          max_size, file_number);
+
+      piggyback_table = std::shared_ptr<TableBuilder>(
+          NewTableBuilder(tboptions, cfd->fswritable_file_map()[level].get()));
+
+      cfd->piggyback_table_map()[level] = piggyback_table;
+      std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                << " File created, WritableFileWriter: "
+                << cfd->fswritable_file_map()[level] << std::endl
+                << std::flush;
+      std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                << " piggyback table PTR: " << cfd->piggyback_table_map()[level]
+                << std::endl
+                << std::flush;
+  }
+  return piggyback_table;
 }
 
 Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
@@ -377,6 +369,9 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
                                              LogBuffer* log_buffer,
                                              FlushReason* reason,
                                              Env::Priority thread_pri) {
+  // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__ <<
+  // std::endl
+  //           << std::flush;
   mutex_.AssertHeld();
 
   Status status;
@@ -399,86 +394,239 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
   std::vector<SuperVersionContext>& superversion_contexts =
       job_context->superversion_contexts;
   autovector<ColumnFamilyData*> column_families_not_to_flush;
-  autovector<FlushRequest> to_be_pushed_back;
-  while (!flush_queue_.empty()) {
-    FlushRequest flush_req = flush_queue_.front();
-    flush_queue_.pop_front();
+  // autovector<FlushRequest> to_be_pushed_back;
+  while (!range_reduce_flush_queue_.empty()) {
+    RangeReduceFlushRequest flush_req = range_reduce_flush_queue_.front();
+    range_reduce_flush_queue_.pop_front();
     FlushReason flush_reason = flush_req.flush_reason;
-    std::shared_ptr<MemTable> memtable = flush_req.mem_to_flush;
+    std::shared_ptr<TableBuilder> piggyback_table = flush_req.piggyback_table;
     int level = flush_req.level;
     bool just_delete = flush_req.just_delete;
     FileMetaData* file_meta = flush_req.meta_data;
 
-    if (flush_reason != FlushReason::kPartialFlush &&
-        flush_reason != FlushReason::kRangeFlush) {
-      to_be_pushed_back.push_back(flush_req);
-      continue;
-    }
-
     if (flush_reason == FlushReason::kRangeFlush) {
-      // level = range_query_last_level_;
       level = decision_cell_.end_level_;
     }
 
     superversion_contexts.clear();
     superversion_contexts.reserve(
         flush_req.cfd_to_max_mem_id_to_persist.size());
-
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << std::endl
+    //           << std::flush;
     for (const auto& iter : flush_req.cfd_to_max_mem_id_to_persist) {
+      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+      //           << std::endl
+      //           << std::flush;
       ColumnFamilyData* cfd = iter.first;
-      // TODO: (shubham) Not sure what mempurged is used for
-
+      FileMetaData mmeta_;
       // if reason is kPartialFlush and just_delete is true
       // add this file to the edits Delete and we are done!
-      if (flush_reason == FlushReason::kPartialFlush && just_delete) {
-        if (immutable_db_options().verbosity > 1) {
-          std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
-                    << ", \"Level\": " << level
-                    << ", \"ToCompactAccurate\": " << file_meta->num_entries
-                    << "}," << std::endl
+      if (flush_reason == FlushReason::kPartialFlush) {
+        std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                  << " JustDelete: " << just_delete << " level: " << level
+                  << std::endl
+                  << std::flush;
+        if (just_delete) {
+          if (immutable_db_options().verbosity > 1) {
+            std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
+                      << ", \"Level\": " << level
+                      << ", \"ToCompactAccurate\": " << file_meta->num_entries
+                      << "}," << std::endl
+                      << std::flush;
+          }
+          assert(file_meta != nullptr);
+          VersionEdit* edit_ = new VersionEdit();
+          edit_->SetColumnFamily(cfd->GetID());
+          uint64_t file_number = file_meta->fd.GetNumber();
+          edit_->DeleteFile(level, file_number);
+          Status ios = versions_->LogAndApply(
+              cfd, *cfd->GetLatestMutableCFOptions(), read_options_, edit_,
+              &mutex_, directories_.GetDbDir());
+          range_reduce_flush_queue_.size() > 1
+              ? --unscheduled_partial_or_range_flushes_
+              : unscheduled_partial_or_range_flushes_;
+          cfd->UnrefAndTryDelete();
+          break;
+        } else {
+          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                    << " Prepare Piggyback table" << std::endl
                     << std::flush;
-        }
-        assert(file_meta != nullptr);
-        VersionEdit* edit_ = new VersionEdit();
-        // edit_->SetPrevLogNumber(0);  # (Shubham) This is not required since
-        // LogandApply will set it anyway edit_->SetLogNumber(0);
-        edit_->SetColumnFamily(cfd->GetID());
-        uint64_t file_number = file_meta->fd.GetNumber();
-        edit_->DeleteFile(level, file_number);
-        Status ios = versions_->LogAndApply(
-            cfd, *cfd->GetLatestMutableCFOptions(), read_options_, edit_,
-            &mutex_, directories_.GetDbDir());
-        flush_queue_.size() > 1 ? --unscheduled_partial_or_range_flushes_
-                                : unscheduled_partial_or_range_flushes_;
-        // InstallSuperVersionAndScheduleWork(cfd,
-        // &(superversion_contexts.back()),
-        //                                    mutable_cf_options);
-        cfd->UnrefAndTryDelete();
-        break;
-      }
+          // handle non-range-qualifying entries of this file
+          std::shared_ptr<TableBuilder> tmp_memtable =
+              GetRangeReduceTableForLevel(level, cfd, job_context->job_id,
+                                          file_meta);
+          uint64_t max_size =
+              MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
+                                  cfd->ioptions()->compaction_style);
+          Arena arena;
+          auto file_iter = cfd->table_cache()->NewIterator(
+              read_options_, file_options_, cfd->internal_comparator(),
+              *file_meta,
+              /*range_del_agg=*/nullptr,
+              cfd->GetLatestMutableCFOptions()->prefix_extractor, nullptr,
+              cfd->internal_stats()->GetFileReadHist(0),
+              TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
+              level,
+              MaxFileSizeForL0MetaPin((*cfd->GetLatestMutableCFOptions())),
+              /*smallest_compaction_key=*/nullptr,
+              /*largest_compaction_key=*/nullptr,
+              /*allow_unprepared_value=*/true,
+              cfd->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
+              /*range_del_iter=*/nullptr);
+          file_iter->SeekToFirst();
+          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                    << std::endl
+                    << std::flush;
 
+          /*
+            6. Range fits inside file overlap -- (Partial Partial Flush)
+
+                        |---|
+                      ---------
+                      |       |
+                      ---------
+          */
+          if (cfd->internal_comparator()
+                      .user_comparator()
+                      ->CompareWithoutTimestamp(
+                          read_options_.range_start_key,
+                          file_meta->smallest.user_key()) > 0 &&
+              cfd->internal_comparator()
+                      .user_comparator()
+                      ->CompareWithoutTimestamp(read_options_.range_end_key,
+                                                file_meta->largest.user_key()) <
+                  0) {
+            for (; file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_start_key,
+                               file_iter->key()) > 0;
+                 file_iter->Next()) {
+              ParsedInternalKey parsed_key;
+              if (ParseInternalKey(file_iter->key(), &parsed_key, true).ok()) {
+                const Slice& key = file_iter->key();
+                const Slice& value = file_iter->value();
+                tmp_memtable->Add(key, value);
+              } else {
+                std::cout << __FILE__ << "[" << __FUNCTION__
+                          << "]: " << __LINE__ << "ERROR: parsing internal key"
+                          << std::endl
+                          << std::flush;
+              }
+            }
+            while (file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_end_key, file_iter->key()) <
+                       0) {
+              file_iter->Next();
+            }
+            for (; file_iter->Valid(); file_iter->Next()) {
+              ParsedInternalKey parsed_key;
+              if (ParseInternalKey(file_iter->key(), &parsed_key, true).ok()) {
+                const Slice& key = file_iter->key();
+                const Slice& value = file_iter->value();
+                tmp_memtable->Add(key, value);
+              } else {
+                std::cout << __FILE__ << "[" << __FUNCTION__
+                          << "]: " << __LINE__ << "ERROR: parsing internal key"
+                          << std::endl
+                          << std::flush;
+              }
+            }
+          } else if ((cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_start_key,
+                          file_meta->smallest.user_key()) < 0 &&
+                      cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_end_key,
+                          file_meta->smallest.user_key()) == 0) ||
+                     (cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_start_key,
+                          file_meta->smallest.user_key()) <= 0 &&
+                      cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_end_key,
+                          file_meta->largest.user_key()) < 0 &&
+                      cfd->internal_comparator().user_comparator()->Compare(
+                          read_options_.range_end_key,
+                          file_meta->smallest.user_key()) > 0)) {
+            while (file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_end_key, file_iter->key()) <
+                       0) {
+              file_iter->Next();
+            }
+            for (; file_iter->Valid(); file_iter->Next()) {
+              ParsedInternalKey parsed_key;
+              if (ParseInternalKey(file_iter->key(), &parsed_key, true).ok()) {
+                const Slice& key = file_iter->key();
+                const Slice& value = file_iter->value();
+                tmp_memtable->Add(key, value);
+              } else {
+                std::cout << __FILE__ << "[" << __FUNCTION__
+                          << "]: " << __LINE__ << "ERROR: parsing internal key"
+                          << std::endl
+                          << std::flush;
+              }
+              if (tmp_memtable->FileSize() >= max_size) {
+                superversion_contexts.emplace_back(SuperVersionContext(true));
+                bg_flush_args.emplace_back(
+                    cfd, iter.second, &(superversion_contexts.back()),
+                    FlushReason::kRangeFlush, tmp_memtable, level, just_delete,
+                    nullptr);
+                tmp_memtable = GetRangeReduceTableForLevel(
+                    level, cfd, job_context->job_id, file_meta, true);
+              }
+            }
+          } else {
+            for (; file_iter->Valid() &&
+                   cfd->internal_comparator()
+                           .user_comparator()
+                           ->CompareWithoutTimestamp(
+                               read_options_.range_start_key,
+                               file_iter->key()) > 0;
+                 file_iter->Next()) {
+              ParsedInternalKey parsed_key;
+              if (ParseInternalKey(file_iter->key(), &parsed_key, true).ok()) {
+                const Slice& key = file_iter->key();
+                const Slice& value = file_iter->value();
+                tmp_memtable->Add(key, value);
+              } else {
+                std::cout << __FILE__ << "[" << __FUNCTION__
+                          << "]: " << __LINE__ << "ERROR: parsing internal key"
+                          << std::endl
+                          << std::flush;
+              }
+            }
+          }
+          tmp_memtable->Finish();
+        }
+      }
+      std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                << std::endl
+                << std::flush;
       if (cfd->IsDropped()) {
         column_families_not_to_flush.push_back(cfd);
         continue;
       }
-      superversion_contexts.emplace_back(SuperVersionContext(true));
-      bg_flush_args.emplace_back(cfd, iter.second,
-                                 &(superversion_contexts.back()), flush_reason,
-                                 memtable, level, just_delete, file_meta);
+      // superversion_contexts.emplace_back(SuperVersionContext(true));
+      // bg_flush_args.emplace_back(
+      //     cfd, iter.second, &(superversion_contexts.back()), flush_reason,
+      //     piggyback_table, level, just_delete, file_meta);
     }
     if (!bg_flush_args.empty()) {
       break;
     }
   }
 
-  // Add other flush request back to queue
-  while (to_be_pushed_back.size() > 0) {
-    flush_queue_.push_back(to_be_pushed_back.back());
-    to_be_pushed_back.pop_back();
-    ;
-  }
-
   if (!bg_flush_args.empty()) {
+    std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+              << " Piggyback Table was full flushing" << std::endl
+              << std::flush;
     auto bg_job_limits = GetBGJobLimits();
     for (const auto& arg : bg_flush_args) {
       ColumnFamilyData* cfd = arg.cfd_;
@@ -492,8 +640,12 @@ Status DBImpl::BackgroundPartialOrRangeFlush(bool* made_progress,
           bg_job_limits.max_compactions, bg_flush_scheduled_,
           bg_compaction_scheduled_);
     }
-    status = FlushPartialOrRangeFiles(bg_flush_args, made_progress, job_context,
-                                      log_buffer, thread_pri);
+    std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+              << " Finishing" << std::endl
+              << std::flush;
+    // bg_flush_args[0].piggyback_table_->Finish();
+    // status = FlushPartialOrRangeFiles(bg_flush_args, made_progress,
+    // job_context, log_buffer, thread_pri);
     *reason = bg_flush_args[0].flush_reason_;
     for (auto& arg : bg_flush_args) {
       ColumnFamilyData* cfd = arg.cfd_;
@@ -551,8 +703,8 @@ void DBImpl::BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri) {
     TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:FlushFinish:0");
     ReleaseFileNumberFromPendingOutputs(pending_outputs_inserted_elem);
 
-    // If flush failed, we want to delete all temporary files that we might have
-    // created. Thus, we force full scan in FindObsoleteFiles()
+    // If flush failed, we want to delete all temporary files that we might
+    // have created. Thus, we force full scan in FindObsoleteFiles()
     FindObsoleteFiles(&job_context, !s.ok() && !s.IsShutdownInProgress() &&
                                         !s.IsColumnFamilyDropped());
     // delete unnecessary files if any, this is done outside the mutex
@@ -587,10 +739,10 @@ void DBImpl::BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri) {
     }
     atomic_flush_install_cv_.SignalAll();
     bg_cv_.SignalAll();
-    // IMPORTANT: there should be no code after calling SignalAll. This call may
-    // signal the DB destructor that it's OK to proceed with destruction. In
-    // that case, all DB variables will be dealloacated and referencing them
-    // will cause trouble.
+    // IMPORTANT: there should be no code after calling SignalAll. This call
+    // may signal the DB destructor that it's OK to proceed with destruction.
+    // In that case, all DB variables will be dealloacated and referencing
+    // them will cause trouble.
   }
 }
 
@@ -604,6 +756,8 @@ void DBImpl::BGWorkPartialOrRangeFlush(void* args) {
 }
 
 void DBImpl::SchedulePartialOrRangeFileFlush() {
+  std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__ << std::endl
+            << std::flush;
   mutex_.AssertHeld();
   if (!opened_successfully_) {
     // partial flush should not happen when
@@ -647,45 +801,21 @@ void DBImpl::UnschedulePartialOrRangeFlushCallback(void* arg) {
   TEST_SYNC_POINT("DBImpl::UnscheduleFlushCallback");
 }
 
-void DBImpl::SchedulePendingPartialRangeFlush(const FlushRequest& flush_req) {
-  // flush_req should contain reason and map of cfd to max file id if possible
-  // the `cfd_to_max_mem_id_to_persist` seems to be not used anywhere
-  mutex_.AssertHeld();
-  if (flush_req.cfd_to_max_mem_id_to_persist.empty()) {
-    return;
-  }
-  if (!immutable_db_options_.atomic_flush) {
-    assert(flush_req.cfd_to_max_mem_id_to_persist.size() == 1);
-    ColumnFamilyData* cfd =
-        flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
-    assert(cfd);
-    cfd->Ref();
-    ++unscheduled_partial_or_range_flushes_;
-    flush_queue_.push_back(flush_req);
-  }
-}
-
-void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
-                                               ColumnFamilyData* cfd,
-                                               std::shared_ptr<MemTable> mem_range, int level,
-                                               bool just_delete,
-                                               FileMetaData* file_meta) {
-  // if FlushReason is kPartialFlush then *mem_range must be nullptr
-  // if FlushReason is kRangeFlush then *mem_range must be valid pointer
-  // just_delete:
-  //    - always False for kRangeFlush
-  //    - when True for kPartialFlush, it means the file completely overlap with
-  //    range
-  //    - when False for kPartialFlush, it will write partial file to same level
-  // level:
-  //    - always -1 for kRangeFlush
-  //    - else level on which the file exists for FileMetaData pointer
-
+void DBImpl::AddPartialOrRangeFileFlushRequest(
+    FlushReason flush_reason, ColumnFamilyData* cfd,
+    std::shared_ptr<TableBuilder> piggyback_table, int level, bool just_delete,
+    FileMetaData* file_meta) {
+  // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__ <<
+  // std::endl
+  //           << std::flush;
   if (level != -1 && (level < decision_cell_.start_level_ ||
                       level > decision_cell_.end_level_)) {
     if (flush_reason == FlushReason::kPartialFlush) {
       file_meta->being_compacted = false;
     }
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << std::endl
+    //           << std::flush;
     return;
   }
 
@@ -695,22 +825,29 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     cfd = cfh->cfd();
   }
 
-  // std::cout << "FlushReason: " << (flush_reason==FlushReason::kRangeFlush ?
-  // "RangeFlush" : "PartialFlush") << std::endl << std::flush;
-
-  // switch new range memtable
   if (flush_reason == FlushReason::kRangeFlush) {
     mutex_.Lock();
-    cfd->SetMemtableRange(std::shared_ptr<MemTable>(cfd->ConstructNewVectorMemtable(
-        *cfd->GetLatestMutableCFOptions(), GetLatestSequenceNumber())));
-    mutex_.Unlock();
-    if (immutable_db_options().verbosity > 1) {
-      std::cout << "{\"MemtableId\": " << mem_range->GetID()
-                << ", \"Level\": " << decision_cell_.end_level_
-                << ", \"entriesCompacted\": "
-                << mem_range->num_entries() << "}," << std::endl
-                << std::flush;
-    }
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << std::endl
+    //           << std::flush;
+    FileMetaData new_file_meta;
+    int64_t _current_time = 0;
+    auto status = GetSystemClock()->GetCurrentTime(&_current_time);
+    new_file_meta.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
+    new_file_meta.epoch_number = cfd->NewEpochNumber();
+    auto mutable_cf_options = cfd->GetLatestMutableCFOptions();
+    const uint64_t current_time = static_cast<uint64_t>(_current_time);
+    uint64_t oldest_key_time = new_file_meta.file_creation_time;
+
+    // TableBuilderOptions tboptions(
+    //     *cfd->ioptions(), mutable_cf_options, cfd->internal_comparator(),
+    //     cfd->int_tbl_prop_collector_factories(),
+    //     GetCompressionFlush(*cfd->ioptions(), *mutable_cf_options),
+    //     mutable_cf_options->compression_opts, cfd->GetID(), cfd->GetName(),
+    //     0 /* level */, false /* is_bottommost */,
+    //     TableFileCreationReason::kFlush, oldest_key_time, current_time,
+    //     db_id_, db_session_id_, 0 /* target_file_size */,
+    //     file_meta.fd.GetNumber());
   } else {
     if (immutable_db_options().verbosity > 1) {
       std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
@@ -721,14 +858,19 @@ void DBImpl::AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
     }
   }
 
-  FlushRequest req{flush_reason, {{cfd, 0}},  mem_range,
-                   level,        just_delete, file_meta};
+  // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__ <<
+  // std::endl
+  //           << std::flush;
+  RangeReduceFlushRequest req{flush_reason, {{cfd, 0}},  piggyback_table,
+                              level,        just_delete, file_meta};
 
   {
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << std::endl
+    //           << std::flush;
     InstrumentedMutexLock l(&mutex_);
     SchedulePendingPartialRangeFlush(req);
     SchedulePartialOrRangeFileFlush();
   }
 }
-
 }  // namespace ROCKSDB_NAMESPACE

@@ -161,13 +161,13 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     return false;
   }
 
-  // if (db_impl_->immutable_db_options().verbosity > 1) {
-  //   std::cout << "\nDecision Matrix Meta: " << std::endl;
-  //   for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
-  //     std::cout << "Level: " << i + 1 << " --> Total in-range entries: "
-  //               << decision_matrix_meta_data[i] << std::endl;
-  //   }
-  // }
+  if (db_impl_->immutable_db_options().verbosity > 1) {
+    std::cout << "\nDecision Matrix Meta: " << std::endl;
+    for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
+      std::cout << "Level: " << i + 1 << " --> Total in-range entries: "
+                << decision_matrix_meta_data[i] << std::endl;
+    }
+  }
 
   std::vector<std::vector<DecisionCell>> decision_matrix(
       decision_matrix_meta_data.size(),
@@ -230,12 +230,12 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     }
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
-      // if (db_impl_->immutable_db_options().verbosity > 0) {
-      //   std::cout << "\n[Verbosity]: Best decision cell: ("
-      //             << best_decision_cell.GetStartLevel() << ", "
-      //             << best_decision_cell.GetEndLevel() << ")\n\n"
-      //             << std::endl;
-      // }
+      if (db_impl_->immutable_db_options().verbosity > 0) {
+        std::cout << "\n[Verbosity]: Best decision cell: ("
+                  << best_decision_cell.GetStartLevel() << ", "
+                  << best_decision_cell.GetEndLevel() << ")\n\n"
+                  << std::endl;
+      }
       break;
     }
   }
@@ -283,10 +283,10 @@ Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
   }
 
   if (db_impl_->read_options_.enable_range_query_compaction) {
-    if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
-        cfd_->mem_range()->num_entries() > 0) {
+    if (!db_impl_->added_last_table && cfd_->piggyback_table_map()[db_impl_->range_query_last_level_] != nullptr &&
+        cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]->NumEntries() > 0) {
       db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, cfd_->mem_range());
+                                                  cfd_, cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
     }
     while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
            db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||

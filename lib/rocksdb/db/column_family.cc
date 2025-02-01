@@ -538,7 +538,7 @@ ColumnFamilyData::ColumnFamilyData(
       imm_(ioptions_.min_write_buffer_number_to_merge,
            ioptions_.max_write_buffer_number_to_maintain,
            ioptions_.max_write_buffer_size_to_maintain),
-      mem_range_(nullptr),
+      // piggyback_table_map_(nullptr),
       super_version_(nullptr),
       super_version_number_(0),
       local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)),
@@ -1114,7 +1114,7 @@ void ColumnFamilyData::CreateNewMemtable(
   }
   SetMemtable(ConstructNewMemtable(mutable_cf_options, earliest_seq));
   mem_->Ref();
-  SetMemtableRange(std::shared_ptr<MemTable>(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq)));
+  // SetMemtableRange(std::shared_ptr<MemTable>(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq)));
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {
@@ -1682,10 +1682,10 @@ MemTable* ColumnFamilyMemTablesImpl::GetMemTable() const {
   return current_->mem();
 }
 
-std::shared_ptr<MemTable> ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
-  assert(current_ != nullptr);
-  return current_->mem_range();
-}
+// std::shared_ptr<TableBuilder> ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
+//   assert(current_ != nullptr);
+//   return current_->piggyback_table_map();
+// }
 
 ColumnFamilyHandle* ColumnFamilyMemTablesImpl::GetColumnFamilyHandle() {
   assert(current_ != nullptr);

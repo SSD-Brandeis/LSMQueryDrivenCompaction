@@ -37,7 +37,7 @@ class ColumnFamilyMemTables {
   // been processed)
   virtual uint64_t GetLogNumber() const = 0;
   virtual MemTable* GetMemTable() const = 0;
-  virtual std::shared_ptr<MemTable> GetRangeMemTable() const = 0;
+  // virtual std::shared_ptr<MemTable> GetRangeMemTable() const = 0;
   virtual ColumnFamilyHandle* GetColumnFamilyHandle() = 0;
   virtual ColumnFamilyData* current() { return nullptr; }
 };
@@ -59,18 +59,18 @@ class ColumnFamilyMemTablesDefault : public ColumnFamilyMemTables {
     return mem_;
   }
 
-  // TODO: (shubham) Remove this extra memtable .. its not used anywhere
-  std::shared_ptr<MemTable> GetRangeMemTable() const override {
-    assert(ok_);
-    return mem_range_;
-  }
+  // // TODO: (shubham) Remove this extra memtable .. its not used anywhere
+  // std::shared_ptr<MemTable> GetRangeMemTable() const override {
+  //   assert(ok_);
+  //   return piggyback_table_;
+  // }
 
   ColumnFamilyHandle* GetColumnFamilyHandle() override { return nullptr; }
 
  private:
   bool ok_;
   MemTable* mem_;
-  std::shared_ptr<MemTable> mem_range_;
+  std::shared_ptr<MemTable> piggyback_table_;
 };
 
 struct WriteBatch::ProtectionInfo {

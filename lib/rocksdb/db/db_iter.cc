@@ -130,29 +130,22 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (read_options_mutable_.enable_range_query_compaction && Valid() &&
-      key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
-      key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]->Add(
-        Slice(key().data(), key().size()),
-        Slice(value().data(), value().size()));
-    const MutableCFOptions mutable_cf_options =
-        *cfd_->GetLatestMutableCFOptions();
-    uint64_t max_size = MaxFileSizeForLevel(mutable_cf_options,
-                                            db_impl_->decision_cell_.end_level_,
-                                            cfd_->ioptions()->compaction_style);
-    // uint64_t n87_percent_of_max_size = max_size * 7/8;
-
-    if (cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]
-            ->FileSize() >= max_size) {
-      db_impl_->AddPartialOrRangeFileFlushRequest(
-          FlushReason::kRangeFlush, cfd_,
-          cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
-    }
-  }
 
   assert(valid_);
   assert(status_.ok());
+
+  if (read_options_mutable_.enable_range_query_compaction && Valid() &&
+      key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
+      key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
+    auto rroutput = db_impl_->GetRangeReduceOutputs(
+        db_impl_->range_query_last_level_, cfd_);
+    std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
+    ParsedInternalKey parsed_key;
+    assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
+    tmp_memtable->Add(iter_.key(), value());
+    rroutput.new_file_meta_->UpdateBoundaries(
+        iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+  }
 
   PERF_COUNTER_ADD(iter_next_count, 1);
   PERF_CPU_TIMER_GUARD(iter_next_cpu_nanos, clock_);
@@ -205,24 +198,17 @@ void DBIter::Next() {
           key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    if (user_comparator_.Compare(
+    auto rroutput = db_impl_->GetRangeReduceOutputs(
+        db_impl_->range_query_last_level_, cfd_);
+    std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
+    if (user_comparator_.CompareWithoutTimestamp(
             key(), Slice(read_options_mutable_.range_end_key)) == 0) {
-      cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]->Add(
-          Slice(key().data(), key().size()),
-          Slice(value().data(), value().size()));
+      ParsedInternalKey parsed_key;
+      assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
+      tmp_memtable->Add(iter_.key(), value());
+      rroutput.new_file_meta_->UpdateBoundaries(
+          iter_.key(), value(), parsed_key.sequence, parsed_key.type);
     }
-    db_impl_->AddPartialOrRangeFileFlushRequest(
-        FlushReason::kRangeFlush, cfd_,
-        cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
-    db_impl_->added_last_table = true;
-  } else if (read_options_mutable_.enable_range_query_compaction && Valid() &&
-             user_comparator_.Compare(
-                 key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
-             key().level_ == 0) {
-    db_impl_->AddPartialOrRangeFileFlushRequest(
-        FlushReason::kRangeFlush, cfd_,
-        cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
-    db_impl_->added_last_table = true;
   }
 }
 

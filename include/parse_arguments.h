@@ -68,6 +68,10 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
       "Enable RocksDB's internal Perf and IOstat [def: 0]", {"stat"});
   args::ValueFlag<int> show_progress_cmd(
       group1, "show_progress_bar", "Shows progress bar [def: 0]", {"progress"});
+  args::ValueFlag<int> enable_sanity_check_cmd(
+      group1, "enable_sanity_check",
+      "Enable Sanity check to verify Database after experiment [def: 0]",
+      {"sanity"});
 
   // Range Query Driven Compaction Options
   args::ValueFlag<long> num_inserts_cmd(
@@ -159,6 +163,9 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
                                             : env->IsPerfIOStatEnabled());
   env->SetShowProgress(show_progress_cmd ? args::get(show_progress_cmd)
                                          : env->IsShowProgressEnabled());
+  env->SetSanityCheck(enable_sanity_check_cmd
+                          ? args::get(enable_sanity_check_cmd)
+                          : env->IsSanityCheckEnabled());
 
   // Range Query Driven Compaction Options
   env->num_inserts =

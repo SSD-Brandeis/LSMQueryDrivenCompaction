@@ -2,6 +2,9 @@
 
 #include <chrono>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <tuple>
 
 #include "config_options.h"
 #include "utils.h"
@@ -227,8 +230,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
               << ", " << range_reduce_listener->un_useful_file_size_ << ", "
               << range_reduce_listener->un_useful_entries_ << ", "
               << keys_returned << ", " << refresh_duration << ", "
-              << reset_duration << ", " << actual_range_time
-              << std::endl;
+              << reset_duration << ", " << actual_range_time << std::endl;
       range_reduce_listener->reset();
 #endif // TIMER
       break;
@@ -301,5 +303,122 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   std::cout << "Experiment completed in " << total_seconds / 3600 << "h "
             << (total_seconds % 3600) / 60 << "m " << total_seconds % 60 << "s "
             << std::endl;
+
+  if (env->IsSanityCheckEnabled()) {
+    std::cout << std::endl << std::endl;
+    std::cout << "Running Sanity Check ... " << std::endl;
+    runSanityCheck(env, total_operations);
+  }
   return 0;
+}
+
+void runSanityCheck(std::unique_ptr<DBEnv> &env, size_t total_operations) {
+  std::unordered_set<std::string> seen_keys;
+  std::ifstream file("workload.txt", std::ios::ate);
+  assert(file);
+
+  DB *db;
+  Options options;
+  WriteOptions write_options;
+  ReadOptions read_options;
+  BlockBasedTableOptions table_options;
+  FlushOptions flush_options;
+
+  configOptions(env, &options, &table_options, &write_options, &read_options,
+                &flush_options);
+
+  Status s = DB::Open(options, kDBPath, &db);
+  if (!s.ok())
+    std::cerr << s.ToString() << std::endl;
+  assert(s.ok());
+
+  std::streampos pos = file.tellg();
+  std::string line;
+  std::string buffer;
+  int ith_op = 0;
+  std::unordered_map<char, int> successful_ops, failed_ops, skipped_ops;
+  std::unordered_set<char> operations;
+
+  while (pos > 0) {
+    pos -= 1;
+    file.seekg(pos, std::ios::beg);
+
+    char ch;
+    file.get(ch);
+
+    if (ch == '\n' || pos == 0) {
+      if (!buffer.empty()) {
+        std::reverse(buffer.begin(), buffer.end());
+        std::istringstream stream(buffer);
+        char operation;
+        std::string key, value;
+        stream >> operation >> key;
+
+        if (operations.find(operation) == operations.end()) {
+          operations.insert(operation);
+          if (successful_ops.find(operation) == successful_ops.end()) {
+            successful_ops[operation] = 0;
+          }
+          if (failed_ops.find(operation) == failed_ops.end()) {
+            failed_ops[operation] = 0;
+          }
+          if (skipped_ops.find(operation) == skipped_ops.end()) {
+            skipped_ops[operation] = 0;
+          }
+        }
+
+        if (seen_keys.find(key) != seen_keys.end()) {
+          skipped_ops[operation]++;
+        } else {
+          seen_keys.insert(key);
+
+          if (operation == 'I' || operation == 'U') {
+            stream >> value;
+            std::string actual_value;
+            Status db_status = db->Get(ReadOptions(), key, &actual_value);
+
+            if (!db_status.ok()) {
+              std::cerr << db_status.ToString() << std::endl;
+              failed_ops[operation]++;
+            } else if (actual_value != value) {
+              std::cerr << "ERROR: Key " << key
+                        << " mismatch! Expected: " << value
+                        << ", Found: " << actual_value << std::endl;
+              failed_ops[operation]++;
+            } else {
+              successful_ops[operation]++;
+            }
+          } else {
+            skipped_ops[operation]++;
+          }
+        }
+      }
+      buffer.clear();
+      ith_op += 1;
+      UpdateProgressBar(env, ith_op, total_operations,
+                        (int)total_operations * 0.02);
+    } else {
+      buffer += ch;
+    }
+  }
+
+  constexpr int colWidth = 10;
+
+  std::cout << "Sanity check completed!" << std::endl;
+  std::cout << "\n========== Sanity Check Report ==========\n";
+  std::cout << std::setfill(' ') << std::setw(colWidth) << "Operation |"
+            << std::setfill(' ') << std::setw(colWidth) << "Success | "
+            << std::setfill(' ') << std::setw(colWidth) << "Failed | "
+            << std::setfill(' ') << std::setw(colWidth) << "Skipped"
+            << std::endl;
+  std::cout << "-----------------------------------------\n";
+  for (char op : operations) {
+    std::cout << std::setfill(' ') << std::setw(colWidth) << op << "|"
+              << std::setfill(' ') << std::setw(colWidth) << successful_ops[op]
+              << "|" << std::setfill(' ') << std::setw(colWidth)
+              << failed_ops[op] << "|" << std::setfill(' ')
+              << std::setw(colWidth) << skipped_ops[op] << std::endl;
+  }
+  std::cout << "=========================================\n";
+  db->Close();
 }

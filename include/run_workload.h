@@ -11,4 +11,6 @@ extern std::string rqstats_file;
 
 int runWorkload(std::unique_ptr<DBEnv> &env);
 
+void runSanityCheck(std::unique_ptr<DBEnv> &env, size_t total_operations);
+
 #endif // RUN_WORKLOAD_H_

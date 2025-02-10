@@ -1,8 +1,8 @@
 #ifndef DB_ENV_H_
 #define DB_ENV_H_
 
-#include <mutex>
 #include <memory>
+#include <mutex>
 
 #include "buffer.h"
 
@@ -37,8 +37,8 @@ class DBEnv {
 private:
   DBEnv() = default;
   ~DBEnv() = default;
-  DBEnv(const DBEnv&) = default;
-  DBEnv& operator=(const DBEnv&) = delete;
+  DBEnv(const DBEnv &) = default;
+  DBEnv &operator=(const DBEnv &) = delete;
 
   friend struct std::default_delete<DBEnv>;
 
@@ -46,10 +46,11 @@ private:
   static std::mutex mutex_;
 
   // buffer size in bytes
-  size_t buffer_size_ = 0;          // [M]
-  bool enable_perf_iostat_ = false; // [stat]
-  bool destroy_database_ = true;    // [d]
-  bool show_progress_bar_ = false;  // [progress]
+  size_t buffer_size_ = 0;           // [M]
+  bool enable_perf_iostat_ = false;  // [stat]
+  bool destroy_database_ = true;     // [d]
+  bool show_progress_bar_ = false;   // [progress]
+  bool enable_sanity_check_ = false; // [sanity]
 
 public:
   static std::unique_ptr<DBEnv> GetInstance() {
@@ -65,6 +66,7 @@ public:
   void SetPerfIOStat(bool value) { enable_perf_iostat_ = value; }
   void SetDestroyDatabase(bool value) { destroy_database_ = value; }
   void SetShowProgress(bool value) { show_progress_bar_ = value; }
+  void SetSanityCheck(bool value) { enable_sanity_check_ = value; }
 
   size_t GetBufferSize() const {
     // usually buffer_size = P * B * E
@@ -75,6 +77,7 @@ public:
   bool IsPerfIOStatEnabled() const { return enable_perf_iostat_; }
   bool IsDestroyDatabaseEnabled() const { return destroy_database_; }
   bool IsShowProgressEnabled() const { return show_progress_bar_; }
+  bool IsSanityCheckEnabled() const { return enable_sanity_check_; }
 
   long GetTargetFileSizeBase() const { return GetBufferSize(); }
 

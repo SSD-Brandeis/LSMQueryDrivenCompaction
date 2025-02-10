@@ -103,11 +103,11 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
       long long num_entries = fd.file_metadata->num_entries;
 
       bool start_key_in_range =
-          user_comparator_->Compare(Slice(read_options_.range_start_key),
-                                    smallest_key) <= 0;
+          user_comparator_->CompareWithoutTimestamp(
+              Slice(read_options_.range_start_key), smallest_key) <= 0;
       bool end_key_in_range =
-          user_comparator_->Compare(Slice(read_options_.range_end_key),
-                                    largest_key) >= 0;
+          user_comparator_->CompareWithoutTimestamp(
+              Slice(read_options_.range_end_key), largest_key) >= 0;
 
       if (start_key_in_range && end_key_in_range) {
         num_files_are_overlapping++;
@@ -193,32 +193,6 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     }
   }
 
-  // if (db_impl_->immutable_db_options().verbosity > 1) {
-  //   std::cout << "\nDecision Matrix Flat: " << std::endl;
-  //   for (size_t i = 0; i < decision_matrix.size(); i++) {
-  //     for (size_t j = i; j < decision_matrix.size(); j++) {
-  //       std::cout << "StartLevel: " << decision_matrix[i][j].GetStartLevel()
-  //       << " EndLevel: " << decision_matrix[i][j].GetEndLevel() << "
-  //       OverlappingRatios: "; for (float val :
-  //       decision_matrix[i][j].overlapping_entries_ratio_) {
-  //         std::cout << val << ", ";
-  //       }
-  //       std::cout << std::endl;
-  //     }
-  //   }
-
-  //   std::cout << "\nDecision Matrix: " << std::endl;
-  //   for (size_t i = 0; i < decision_matrix.size(); i++) {
-  //     for (size_t j = 0; j < decision_matrix.size(); j++) {
-  //       for (float val : decision_matrix[i][j].overlapping_entries_ratio_) {
-  //         std::cout << val << ", ";
-  //       }
-  //       std::cout << " | ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-  // }
-
   DecisionCell best_decision_cell;
 
   for (size_t col = decision_matrix.size() - 1; col > 0; col--) {
@@ -230,6 +204,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     }
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
+      db_impl_->range_query_last_level_ = best_decision_cell.GetEndLevel();
       if (db_impl_->immutable_db_options().verbosity > 0) {
         std::cout << "\n[Verbosity]: Best decision cell: ("
                   << best_decision_cell.GetStartLevel() << ", "
@@ -283,19 +258,18 @@ Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
   }
 
   if (db_impl_->read_options_.enable_range_query_compaction) {
-    if (!db_impl_->added_last_table && cfd_->piggyback_table_map()[db_impl_->range_query_last_level_] != nullptr &&
-        cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]->NumEntries() > 0) {
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, cfd_->piggyback_table_map()[db_impl_->range_query_last_level_]);
-    }
-    while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
-           db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
-           db_impl_->bg_partial_or_range_flush_running_ > 0) {
+    db_impl_->last_file_read_from_levels_.emplace(
+        db_impl_->range_query_last_level_);
+    while (db_impl_->bg_partial_flush_scheduled_ > 0 ||
+           db_impl_->unscheduled_partial_flushes_ > 0 ||
+           db_impl_->bg_partial_flush_running_ > 0) {
       db_impl_->range_queries_complete_cv_.Wait();
     }
+    db_impl_->TakecareOfLeftoverPart(cfd_);
   }
 
   db_impl_->was_decision_true = false;
+  db_impl_->last_file_read_from_levels_.clear();
   ResumeBackgroundWork();
   return Status::OK();
 }

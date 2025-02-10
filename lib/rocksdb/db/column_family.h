@@ -345,9 +345,6 @@ class ColumnFamilyData {
   MemTableList* imm() { return &imm_; }
   MemTable* mem() { return mem_; }
 
-  std::unordered_map<int, std::shared_ptr<TableBuilder>>& piggyback_table_map() { return piggyback_table_map_; }
-  std::unordered_map<int, std::shared_ptr<WritableFileWriter>>& fswritable_file_map() { return fswritable_file_map_; }
-
   bool IsEmpty() {
     return mem()->GetFirstSequenceNumber() == 0 && imm()->NumNotFlushed() == 0;
   }
@@ -594,8 +591,6 @@ class ColumnFamilyData {
 
   MemTable* mem_;
   MemTableList imm_;
-  std::unordered_map<int, std::shared_ptr<TableBuilder>> piggyback_table_map_;
-  std::unordered_map<int, std::shared_ptr<WritableFileWriter>> fswritable_file_map_;
   SuperVersion* super_version_;
 
   // An ordinal representing the current SuperVersion. Updated by
@@ -859,11 +854,6 @@ class ColumnFamilyMemTablesImpl : public ColumnFamilyMemTables {
   // REQUIRES: use this function of DBImpl::column_family_memtables_ should be
   //           under a DB mutex OR from a write thread
   virtual MemTable* GetMemTable() const override;
-
-  // // REQUIRES: Seek() called first
-  // // REQUIRES: use this function of DBImpl::column_family_memtables_ should be
-  // //           under a DB mutex OR from a write thread
-  // virtual std::shared_ptr<MemTable> GetRangeMemTable() const override;
 
   // Returns column family handle for the selected column family
   // REQUIRES: use this function of DBImpl::column_family_memtables_ should be

@@ -258,6 +258,10 @@ Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
   }
 
   if (db_impl_->read_options_.enable_range_query_compaction) {
+    std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+              << " Adding level: " << db_impl_->range_query_last_level_
+              << " to last_file_read_from_levels_" << std::endl
+              << std::flush;
     db_impl_->last_file_read_from_levels_.emplace(
         db_impl_->range_query_last_level_);
     while (db_impl_->bg_partial_flush_scheduled_ > 0 ||

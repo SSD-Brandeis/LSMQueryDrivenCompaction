@@ -280,6 +280,8 @@ class ColumnFamilyData {
   // holding a DB mutex, or as the leader in a write batch group).
   void Ref() { refs_.fetch_add(1); }
 
+  // std::atomic_int GetRefCount() { return refs_.load(std::memory_order_relaxed); }
+
   // UnrefAndTryDelete() decreases the reference count and do free if needed,
   // return true if this is freed else false, UnrefAndTryDelete() can only
   // be called while holding a DB mutex, or during single-threaded recovery.

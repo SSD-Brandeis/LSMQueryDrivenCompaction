@@ -178,12 +178,24 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     case 'S': {
       std::string start_key, end_key;
       stream >> start_key >> end_key;
+      std::cout << "Running Range Query: " << ith_op << std::endl << std::flush;
 
       uint64_t keys_returned = 0, keys_read = 0;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
       range_reduce_listener->reset();
 #endif // TIMER
+
+      if (ith_op == 8463292) {
+        std::cout << " START KEY: " << start_key
+                  << " END KEY: " << end_key
+                  << std::endl
+                  << std::flush;
+        auto two = db->GetTreeState();
+        auto levelstr = std::get<1>(two);
+        (*buffer) << levelstr << std::endl << std::flush;
+        buffer->flush();
+      }
 
       it->Refresh(start_key, end_key, keys_read,
                   env->enable_range_query_compaction);

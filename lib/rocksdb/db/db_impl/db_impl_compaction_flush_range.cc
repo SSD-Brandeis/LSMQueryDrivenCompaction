@@ -238,7 +238,11 @@ void DBImpl::SchedulePendingPartialRangeFlush(
     ColumnFamilyData* cfd =
         flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
     assert(cfd);
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     cfd->Ref();
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     ++unscheduled_partial_flushes_;
     range_reduce_flush_queue_.push_back(flush_req);
   }
@@ -275,6 +279,12 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
   std::string fname = TableFileName(cfd->ioptions()->cf_paths, file_number,
                                     0 /* output_path_id not applicable */);
   FileOptions fo_copy = file_options_;
+  std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+            << " Creating file: " << file_number << " for level: " << level;
+  if (file_meta != nullptr) {
+    std::cout << " against " << file_meta->fd.GetNumber();
+  }
+  std::cout << std::endl << std::flush;
   Status s;
   IOStatus io_s = NewWritableFile(fs_.get(), fname, &fs_writable_file, fo_copy);
   s = io_s;
@@ -422,14 +432,16 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
         flush_req.cfd_to_max_mem_id_to_persist.size());
     for (const auto& iter : flush_req.cfd_to_max_mem_id_to_persist) {
       ColumnFamilyData* cfd = iter.first;
+      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+      //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
       FileMetaData* new_file_meta;
       // if just_delete is true add this file to the edits Delete and done!
       if (just_delete) {
-        if (immutable_db_options().verbosity > 1) {
-          std::cout << "{\"FileNumber\": " << file_meta->fd.GetNumber()
-                    << ", \"Level\": " << level
-                    << ", \"ToCompactAccurate\": " << file_meta->num_entries
-                    << "}," << std::endl
+        if (immutable_db_options_.verbosity > 3) {
+          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                    << " adding FILE: " << file_meta->fd.GetNumber()
+                    << " from LEVEL: " << level << " to deleted files"
+                    << std::endl
                     << std::flush;
         }
         assert(file_meta != nullptr);
@@ -444,6 +456,13 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
         // handle non-range-qualifying entries of this file
         if (only_file_at_lvl && last_bit_frm_lvl) {
         } else {
+          if (immutable_db_options_.verbosity > 3) {
+            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                      << " adding FILE: " << file_meta->fd.GetNumber()
+                      << " from LEVEL: " << level << " to deleted files"
+                      << std::endl
+                      << std::flush;
+          }
           only_deletes_->DeleteFile(level, file_meta->fd.GetNumber());
         }
         RangeReduceOutputs rroutput =
@@ -477,15 +496,20 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
         */
         if (cfd->internal_comparator()
                     .user_comparator()
-                    ->CompareWithoutTimestamp(
-                        read_options_.range_start_key,
-                        file_meta->smallest.user_key()) > 0 &&
+                    ->CompareWithoutTimestamp(read_options_.range_start_key,
+                                              file_meta->smallest.user_key()) >
+                0 &&
             cfd->internal_comparator()
                     .user_comparator()
-                    ->CompareWithoutTimestamp(
-                        read_options_.range_end_key,
-                        file_meta->largest.user_key()) < 0) {
+                    ->CompareWithoutTimestamp(read_options_.range_end_key,
+                                              file_meta->largest.user_key()) <
+                0) {
           if (only_file_at_lvl && !last_bit_frm_lvl) {
+            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                      << " Adding entries to file: "
+                      << new_file_meta->fd.GetNumber()
+                      << " for level: " << level << std::endl
+                      << std::flush;
             for (; file_iter->Valid() &&
                    cfd->internal_comparator()
                            .user_comparator()
@@ -502,14 +526,29 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
               new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
                                               parsed_key.type);
             }
+            if (file_iter->Valid()) {
+              std::cout << __FILE__ << ":" << __LINE__ << ": " <<
+              __FUNCTION__
+                        << " Stopped at Key: " << file_iter->key().data()
+                        << " oldFileNumber: " << file_meta->fd.GetNumber()
+                        << " newFileName: " << new_file_meta->fd.GetNumber()
+                        << " level: " << level << std::endl
+                        << std::flush;
+            }
           } else if (only_file_at_lvl && last_bit_frm_lvl) {
             file_iter->Seek(read_options_.range_end_key);
+
             while (file_iter->Valid() &&
                    cfd->user_comparator()->CompareWithoutTimestamp(
                        ExtractUserKey(file_iter->key()),
                        read_options_.range_end_key) <= 0) {
               file_iter->Next();
             }
+            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                      << " Adding entries to file: "
+                      << new_file_meta->fd.GetNumber()
+                      << " for level: " << level << std::endl
+                      << std::flush;
             if (file_iter->Valid()) {
               for (; file_iter->Valid(); file_iter->Next()) {
                 auto rr_output = GetRangeReduceOutputs(level, cfd, file_meta);
@@ -551,6 +590,13 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
                             ->CompareWithoutTimestamp(
                                 read_options_.range_end_key,
                                 file_meta->smallest.user_key()) > 0)) {
+          std::cout << " HERE AT SECOND ... " << std::endl << std::flush;
+          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                    << " Adding entries to file: "
+                    << new_file_meta->fd.GetNumber() << " for level: " <<
+                    level
+                    << std::endl
+                    << std::flush;
           while (file_iter->Valid() &&
                  cfd->internal_comparator()
                          .user_comparator()
@@ -573,7 +619,21 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
               new_file_meta = new_rroutput.new_file_meta_;
             }
           }
+          if (file_iter->Valid()) {
+            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                      << " Stopped at Key: " << file_iter->key().data()
+                      << " oldFileNumber: " << file_meta->fd.GetNumber()
+                      << " newFileName: " << new_file_meta->fd.GetNumber()
+                      << " level: " << level << std::endl
+                      << std::flush;
+          }
         } else {
+          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                    << " Adding entries to file: "
+                    << new_file_meta->fd.GetNumber() << " for level: " <<
+                    level
+                    << std::endl
+                    << std::flush;
           for (; file_iter->Valid() &&
                  cfd->internal_comparator()
                          .user_comparator()
@@ -589,9 +649,19 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
             new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
                                             parsed_key.type);
           }
+          if (file_iter->Valid()) {
+            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                      << " Stopped at Key: " << file_iter->key().data()
+                      << " oldFileNumber: " << file_meta->fd.GetNumber()
+                      << " newFileName: " << new_file_meta->fd.GetNumber()
+                      << " level: " << level << std::endl
+                      << std::flush;
+          }
         }
       }
       cfd->UnrefAndTryDelete();
+      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+      //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     }
     if (!bg_flush_args.empty()) {
       break;
@@ -738,6 +808,8 @@ void DBImpl::UnschedulePartialFlushCallback(void* arg) {
 }
 
 void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
+  // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+  //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
   if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
     leftover_part.clear();
     only_deletes_->Clear();
@@ -754,6 +826,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       }
     }
     cfd_->UnrefAndTryDelete();
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
     return;
   }
 
@@ -764,6 +838,9 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       std::string resume_key = std::get<0>(key_and_meta);
       FileMetaData* file_meta = std::get<1>(key_and_meta);
       ColumnFamilyData* cfd = std::get<2>(key_and_meta);
+
+      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+      //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
 
       Arena arena;
       auto file_iter = cfd->table_cache()->NewIterator(
@@ -805,6 +882,9 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
 
   {
     InstrumentedMutexLock l(&mutex_);
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
+
     Status ss = versions_->LogAndApply(cfd_, *cfd_->GetLatestMutableCFOptions(),
                                        read_options_, only_deletes_, &mutex_,
                                        directories_.GetDbDir());
@@ -837,6 +917,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       }
     }
 
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     ss = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
                                 read_options_, add_files_, &mutex_,
                                 directories_.GetDbDir());
@@ -855,8 +937,13 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
 
     cfd_->current()->storage_info()->ComputeCompactionScore(
         *cfd->ioptions(), *cfd_->GetLatestMutableCFOptions());
+
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
     range_reduce_outputs_.clear();
     only_deletes_->Clear();
+    // std::cout << " Clearing only deletes data ... " << std::endl <<
+    // std::flush;
   }
 }
 
@@ -881,8 +968,17 @@ void DBImpl::AddPartialFileFlushRequest(FlushReason flush_reason, int level,
 
   RangeReduceFlushRequest req{{{cfd, 0}}, level,       just_delete,
                               file_meta,  is_last_bit, only_file_at_lvl_};
+
   {
     InstrumentedMutexLock l(&mutex_);
+    if (immutable_db_options_.verbosity > 3) {
+      std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                << " FILE: " << file_meta->fd.GetNumber()
+                << " JustDelete: " << just_delete << " Level: " << level
+                << " Is_last_bit: " << is_last_bit
+                << " Only_file_at_level: " << only_file_at_lvl_ << std::endl
+                << std::flush;
+    }
     SchedulePendingPartialRangeFlush(req);
     SchedulePartialFileFlush();
 
@@ -890,7 +986,22 @@ void DBImpl::AddPartialFileFlushRequest(FlushReason flush_reason, int level,
       RangeReduceFlushRequest reqq{{{cfd, 0}}, level, just_delete,
                                    file_meta,  true,  true};
       if (level != range_query_last_level_) {
+        if (immutable_db_options_.verbosity > 3) {
+          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                    << " adding level : " << level
+                    << " to LAST_FILE_READ_FROM_LEVELS set, FILE: "
+                    << file_meta->fd.GetNumber() << std::endl
+                    << std::flush;
+        }
         last_file_read_from_levels_.emplace(level);
+      }
+      if (immutable_db_options_.verbosity > 3) {
+        std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+                  << " FILE: " << file_meta->fd.GetNumber()
+                  << " JustDelete: " << just_delete << " Level: " << level
+                  << " Is_last_bit: " << true << " Only_file_at_level: " << true
+                  << std::endl
+                  << std::flush;
       }
       SchedulePendingPartialRangeFlush(reqq);
       SchedulePartialFileFlush();

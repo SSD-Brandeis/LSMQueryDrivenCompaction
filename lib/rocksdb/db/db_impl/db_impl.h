@@ -495,6 +495,8 @@ class DBImpl : public DB {
   Status BackgroundPartialFlush(bool* made_progress, JobContext* job_context,
                                 LogBuffer* log_buffer, FlushReason* reason,
                                 Env::Priority thread_pri);
+  void ForegroundPartialFlush(ColumnFamilyData* cfd, FileMetaData* file_meta,
+                                int level);
   void SchedulePartialFileFlush();
   static void UnschedulePartialFlushCallback(void* arg);
   Status FlushPartialFile(ColumnFamilyData* cfd,
@@ -508,11 +510,9 @@ class DBImpl : public DB {
                           LogBuffer* log_buffer, Env::Priority thread_pri,
                           std::shared_ptr<MemTable> memtable, int level,
                           FileMetaData* meta_data);
-  void AddPartialFileFlushRequest(FlushReason flush_reason, int level = -1,
-                                  bool just_delete = false,
+  void AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
                                   FileMetaData* file_meta = nullptr,
-                                  bool is_last_bit = false,
-                                  bool only_file_at_lvl_ = false);
+                                  int level = -1);
 
   long long GetRoughOverlappingEntries(const std::string given_start_key,
                                        const std::string given_end_key,
@@ -529,13 +529,10 @@ class DBImpl : public DB {
                                            FileMetaData* file_meta = nullptr);
   void TakecareOfLeftoverPart(ColumnFamilyData* cfd_);
 
-  std::unordered_map<int,
-                     std::tuple<std::string, FileMetaData*, ColumnFamilyData*>>
-      leftover_part;
   std::unordered_map<int, std::queue<RangeReduceOutputs>> range_reduce_outputs_;
   uint64_t smallest_epoch_number_for_rr = 0;
   VersionEdit* only_deletes_ = new VersionEdit();
-  std::unordered_set<uint16_t> last_file_read_from_levels_;
+  std::atomic<bool> rq_done{false};
 
   int unscheduled_partial_flushes_ = 0;
   int bg_partial_flush_scheduled_ = 0;
@@ -2214,19 +2211,10 @@ class DBImpl : public DB {
     // flush is considered complete.
     std::unordered_map<ColumnFamilyData*, uint64_t>
         cfd_to_max_mem_id_to_persist;
-    int level = -1;
-    bool just_delete = false;
+    RQueryFileOverlap overlap_type;
     FileMetaData* meta_data = nullptr;
-    bool last_bit_frm_lvl_ = false;
-    bool only_file_at_lvl_ = false;
+    int level = -1;
   };
-
-  // enum FlushType {
-  //   FRONT = 0,
-  //   BACK = 1,
-  //   MIDDLE = 2,
-  //   CENTER = 3,
-  // };
 
   void GenerateFlushRequest(const autovector<ColumnFamilyData*>& cfds,
                             FlushReason flush_reason, FlushRequest* req);

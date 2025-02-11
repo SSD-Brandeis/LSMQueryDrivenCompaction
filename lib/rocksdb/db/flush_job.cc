@@ -79,10 +79,6 @@ const char* GetFlushReasonString(FlushReason flush_reason) {
       return "Error Recovery Retry Flush";
     case FlushReason::kWalFull:
       return "WAL Full";
-    case FlushReason::kPartialFlush:
-      return "Partial Flush";
-    case FlushReason::kRangeFlush:
-      return "Range Flush";
     default:
       return "Invalid";
   }

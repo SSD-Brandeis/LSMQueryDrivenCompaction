@@ -1376,8 +1376,8 @@ void LevelIterator::Seek(const Slice& target) {
                   << " Level: " << level_ << std::endl
                   << std::flush;
       }
-      db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush, level_,
-                                           true, file_meta);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kCompleteOverlap,
+                                           file_meta, level_);
     }
     // 2 & 3. head or tail of a file overlap -- (Partial Flush)
     else if (  // 3. starts here
@@ -1411,18 +1411,8 @@ void LevelIterator::Seek(const Slice& target) {
                   << std::flush;
       }
 
-      db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush, level_,
-                                           false, file_meta, true);
-      if (level_ != db_impl_->range_query_last_level_) {
-        if (db_impl_->immutable_db_options().verbosity > 3) {
-          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                    << " adding level : " << level_
-                    << " to LAST_FILE_READ_FROM_LEVELS set, FILE: "
-                    << file_meta->fd.GetNumber() << std::endl
-                    << std::flush;
-        }
-        db_impl_->last_file_read_from_levels_.emplace(level_);
-      }
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kHeadOverlap,
+                                           file_meta, level_);
     } else if (  // 3. starts here
         (icomparator_.user_comparator()->Compare(
              Slice(read_options_.range_start_key),
@@ -1453,8 +1443,8 @@ void LevelIterator::Seek(const Slice& target) {
                   << " Level: " << level_ << std::endl
                   << std::flush;
       }
-      db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush, level_,
-                                           false, file_meta);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kTailOverlap,
+                                           file_meta, level_);
     }
     // 6. Range fits inside file overlap -- (Partial Partial Flush)
     else if (icomparator_.user_comparator()->Compare(
@@ -1474,8 +1464,8 @@ void LevelIterator::Seek(const Slice& target) {
                   << " Level: " << level_ << std::endl
                   << std::flush;
       }
-      db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush, level_,
-                                           false, file_meta, false, true);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kContainedRQ,
+                                           file_meta, level_);
     }
   }
 }
@@ -1671,8 +1661,8 @@ bool LevelIterator::SkipEmptyFileForward() {
                 << " Level: " << level_ << std::endl
                 << std::flush;
           }
-          db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush,
-                                               level_, true, file_meta);
+          db_impl_->AddPartialFileFlushRequest(
+              RQueryFileOverlap::kCompleteOverlap, file_meta, level_);
         }
         // 2 & 3. head or tail of a file overlap -- (Partial Flush)
         else if (  // 3. starts here
@@ -1709,18 +1699,8 @@ bool LevelIterator::SkipEmptyFileForward() {
                 << std::flush;
           }
 
-          db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush,
-                                               level_, false, file_meta, true);
-          if (level_ != db_impl_->range_query_last_level_) {
-            if (db_impl_->immutable_db_options().verbosity > 3) {
-              std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                        << " adding level : " << level_
-                        << " to LAST_FILE_READ_FROM_LEVELS set, FILE: "
-                        << file_meta->fd.GetNumber() << std::endl
-                        << std::flush;
-            }
-            db_impl_->last_file_read_from_levels_.emplace(level_);
-          }
+          db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kHeadOverlap,
+                                               file_meta, level_);
         } else if (  // 3. starts here
             (icomparator_.user_comparator()->Compare(
                  Slice(read_options_.range_start_key),
@@ -1753,8 +1733,8 @@ bool LevelIterator::SkipEmptyFileForward() {
                 << " Level: " << level_ << std::endl
                 << std::flush;
           }
-          db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush,
-                                               level_, false, file_meta);
+          db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kTailOverlap,
+                                               file_meta, level_);
         }  // 6. Range fits inside file overlap -- (Partial Partial Flush)
         else if (icomparator_.user_comparator()->Compare(
                      Slice(read_options_.range_start_key),
@@ -1775,9 +1755,8 @@ bool LevelIterator::SkipEmptyFileForward() {
                       << " Level: " << level_ << std::endl
                       << std::flush;
           }
-          db_impl_->AddPartialFileFlushRequest(FlushReason::kPartialFlush,
-                                               level_, false, file_meta, false,
-                                               true);
+          db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kContainedRQ,
+                                               file_meta, level_);
         }
       }
     }

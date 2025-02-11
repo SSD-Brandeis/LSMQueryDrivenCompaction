@@ -238,11 +238,7 @@ void DBImpl::SchedulePendingPartialRangeFlush(
     ColumnFamilyData* cfd =
         flush_req.cfd_to_max_mem_id_to_persist.begin()->first;
     assert(cfd);
-    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-    //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     cfd->Ref();
-    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-    //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     ++unscheduled_partial_flushes_;
     range_reduce_flush_queue_.push_back(flush_req);
   }
@@ -405,118 +401,83 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
     return status;
   }
 
-  autovector<BGFlushArg> bg_flush_args;
   std::vector<SuperVersionContext>& superversion_contexts =
       job_context->superversion_contexts;
-  autovector<ColumnFamilyData*> column_families_not_to_flush;
   while (!range_reduce_flush_queue_.empty()) {
     RangeReduceFlushRequest flush_req = range_reduce_flush_queue_.front();
     range_reduce_flush_queue_.pop_front();
+    RQueryFileOverlap overlap_type = flush_req.overlap_type;
     int level = flush_req.level;
 
-    if (flush_req.last_bit_frm_lvl_ &&
-        last_file_read_from_levels_.find(level) ==
-            last_file_read_from_levels_.end()) {
+    if (overlap_type == RQueryFileOverlap::kHeadOverlap &&
+        level == range_query_last_level_ &&
+        !rq_done.load(std::memory_order_relaxed)) {
       range_reduce_flush_queue_.push_back(flush_req);
       unscheduled_partial_flushes_++;
       break;
     }
 
-    bool just_delete = flush_req.just_delete;
     FileMetaData* file_meta = flush_req.meta_data;
-    bool last_bit_frm_lvl = flush_req.last_bit_frm_lvl_;
-    bool only_file_at_lvl = flush_req.only_file_at_lvl_;
 
     superversion_contexts.clear();
     superversion_contexts.reserve(
         flush_req.cfd_to_max_mem_id_to_persist.size());
     for (const auto& iter : flush_req.cfd_to_max_mem_id_to_persist) {
       ColumnFamilyData* cfd = iter.first;
-      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-      //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
       FileMetaData* new_file_meta;
       // if just_delete is true add this file to the edits Delete and done!
-      if (just_delete) {
-        if (immutable_db_options_.verbosity > 3) {
-          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                    << " adding FILE: " << file_meta->fd.GetNumber()
-                    << " from LEVEL: " << level << " to deleted files"
-                    << std::endl
-                    << std::flush;
-        }
-        assert(file_meta != nullptr);
-        only_deletes_->SetColumnFamily(cfd->GetID());
-        uint64_t file_number = file_meta->fd.GetNumber();
-        only_deletes_->DeleteFile(level, file_number);
-        range_reduce_flush_queue_.size() > 1 ? --unscheduled_partial_flushes_
-                                             : unscheduled_partial_flushes_;
-        cfd->UnrefAndTryDelete();
-        break;
-      } else {
-        // handle non-range-qualifying entries of this file
-        if (only_file_at_lvl && last_bit_frm_lvl) {
-        } else {
-          if (immutable_db_options_.verbosity > 3) {
-            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                      << " adding FILE: " << file_meta->fd.GetNumber()
-                      << " from LEVEL: " << level << " to deleted files"
-                      << std::endl
-                      << std::flush;
-          }
-          only_deletes_->DeleteFile(level, file_meta->fd.GetNumber());
-        }
-        RangeReduceOutputs rroutput =
-            GetRangeReduceOutputs(level, cfd, file_meta);
-        std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
-        new_file_meta = rroutput.new_file_meta_;
-        uint64_t max_size =
-            MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
-                                cfd->ioptions()->compaction_style);
-        Arena arena;
-        auto file_iter = cfd->table_cache()->NewIterator(
-            read_options_, file_options_, cfd->internal_comparator(),
-            *file_meta,
-            /*range_del_agg=*/nullptr,
-            cfd->GetLatestMutableCFOptions()->prefix_extractor, nullptr,
-            cfd->internal_stats()->GetFileReadHist(0),
-            TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
-            level, MaxFileSizeForL0MetaPin((*cfd->GetLatestMutableCFOptions())),
-            /*smallest_compaction_key=*/nullptr,
-            /*largest_compaction_key=*/nullptr,
-            /*allow_unprepared_value=*/true,
-            cfd->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
-            /*range_del_iter=*/nullptr);
+      // handle non-range-qualifying entries of this file
+      RangeReduceOutputs rroutput =
+          GetRangeReduceOutputs(level, cfd, file_meta);
+      std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
+      new_file_meta = rroutput.new_file_meta_;
+      uint64_t max_size =
+          MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
+                              cfd->ioptions()->compaction_style);
+      Arena arena;
+      auto file_iter = cfd->table_cache()->NewIterator(
+          read_options_, file_options_, cfd->internal_comparator(), *file_meta,
+          /*range_del_agg=*/nullptr,
+          cfd->GetLatestMutableCFOptions()->prefix_extractor, nullptr,
+          cfd->internal_stats()->GetFileReadHist(0),
+          TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
+          level, MaxFileSizeForL0MetaPin((*cfd->GetLatestMutableCFOptions())),
+          /*smallest_compaction_key=*/nullptr,
+          /*largest_compaction_key=*/nullptr,
+          /*allow_unprepared_value=*/true,
+          cfd->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
+          /*range_del_iter=*/nullptr);
+
+      if (overlap_type == RQueryFileOverlap::kContainedRQ) {
         file_iter->SeekToFirst();
-        /*
-          6. Range fits inside file overlap -- (Partial Partial Flush)
-                      |---|
-                    ---------
-                    |       |
-                    ---------
-        */
-        if (cfd->internal_comparator()
-                    .user_comparator()
-                    ->CompareWithoutTimestamp(read_options_.range_start_key,
-                                              file_meta->smallest.user_key()) >
-                0 &&
-            cfd->internal_comparator()
-                    .user_comparator()
-                    ->CompareWithoutTimestamp(read_options_.range_end_key,
-                                              file_meta->largest.user_key()) <
-                0) {
-          if (only_file_at_lvl && !last_bit_frm_lvl) {
-            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                      << " Adding entries to file: "
-                      << new_file_meta->fd.GetNumber()
-                      << " for level: " << level << std::endl
-                      << std::flush;
-            for (; file_iter->Valid() &&
-                   cfd->internal_comparator()
-                           .user_comparator()
-                           ->CompareWithoutTimestamp(
-                               read_options_.range_start_key,
-                               ExtractUserKey(file_iter->key())) > 0;
-                 file_iter->Next()) {
+        for (; file_iter->Valid() &&
+               cfd->internal_comparator()
+                       .user_comparator()
+                       ->CompareWithoutTimestamp(
+                           read_options_.range_start_key,
+                           ExtractUserKey(file_iter->key())) > 0;
+             file_iter->Next()) {
+          ParsedInternalKey parsed_key;
+          assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
+          const Slice& key = file_iter->key();
+          const Slice& value = file_iter->value();
+          tmp_memtable->Add(key, value);
+          new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
+                                          parsed_key.type);
+        }
+        if (file_iter->Valid()) {
+          file_iter->Seek(read_options_.range_end_key);
+          while (file_iter->Valid() &&
+                 cfd->user_comparator()->CompareWithoutTimestamp(
+                     ExtractUserKey(file_iter->key()),
+                     read_options_.range_end_key) <= 0) {
+            file_iter->Next();
+          }
+          if (file_iter->Valid()) {
+            for (; file_iter->Valid(); file_iter->Next()) {
+              auto rr_output = GetRangeReduceOutputs(level, cfd, file_meta);
+              tmp_memtable = rr_output.builder_;
+              new_file_meta = rr_output.new_file_meta_;
               ParsedInternalKey parsed_key;
               assert(
                   ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
@@ -526,145 +487,51 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
               new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
                                               parsed_key.type);
             }
-            if (file_iter->Valid()) {
-              std::cout << __FILE__ << ":" << __LINE__ << ": " <<
-              __FUNCTION__
-                        << " Stopped at Key: " << file_iter->key().data()
-                        << " oldFileNumber: " << file_meta->fd.GetNumber()
-                        << " newFileName: " << new_file_meta->fd.GetNumber()
-                        << " level: " << level << std::endl
-                        << std::flush;
-            }
-          } else if (only_file_at_lvl && last_bit_frm_lvl) {
-            file_iter->Seek(read_options_.range_end_key);
-
-            while (file_iter->Valid() &&
-                   cfd->user_comparator()->CompareWithoutTimestamp(
-                       ExtractUserKey(file_iter->key()),
-                       read_options_.range_end_key) <= 0) {
-              file_iter->Next();
-            }
-            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                      << " Adding entries to file: "
-                      << new_file_meta->fd.GetNumber()
-                      << " for level: " << level << std::endl
-                      << std::flush;
-            if (file_iter->Valid()) {
-              for (; file_iter->Valid(); file_iter->Next()) {
-                auto rr_output = GetRangeReduceOutputs(level, cfd, file_meta);
-                tmp_memtable = rr_output.builder_;
-                new_file_meta = rr_output.new_file_meta_;
-                ParsedInternalKey parsed_key;
-                assert(
-                    ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
-                const Slice& key = file_iter->key();
-                const Slice& value = file_iter->value();
-                tmp_memtable->Add(key, value);
-                new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
-                                                parsed_key.type);
-              }
-            }
           }
-        } else if ((cfd->internal_comparator()
-                            .user_comparator()
-                            ->CompareWithoutTimestamp(
-                                read_options_.range_start_key,
-                                file_meta->smallest.user_key()) < 0 &&
-                    cfd->internal_comparator()
-                            .user_comparator()
-                            ->CompareWithoutTimestamp(
-                                read_options_.range_end_key,
-                                file_meta->smallest.user_key()) == 0) ||
-                   (cfd->internal_comparator()
-                            .user_comparator()
-                            ->CompareWithoutTimestamp(
-                                read_options_.range_start_key,
-                                file_meta->smallest.user_key()) <= 0 &&
-                    cfd->internal_comparator()
-                            .user_comparator()
-                            ->CompareWithoutTimestamp(
-                                read_options_.range_end_key,
-                                file_meta->largest.user_key()) < 0 &&
-                    cfd->internal_comparator()
-                            .user_comparator()
-                            ->CompareWithoutTimestamp(
-                                read_options_.range_end_key,
-                                file_meta->smallest.user_key()) > 0)) {
-          std::cout << " HERE AT SECOND ... " << std::endl << std::flush;
-          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                    << " Adding entries to file: "
-                    << new_file_meta->fd.GetNumber() << " for level: " <<
-                    level
-                    << std::endl
-                    << std::flush;
-          while (file_iter->Valid() &&
-                 cfd->internal_comparator()
-                         .user_comparator()
-                         ->CompareWithoutTimestamp(
-                             read_options_.range_end_key,
-                             ExtractUserKey(file_iter->key())) >= 0) {
-            file_iter->Next();
+        }
+      } else if (overlap_type == RQueryFileOverlap::kHeadOverlap) {
+        file_iter->Seek(read_options_.range_end_key);
+        while (file_iter->Valid() &&
+               cfd->internal_comparator()
+                       .user_comparator()
+                       ->CompareWithoutTimestamp(
+                           read_options_.range_end_key,
+                           ExtractUserKey(file_iter->key())) >= 0) {
+          file_iter->Next();
+        }
+        for (; file_iter->Valid(); file_iter->Next()) {
+          ParsedInternalKey parsed_key;
+          assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
+          const Slice& key = file_iter->key();
+          const Slice& value = file_iter->value();
+          tmp_memtable->Add(key, value);
+          new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
+                                          parsed_key.type);
+          if (tmp_memtable->FileSize() >= max_size) {
+            auto new_rroutput = GetRangeReduceOutputs(level, cfd);
+            tmp_memtable = new_rroutput.builder_;
+            new_file_meta = new_rroutput.new_file_meta_;
           }
-          for (; file_iter->Valid(); file_iter->Next()) {
-            ParsedInternalKey parsed_key;
-            assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
-            const Slice& key = file_iter->key();
-            const Slice& value = file_iter->value();
-            tmp_memtable->Add(key, value);
-            new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
-                                            parsed_key.type);
-            if (tmp_memtable->FileSize() >= max_size) {
-              auto new_rroutput = GetRangeReduceOutputs(level, cfd);
-              tmp_memtable = new_rroutput.builder_;
-              new_file_meta = new_rroutput.new_file_meta_;
-            }
-          }
-          if (file_iter->Valid()) {
-            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                      << " Stopped at Key: " << file_iter->key().data()
-                      << " oldFileNumber: " << file_meta->fd.GetNumber()
-                      << " newFileName: " << new_file_meta->fd.GetNumber()
-                      << " level: " << level << std::endl
-                      << std::flush;
-          }
-        } else {
-          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                    << " Adding entries to file: "
-                    << new_file_meta->fd.GetNumber() << " for level: " <<
-                    level
-                    << std::endl
-                    << std::flush;
-          for (; file_iter->Valid() &&
-                 cfd->internal_comparator()
-                         .user_comparator()
-                         ->CompareWithoutTimestamp(
-                             read_options_.range_start_key,
-                             ExtractUserKey(file_iter->key())) > 0;
-               file_iter->Next()) {
-            ParsedInternalKey parsed_key;
-            assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
-            const Slice& key = file_iter->key();
-            const Slice& value = file_iter->value();
-            tmp_memtable->Add(key, value);
-            new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
-                                            parsed_key.type);
-          }
-          if (file_iter->Valid()) {
-            std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                      << " Stopped at Key: " << file_iter->key().data()
-                      << " oldFileNumber: " << file_meta->fd.GetNumber()
-                      << " newFileName: " << new_file_meta->fd.GetNumber()
-                      << " level: " << level << std::endl
-                      << std::flush;
-          }
+        }
+      } else if (overlap_type == RQueryFileOverlap::kTailOverlap) {
+        file_iter->SeekToFirst();
+        for (; file_iter->Valid() &&
+               cfd->internal_comparator()
+                       .user_comparator()
+                       ->CompareWithoutTimestamp(
+                           read_options_.range_start_key,
+                           ExtractUserKey(file_iter->key())) > 0;
+             file_iter->Next()) {
+          ParsedInternalKey parsed_key;
+          assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
+          const Slice& key = file_iter->key();
+          const Slice& value = file_iter->value();
+          tmp_memtable->Add(key, value);
+          new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
+                                          parsed_key.type);
         }
       }
       cfd->UnrefAndTryDelete();
-      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-      //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
-    }
-    if (!bg_flush_args.empty()) {
-      break;
     }
   }
   return Status::OK();
@@ -808,10 +675,7 @@ void DBImpl::UnschedulePartialFlushCallback(void* arg) {
 }
 
 void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
-  // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-  //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
   if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
-    leftover_part.clear();
     only_deletes_->Clear();
     for (const auto& pair : range_reduce_outputs_) {
       int level = pair.first;
@@ -826,64 +690,11 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       }
     }
     cfd_->UnrefAndTryDelete();
-    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-    //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
     return;
-  }
-
-  if (leftover_part.size() != 0) {
-    for (const auto& pair : leftover_part) {
-      int level = pair.first;
-      auto key_and_meta = pair.second;
-      std::string resume_key = std::get<0>(key_and_meta);
-      FileMetaData* file_meta = std::get<1>(key_and_meta);
-      ColumnFamilyData* cfd = std::get<2>(key_and_meta);
-
-      // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-      //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
-
-      Arena arena;
-      auto file_iter = cfd->table_cache()->NewIterator(
-          read_options_, file_options_, cfd->internal_comparator(), *file_meta,
-          /*range_del_agg=*/nullptr,
-          cfd->GetLatestMutableCFOptions()->prefix_extractor, nullptr,
-          cfd->internal_stats()->GetFileReadHist(0),
-          TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false,
-          level, MaxFileSizeForL0MetaPin((*cfd->GetLatestMutableCFOptions())),
-          /*smallest_compaction_key=*/nullptr,
-          /*largest_compaction_key=*/nullptr,
-          /*allow_unprepared_value=*/true,
-          cfd->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
-          /*range_del_iter=*/nullptr);
-      file_iter->Seek(resume_key);
-
-      while (file_iter->Valid() &&
-             cfd->user_comparator()->CompareWithoutTimestamp(
-                 file_iter->user_key().ToString(), resume_key) <= 0) {
-        file_iter->Next();
-      }
-      if (file_iter->Valid()) {
-        for (; file_iter->Valid(); file_iter->Next()) {
-          auto rr_output = GetRangeReduceOutputs(level, cfd, file_meta);
-          std::shared_ptr<TableBuilder> tmp_memtable = rr_output.builder_;
-          FileMetaData* new_file_meta = rr_output.new_file_meta_;
-          ParsedInternalKey parsed_key;
-          assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
-          const Slice& key = file_iter->key();
-          const Slice& value = file_iter->value();
-          tmp_memtable->Add(key, value);
-          new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
-                                          parsed_key.type);
-        }
-      }
-    }
-    leftover_part.clear();
   }
 
   {
     InstrumentedMutexLock l(&mutex_);
-    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-    //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
 
     Status ss = versions_->LogAndApply(cfd_, *cfd_->GetLatestMutableCFOptions(),
                                        read_options_, only_deletes_, &mutex_,
@@ -917,8 +728,6 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       }
     }
 
-    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-    //           << " Column Family REF: " << cfd->GetRefCount() << std::endl;
     ss = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
                                 read_options_, add_files_, &mutex_,
                                 directories_.GetDbDir());
@@ -934,24 +743,53 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
         &job_context.superversion_contexts.back();
     InstallSuperVersionAndScheduleWork(cfd_, superversion_context,
                                        *cfd_->GetLatestMutableCFOptions());
-
     cfd_->current()->storage_info()->ComputeCompactionScore(
         *cfd->ioptions(), *cfd_->GetLatestMutableCFOptions());
-
-    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-    //           << " Column Family REF: " << cfd_->GetRefCount() << std::endl;
     range_reduce_outputs_.clear();
     only_deletes_->Clear();
-    // std::cout << " Clearing only deletes data ... " << std::endl <<
-    // std::flush;
   }
 }
 
-void DBImpl::AddPartialFileFlushRequest(FlushReason flush_reason, int level,
-                                        bool just_delete,
+void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
+                                    FileMetaData* file_meta, int level) {
+  RangeReduceOutputs rroutput = GetRangeReduceOutputs(level, cfd, file_meta);
+  std::shared_ptr<TableBuilder> sstable = rroutput.builder_;
+  FileMetaData* new_file_meta = rroutput.new_file_meta_;
+  uint64_t max_size =
+      MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
+                          cfd->ioptions()->compaction_style);
+  Arena arena;
+  auto file_iter = cfd->table_cache()->NewIterator(
+      read_options_, file_options_, cfd->internal_comparator(), *file_meta,
+      /*range_del_agg=*/nullptr,
+      cfd->GetLatestMutableCFOptions()->prefix_extractor, nullptr,
+      cfd->internal_stats()->GetFileReadHist(0),
+      TableReaderCaller::kUserIterator, &arena, /*skip_filters=*/false, level,
+      MaxFileSizeForL0MetaPin((*cfd->GetLatestMutableCFOptions())),
+      /*smallest_compaction_key=*/nullptr,
+      /*largest_compaction_key=*/nullptr,
+      /*allow_unprepared_value=*/true,
+      cfd->GetLatestMutableCFOptions()->block_protection_bytes_per_key,
+      /*range_del_iter=*/nullptr);
+  file_iter->SeekToFirst();
+  for (;
+       file_iter->Valid() &&
+       cfd->internal_comparator().user_comparator()->CompareWithoutTimestamp(
+           read_options_.range_start_key, ExtractUserKey(file_iter->key())) > 0;
+       file_iter->Next()) {
+    ParsedInternalKey parsed_key;
+    assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
+    const Slice& key = file_iter->key();
+    const Slice& value = file_iter->value();
+    sstable->Add(key, value);
+    new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
+                                    parsed_key.type);
+  }
+}
+
+void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
                                         FileMetaData* file_meta,
-                                        bool is_last_bit,
-                                        bool only_file_at_lvl_) {
+                                        int level) {
   if (level != -1 && (level < decision_cell_.start_level_ ||
                       level > decision_cell_.end_level_)) {
     file_meta->being_compacted = false;
@@ -965,45 +803,35 @@ void DBImpl::AddPartialFileFlushRequest(FlushReason flush_reason, int level,
   auto cfh =
       static_cast_with_check<ColumnFamilyHandleImpl>(DefaultColumnFamily());
   ColumnFamilyData* cfd = cfh->cfd();
+  only_deletes_->SetColumnFamily(cfd->GetID());
+  uint64_t file_number = file_meta->fd.GetNumber();
+  only_deletes_->DeleteFile(level, file_number);
 
-  RangeReduceFlushRequest req{{{cfd, 0}}, level,       just_delete,
-                              file_meta,  is_last_bit, only_file_at_lvl_};
+  // This below check cannot go up than this line
+  if (overlap_type == RQueryFileOverlap::kCompleteOverlap) {
+    return;
+  }
 
-  {
-    InstrumentedMutexLock l(&mutex_);
-    if (immutable_db_options_.verbosity > 3) {
-      std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                << " FILE: " << file_meta->fd.GetNumber()
-                << " JustDelete: " << just_delete << " Level: " << level
-                << " Is_last_bit: " << is_last_bit
-                << " Only_file_at_level: " << only_file_at_lvl_ << std::endl
-                << std::flush;
+  if (level == range_query_last_level_) {
+    if (overlap_type == RQueryFileOverlap::kTailOverlap ||
+        overlap_type == RQueryFileOverlap::kContainedRQ) {
+      ForegroundPartialFlush(cfd, file_meta, level);
     }
-    SchedulePendingPartialRangeFlush(req);
-    SchedulePartialFileFlush();
-
-    if (only_file_at_lvl_) {
-      RangeReduceFlushRequest reqq{{{cfd, 0}}, level, just_delete,
-                                   file_meta,  true,  true};
-      if (level != range_query_last_level_) {
-        if (immutable_db_options_.verbosity > 3) {
-          std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                    << " adding level : " << level
-                    << " to LAST_FILE_READ_FROM_LEVELS set, FILE: "
-                    << file_meta->fd.GetNumber() << std::endl
-                    << std::flush;
-        }
-        last_file_read_from_levels_.emplace(level);
+    if (overlap_type == RQueryFileOverlap::kHeadOverlap ||
+        overlap_type == RQueryFileOverlap::kContainedRQ) {
+      RangeReduceFlushRequest req{
+          {{cfd, 0}}, RQueryFileOverlap::kHeadOverlap, file_meta, level};
+      {
+        InstrumentedMutexLock l(&mutex_);
+        SchedulePendingPartialRangeFlush(req);
+        SchedulePartialFileFlush();
       }
-      if (immutable_db_options_.verbosity > 3) {
-        std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-                  << " FILE: " << file_meta->fd.GetNumber()
-                  << " JustDelete: " << just_delete << " Level: " << level
-                  << " Is_last_bit: " << true << " Only_file_at_level: " << true
-                  << std::endl
-                  << std::flush;
-      }
-      SchedulePendingPartialRangeFlush(reqq);
+    }
+  } else {
+    RangeReduceFlushRequest req{{{cfd, 0}}, overlap_type, file_meta, level};
+    {
+      InstrumentedMutexLock l(&mutex_);
+      SchedulePendingPartialRangeFlush(req);
       SchedulePartialFileFlush();
     }
   }

@@ -178,8 +178,14 @@ enum class FlushReason : int {
   // will not be called to avoid many small immutable memtables.
   kErrorRecoveryRetryFlush = 0xc,
   kWalFull = 0xd,
-  kPartialFlush = 0xe,
-  kRangeFlush = 0xf,
+};
+
+enum class RQueryFileOverlap : int {
+  kNoOverlap = 0x00,
+  kHeadOverlap = 0x01,
+  kTailOverlap = 0x02,
+  kCompleteOverlap = 0x03,
+  kContainedRQ = 0x04,
 };
 
 // TODO: In the future, BackgroundErrorReason will only be used to indicate
@@ -205,7 +211,6 @@ struct WriteStallInfo {
     WriteStallCondition prev;
   } condition;
 };
-
 
 struct FileDeletionInfo {
   FileDeletionInfo() = default;
@@ -837,6 +842,5 @@ class EventListener : public Customizable {
 
   ~EventListener() override {}
 };
-
 
 }  // namespace ROCKSDB_NAMESPACE

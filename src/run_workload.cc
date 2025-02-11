@@ -27,10 +27,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   // Add custom listners
   std::shared_ptr<CompactionsListner> compaction_listener =
       std::make_shared<CompactionsListner>();
-  std::shared_ptr<RangeReduceFlushListner> range_reduce_listener =
-      std::make_shared<RangeReduceFlushListner>();
   options.listeners.emplace_back(compaction_listener);
-  options.listeners.emplace_back(range_reduce_listener);
 
   if (env->IsDestroyDatabaseEnabled()) {
     DestroyDB(kDBPath, options);
@@ -88,10 +85,13 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
                 pdelete_exec_time = 0, rq_exec_time = 0;
   Buffer rqstats(rqstats_file);
   rqstats // adds a header
-      << "RQ Number, RQ Total Time, Data uBytes Written Back, Total "
-         "uBytes Written Back, uEntries Count Written Back, Total "
-         "Entries Read, Data unBytes Written Back, Total unBytes "
-         "Written Back, unEntries Count Written Back, Total Entries Returned, "
+      << "RQ Number, RQ Total Time, "
+        //  "Data uBytes Written Back, Total "
+        //  "uBytes Written Back, uEntries Count Written Back, "
+         "Total Entries Read, "
+        //  "Data unBytes Written Back, Total unBytes "
+        //  "Written Back, unEntries Count Written Back, "
+         "Total Entries Returned, "
          "RQ Refresh Time, RQ Reset Time, Actual RQ Time"
       << std::endl;
   unsigned long rqnumber = 0;
@@ -183,7 +183,6 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       uint64_t keys_returned = 0, keys_read = 0;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
-      range_reduce_listener->reset();
 #endif // TIMER
 
       if (ith_op == 8463292) {
@@ -235,15 +234,15 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
       rqstats << ++rqnumber << ", " << duration.count() << ", "
-              << range_reduce_listener->useful_data_blocks_size_ << ", "
-              << range_reduce_listener->useful_file_size_ << ", "
-              << range_reduce_listener->useful_entries_ << ", " << keys_read
-              << ", " << range_reduce_listener->un_useful_data_blocks_size_
-              << ", " << range_reduce_listener->un_useful_file_size_ << ", "
-              << range_reduce_listener->un_useful_entries_ << ", "
+              // << range_reduce_listener->useful_data_blocks_size_ << ", "
+              // << range_reduce_listener->useful_file_size_ << ", "
+              // << range_reduce_listener->useful_entries_ << ", " 
+              << keys_read << ", " 
+              // << range_reduce_listener->un_useful_data_blocks_size_
+              // << ", " << range_reduce_listener->un_useful_file_size_ << ", "
+              // << range_reduce_listener->un_useful_entries_ << ", "
               << keys_returned << ", " << refresh_duration << ", "
               << reset_duration << ", " << actual_range_time << std::endl;
-      range_reduce_listener->reset();
 #endif // TIMER
       break;
     }

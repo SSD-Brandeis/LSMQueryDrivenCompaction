@@ -46,42 +46,4 @@ public:
   }
 };
 
-class RangeReduceFlushListner : public EventListener {
-public:
-  RangeReduceFlushListner()
-      : useful_data_blocks_size_(0), useful_file_size_(0), useful_entries_(0),
-        un_useful_data_blocks_size_(0), un_useful_file_size_(0),
-        un_useful_entries_(0) {}
-
-  void reset() {
-    useful_data_blocks_size_ = 0;
-    useful_file_size_ = 0;
-    useful_entries_ = 0;
-    un_useful_data_blocks_size_ = 0;
-    un_useful_file_size_ = 0;
-    un_useful_entries_ = 0;
-  }
-
-  void OnFlushCompleted(DB *db, const FlushJobInfo &flush_job_info) override {
-    if (flush_job_info.flush_reason == FlushReason::kRangeFlush) {
-      TableProperties tp = flush_job_info.table_properties;
-      useful_file_size_ += tp.data_size + tp.index_size + tp.filter_size;
-      useful_data_blocks_size_ += tp.data_size;
-      useful_entries_ += tp.num_entries;
-    } else if (flush_job_info.flush_reason == FlushReason::kPartialFlush) {
-      TableProperties tp = flush_job_info.table_properties;
-      un_useful_file_size_ += tp.data_size + tp.index_size + tp.filter_size;
-      un_useful_data_blocks_size_ += tp.data_size;
-      un_useful_entries_ += tp.num_entries;
-    }
-  }
-
-  uint64_t useful_data_blocks_size_;
-  uint64_t useful_file_size_;
-  uint64_t useful_entries_;
-  uint64_t un_useful_data_blocks_size_;
-  uint64_t un_useful_file_size_;
-  uint64_t un_useful_entries_;
-};
-
 #endif // EVENT_LISTNER_H_

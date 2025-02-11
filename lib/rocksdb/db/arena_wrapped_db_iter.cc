@@ -218,30 +218,6 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   return best_decision_cell.GetStartLevel() != 0;
 }
 
-Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
-                                   const std::string& end_key,
-                                   uint64_t& entries_count, bool rqdc_enabled) {
-  if (!rqdc_enabled) {
-    return Refresh();
-  }
-
-  read_options_.enable_range_query_compaction = rqdc_enabled;
-  read_options_.range_start_key = start_key;
-  read_options_.range_end_key = end_key;
-  read_options_.seq = db_impl_->GetLatestSequenceNumber();
-  db_impl_->read_options_ = read_options_;
-
-  auto pause_status = db_impl_->PauseBackgroundWork();
-  if (!pause_status.ok() || !CanPerformRangeQueryCompaction(entries_count)) {
-    ResumeBackgroundWork();
-  } else {
-    db_impl_->was_decision_true = true;
-    db_impl_->added_last_table = false;
-  }
-
-  return Refresh();
-}
-
 void ArenaWrappedDBIter::ResumeBackgroundWork() {
   read_options_.enable_range_query_compaction = false;
   read_options_.range_start_key.clear();
@@ -258,12 +234,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
   }
 
   if (db_impl_->read_options_.enable_range_query_compaction) {
-    std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-              << " Adding level: " << db_impl_->range_query_last_level_
-              << " to last_file_read_from_levels_" << std::endl
-              << std::flush;
-    db_impl_->last_file_read_from_levels_.emplace(
-        db_impl_->range_query_last_level_);
+    db_impl_->rq_done.store(true);
     while (db_impl_->bg_partial_flush_scheduled_ > 0 ||
            db_impl_->unscheduled_partial_flushes_ > 0 ||
            db_impl_->bg_partial_flush_running_ > 0) {
@@ -273,7 +244,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
   }
 
   db_impl_->was_decision_true = false;
-  db_impl_->last_file_read_from_levels_.clear();
+  db_impl_->rq_done.store(false);
   ResumeBackgroundWork();
   return Status::OK();
 }
@@ -373,6 +344,30 @@ Status ArenaWrappedDBIter::Refresh() {
   }
 
   return Status::OK();
+}
+
+Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
+                                   const std::string& end_key,
+                                   uint64_t& entries_count, bool rqdc_enabled) {
+  if (!rqdc_enabled) {
+    return Refresh();
+  }
+
+  read_options_.enable_range_query_compaction = rqdc_enabled;
+  read_options_.range_start_key = start_key;
+  read_options_.range_end_key = end_key;
+  read_options_.seq = db_impl_->GetLatestSequenceNumber();
+  db_impl_->read_options_ = read_options_;
+
+  auto pause_status = db_impl_->PauseBackgroundWork();
+  if (!pause_status.ok() || !CanPerformRangeQueryCompaction(entries_count)) {
+    ResumeBackgroundWork();
+  } else {
+    db_impl_->was_decision_true = true;
+    db_impl_->added_last_table = false;
+  }
+
+  return Refresh();
 }
 
 ArenaWrappedDBIter* NewArenaWrappedDbIterator(

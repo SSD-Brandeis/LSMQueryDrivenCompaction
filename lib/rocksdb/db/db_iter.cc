@@ -130,21 +130,24 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-
   assert(valid_);
   assert(status_.ok());
 
-  if (read_options_mutable_.enable_range_query_compaction && Valid() &&
+  if (!db_impl_->range_reduce_seen_error_.load(std::memory_order_relaxed) &&
+      read_options_mutable_.enable_range_query_compaction && Valid() &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    auto rroutput = db_impl_->GetRangeReduceOutputs(
-        db_impl_->range_query_last_level_, cfd_);
-    std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
-    ParsedInternalKey parsed_key;
-    assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
-    tmp_memtable->Add(iter_.key(), value());
-    rroutput.new_file_meta_->UpdateBoundaries(
-        iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+    std::shared_ptr<RangeReduceOutputs> rroutput;
+    Status s = db_impl_->GetRangeReduceOutputs(
+        db_impl_->range_query_last_level_, cfd_, rroutput);
+    if (s.ok()) {
+      std::shared_ptr<TableBuilder> tmp_memtable = rroutput->builder_;
+      ParsedInternalKey parsed_key;
+      assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
+      tmp_memtable->Add(iter_.key(), value());
+      rroutput->new_file_meta_->UpdateBoundaries(
+          iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+    }
   }
 
   PERF_COUNTER_ADD(iter_next_count, 1);
@@ -193,21 +196,25 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
 
-  if (read_options_mutable_.enable_range_query_compaction && Valid() &&
+  if (!db_impl_->range_reduce_seen_error_.load(std::memory_order_relaxed) &&
+      read_options_mutable_.enable_range_query_compaction && Valid() &&
       user_comparator_.Compare(
           key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    auto rroutput = db_impl_->GetRangeReduceOutputs(
-        db_impl_->range_query_last_level_, cfd_);
-    std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
-    if (user_comparator_.CompareWithoutTimestamp(
-            key(), Slice(read_options_mutable_.range_end_key)) == 0) {
-      ParsedInternalKey parsed_key;
-      assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
-      tmp_memtable->Add(iter_.key(), value());
-      rroutput.new_file_meta_->UpdateBoundaries(
-          iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+    std::shared_ptr<RangeReduceOutputs> rroutput;
+    Status s = db_impl_->GetRangeReduceOutputs(
+        db_impl_->range_query_last_level_, cfd_, rroutput);
+    if (s.ok()) {
+      std::shared_ptr<TableBuilder> tmp_memtable = rroutput->builder_;
+      if (user_comparator_.CompareWithoutTimestamp(
+              key(), Slice(read_options_mutable_.range_end_key)) == 0) {
+        ParsedInternalKey parsed_key;
+        assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
+        tmp_memtable->Add(iter_.key(), value());
+        rroutput->new_file_meta_->UpdateBoundaries(
+            iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+      }
     }
   }
 }

@@ -244,23 +244,30 @@ void DBImpl::SchedulePendingPartialRangeFlush(
   }
 }
 
-RangeReduceOutputs DBImpl::GetRangeReduceOutputs(int level,
-                                                 ColumnFamilyData* cfd,
-                                                 FileMetaData* file_meta) {
+Status DBImpl::GetRangeReduceOutputs(
+    int level, ColumnFamilyData* cfd,
+    std::shared_ptr<RangeReduceOutputs>& rroutput, FileMetaData* file_meta) {
   uint64_t max_size =
       MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
                           cfd->ioptions()->compaction_style);
   if (range_reduce_outputs_.find(level) != range_reduce_outputs_.end() &&
-      range_reduce_outputs_[level].size() > 0) {
-    if (range_reduce_outputs_[level].back().builder_->FileSize() > max_size) {
-      range_reduce_outputs_[level].back().finished = true;
+      !range_reduce_outputs_[level].empty()) {
+    assert(range_reduce_outputs_[level].back() &&
+           range_reduce_outputs_[level].back()->builder_);
+    if (range_reduce_outputs_[level].back()->builder_->FileSize() > max_size) {
+      range_reduce_outputs_[level].back()->finished.store(
+          true, std::memory_order_relaxed);
       GetRangeReduceTableForLevel(level, cfd, file_meta);
     }
-    return range_reduce_outputs_[level].back();
   } else {
     GetRangeReduceTableForLevel(level, cfd, file_meta);
-    return range_reduce_outputs_[level].back();
   }
+  if (!range_reduce_seen_error_.load(std::memory_order_relaxed)) {
+    assert(!range_reduce_outputs_[level].empty());
+    rroutput = range_reduce_outputs_[level].back();
+    return Status::OK();
+  }
+  return Status::Corruption();
 }
 
 void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
@@ -292,8 +299,6 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
                     " fails at NewWritableFile with status %s",
                     file_number, s.ToString().c_str());
     LogFlush(immutable_db_options_.info_log);
-    range_reduce_outputs_[level].push(
-        RangeReduceOutputs(cfd, nullptr, nullptr, nullptr, file_meta));
     return;
   }
 
@@ -346,8 +351,6 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
                     "[%s] file #%" PRIu64 " failed to generate unique id: %s.",
                     cfd->GetName().c_str(), meta->fd.GetNumber(),
                     s.ToString().c_str());
-    range_reduce_outputs_[level].push(
-        RangeReduceOutputs(cfd, nullptr, nullptr, meta, file_meta));
     return;
   }
   fs_writable_file->SetIOPriority(Env::IOPriority::IO_USER);
@@ -373,8 +376,7 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
 
   piggyback_table = std::shared_ptr<TableBuilder>(
       NewTableBuilder(tboptions, writable_file_writer.get()));
-
-  range_reduce_outputs_[level].push(RangeReduceOutputs(
+  range_reduce_outputs_[level].push(std::make_shared<RangeReduceOutputs>(
       cfd, writable_file_writer, piggyback_table, meta, file_meta));
 }
 
@@ -427,10 +429,16 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
       FileMetaData* new_file_meta;
       // if just_delete is true add this file to the edits Delete and done!
       // handle non-range-qualifying entries of this file
-      RangeReduceOutputs rroutput =
-          GetRangeReduceOutputs(level, cfd, file_meta);
-      std::shared_ptr<TableBuilder> tmp_memtable = rroutput.builder_;
-      new_file_meta = rroutput.new_file_meta_;
+      std::shared_ptr<RangeReduceOutputs> rroutput;
+      status = GetRangeReduceOutputs(level, cfd, rroutput, file_meta);
+
+      if (!status.ok()) {
+        cfd->UnrefAndTryDelete();
+        return status;
+      }
+
+      std::shared_ptr<TableBuilder> tmp_memtable = rroutput->builder_;
+      new_file_meta = rroutput->new_file_meta_;
       uint64_t max_size =
           MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
                               cfd->ioptions()->compaction_style);
@@ -475,9 +483,6 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
           }
           if (file_iter->Valid()) {
             for (; file_iter->Valid(); file_iter->Next()) {
-              auto rr_output = GetRangeReduceOutputs(level, cfd, file_meta);
-              tmp_memtable = rr_output.builder_;
-              new_file_meta = rr_output.new_file_meta_;
               ParsedInternalKey parsed_key;
               assert(
                   ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
@@ -500,6 +505,18 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
           file_iter->Next();
         }
         for (; file_iter->Valid(); file_iter->Next()) {
+          if (tmp_memtable->FileSize() >= max_size) {
+            std::shared_ptr<RangeReduceOutputs> new_rroutput;
+            status = GetRangeReduceOutputs(level, cfd, new_rroutput);
+
+            if (!status.ok()) {
+              cfd->UnrefAndTryDelete();
+              return status;
+            }
+
+            tmp_memtable = new_rroutput->builder_;
+            new_file_meta = new_rroutput->new_file_meta_;
+          }
           ParsedInternalKey parsed_key;
           assert(ParseInternalKey(file_iter->key(), &parsed_key, true).ok());
           const Slice& key = file_iter->key();
@@ -507,11 +524,6 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
           tmp_memtable->Add(key, value);
           new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
                                           parsed_key.type);
-          if (tmp_memtable->FileSize() >= max_size) {
-            auto new_rroutput = GetRangeReduceOutputs(level, cfd);
-            tmp_memtable = new_rroutput.builder_;
-            new_file_meta = new_rroutput.new_file_meta_;
-          }
         }
       } else if (overlap_type == RQueryFileOverlap::kTailOverlap) {
         file_iter->SeekToFirst();
@@ -683,8 +695,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       while (!range_reduce_queue.empty()) {
         auto rr_output = range_reduce_queue.front();
         range_reduce_queue.pop();
-        auto tmp_memtable = rr_output.builder_;
-        auto fswriteable_file = rr_output.writable_file_writer_;
+        auto tmp_memtable = rr_output->builder_;
+        auto fswriteable_file = rr_output->writable_file_writer_;
         tmp_memtable->Abandon();
         fswriteable_file.reset();
       }
@@ -714,11 +726,11 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       while (!range_reduce_queue.empty()) {
         auto rr_output = range_reduce_queue.front();
         range_reduce_queue.pop();
-        auto tmp_memtable = rr_output.builder_;
-        cfd = rr_output.cfd_;
-        auto new_file_meta = rr_output.new_file_meta_;
-        auto fswriteable_file = rr_output.writable_file_writer_;
-        auto file_meta = rr_output.old_file_meta_;
+        auto tmp_memtable = rr_output->builder_;
+        cfd = rr_output->cfd_;
+        auto new_file_meta = rr_output->new_file_meta_;
+        auto fswriteable_file = rr_output->writable_file_writer_;
+        auto file_meta = rr_output->old_file_meta_;
         tmp_memtable->Finish();
         fswriteable_file->Flush();
         fswriteable_file->Sync(true);
@@ -752,9 +764,15 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
 
 void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
                                     FileMetaData* file_meta, int level) {
-  RangeReduceOutputs rroutput = GetRangeReduceOutputs(level, cfd, file_meta);
-  std::shared_ptr<TableBuilder> sstable = rroutput.builder_;
-  FileMetaData* new_file_meta = rroutput.new_file_meta_;
+  std::shared_ptr<RangeReduceOutputs> rroutput;
+  Status status = GetRangeReduceOutputs(level, cfd, rroutput, file_meta);
+
+  if (!status.ok()) {
+    return;
+  }
+
+  std::shared_ptr<TableBuilder> sstable = rroutput->builder_;
+  FileMetaData* new_file_meta = rroutput->new_file_meta_;
   uint64_t max_size =
       MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
                           cfd->ioptions()->compaction_style);
@@ -788,8 +806,7 @@ void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
 }
 
 void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
-                                        FileMetaData* file_meta,
-                                        int level) {
+                                        FileMetaData* file_meta, int level) {
   if (level != -1 && (level < decision_cell_.start_level_ ||
                       level > decision_cell_.end_level_)) {
     file_meta->being_compacted = false;

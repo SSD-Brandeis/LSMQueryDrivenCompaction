@@ -126,12 +126,12 @@ struct RangeReduceOutputs {
         new_file_meta_(new_file_meta),
         old_file_meta_(old_file_meta) {}
 
-  ColumnFamilyData* cfd_;
+  ColumnFamilyData* cfd_ = nullptr;
   std::shared_ptr<WritableFileWriter> writable_file_writer_;
   std::shared_ptr<TableBuilder> builder_;
-  FileMetaData* new_file_meta_;
-  FileMetaData* old_file_meta_;
-  bool finished = false;
+  FileMetaData* new_file_meta_ = nullptr;
+  FileMetaData* old_file_meta_ = nullptr;
+  std::atomic<bool> finished{false};
 };
 
 // Class to maintain directories for all database paths other than main one.
@@ -496,7 +496,7 @@ class DBImpl : public DB {
                                 LogBuffer* log_buffer, FlushReason* reason,
                                 Env::Priority thread_pri);
   void ForegroundPartialFlush(ColumnFamilyData* cfd, FileMetaData* file_meta,
-                                int level);
+                              int level);
   void SchedulePartialFileFlush();
   static void UnschedulePartialFlushCallback(void* arg);
   Status FlushPartialFile(ColumnFamilyData* cfd,
@@ -525,11 +525,13 @@ class DBImpl : public DB {
   std::tuple<unsigned long long, std::string> GetTreeState() override;
   void GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
                                    FileMetaData* file_meta);
-  RangeReduceOutputs GetRangeReduceOutputs(int level, ColumnFamilyData* cfd,
-                                           FileMetaData* file_meta = nullptr);
+  Status GetRangeReduceOutputs(int level, ColumnFamilyData* cfd,
+                               std::shared_ptr<RangeReduceOutputs>& rroutput,
+                               FileMetaData* file_meta = nullptr);
   void TakecareOfLeftoverPart(ColumnFamilyData* cfd_);
 
-  std::unordered_map<int, std::queue<RangeReduceOutputs>> range_reduce_outputs_;
+  std::unordered_map<int, std::queue<std::shared_ptr<RangeReduceOutputs>>>
+      range_reduce_outputs_;
   uint64_t smallest_epoch_number_for_rr = 0;
   VersionEdit* only_deletes_ = new VersionEdit();
   std::atomic<bool> rq_done{false};

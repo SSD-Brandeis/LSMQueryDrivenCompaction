@@ -247,6 +247,7 @@ void DBImpl::SchedulePendingPartialRangeFlush(
 Status DBImpl::GetRangeReduceOutputs(
     int level, ColumnFamilyData* cfd,
     std::shared_ptr<RangeReduceOutputs>& rroutput, FileMetaData* file_meta) {
+  std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
   uint64_t max_size =
       MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
                           cfd->ioptions()->compaction_style);
@@ -376,6 +377,7 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
 
   piggyback_table = std::shared_ptr<TableBuilder>(
       NewTableBuilder(tboptions, writable_file_writer.get()));
+  std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
   range_reduce_outputs_[level].push(std::make_shared<RangeReduceOutputs>(
       cfd, writable_file_writer, piggyback_table, meta, file_meta));
 }
@@ -687,6 +689,7 @@ void DBImpl::UnschedulePartialFlushCallback(void* arg) {
 }
 
 void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
+  std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
   if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
     only_deletes_->Clear();
     for (const auto& pair : range_reduce_outputs_) {

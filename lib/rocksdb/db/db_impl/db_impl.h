@@ -546,6 +546,7 @@ class DBImpl : public DB {
   InstrumentedMutex range_queries_complete_mutex_;  // TODO: (Shubham) Why this
                                                     // lock is even required???
   InstrumentedCondVar range_queries_complete_cv_;
+  std::mutex range_reduce_outputs_mutex_;
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;

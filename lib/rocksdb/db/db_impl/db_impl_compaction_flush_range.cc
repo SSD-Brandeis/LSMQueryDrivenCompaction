@@ -291,7 +291,7 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
                    "File #%" PRIu64 " is against File #%" PRIu64 "\n",
                    file_number, file_meta->fd.GetNumber());
   }
-  std::cout << std::endl << std::flush;
+
   Status s;
   IOStatus io_s = NewWritableFile(fs_.get(), fname, &fs_writable_file, fo_copy);
   s = io_s;
@@ -795,8 +795,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
         fswriteable_file.reset();
         new_file_meta->fd.file_size = tmp_memtable->FileSize();
         add_files_->AddFile(level, *new_file_meta);
-        new_files << "FNo. #" << new_file_meta->fd.GetNumber() << ":"
-                  << level << " ";
+        new_files << "FNo. #" << new_file_meta->fd.GetNumber() << ":" << level
+                  << " ";
       }
     }
 
@@ -805,9 +805,9 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
                                   read_options_, add_files_, &mutex_,
                                   directories_.GetDbDir());
       if (!ss.ok()) {
-        std::cout << " Unable to delete files in left over function "
-                  << ss.ToString() << std::endl
-                  << std::flush;
+        ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                        "Failed to apply log for new files in RangeReduce: %s",
+                        ss.ToString().c_str());
       }
       ROCKS_LOG_INFO(immutable_db_options_.info_log,
                      "Successfully applied log for newly generated files [%s]",

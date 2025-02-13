@@ -230,16 +230,6 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
 
-      if (ith_op == 8463292) {
-        std::cout << " START KEY: " << start_key << " END KEY: " << end_key
-                  << std::endl
-                  << std::flush;
-        auto two = db->GetTreeState();
-        auto levelstr = std::get<1>(two);
-        (*buffer) << levelstr << std::endl << std::flush;
-        buffer->flush();
-      }
-
       it->Refresh(start_key, end_key, keys_read,
                   env->enable_range_query_compaction);
 #ifdef TIMER

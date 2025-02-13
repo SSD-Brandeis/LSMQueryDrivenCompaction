@@ -51,8 +51,13 @@ private:
   bool destroy_database_ = true;     // [d]
   bool show_progress_bar_ = false;   // [progress]
   bool enable_sanity_check_ = false; // [sanity]
+  bool use_saved_db_ = false;        // [usedb]
+  unsigned long snapshot_till_ = 0;  // [snap]
 
 public:
+  static std::string kDBPath;
+  static std::string kSavedDBPath;
+
   static std::unique_ptr<DBEnv> GetInstance() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (instance_ == nullptr)
@@ -67,6 +72,8 @@ public:
   void SetDestroyDatabase(bool value) { destroy_database_ = value; }
   void SetShowProgress(bool value) { show_progress_bar_ = value; }
   void SetSanityCheck(bool value) { enable_sanity_check_ = value; }
+  void SetUseSavedDB(bool value) { use_saved_db_ = value; }
+  void SetSnapshotTill(unsigned long value) { snapshot_till_ = value; }
 
   size_t GetBufferSize() const {
     // usually buffer_size = P * B * E
@@ -78,6 +85,8 @@ public:
   bool IsDestroyDatabaseEnabled() const { return destroy_database_; }
   bool IsShowProgressEnabled() const { return show_progress_bar_; }
   bool IsSanityCheckEnabled() const { return enable_sanity_check_; }
+  bool IsUseSavedDBEnabled() const { return use_saved_db_; }
+  unsigned long GetSnapshotTillOp() const { return snapshot_till_; }
 
   long GetTargetFileSizeBase() const { return GetBufferSize(); }
 

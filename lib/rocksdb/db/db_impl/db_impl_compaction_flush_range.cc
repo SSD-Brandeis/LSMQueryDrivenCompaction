@@ -377,7 +377,6 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
 
   piggyback_table = std::shared_ptr<TableBuilder>(
       NewTableBuilder(tboptions, writable_file_writer.get()));
-  std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
   range_reduce_outputs_[level].push(std::make_shared<RangeReduceOutputs>(
       cfd, writable_file_writer, piggyback_table, meta, file_meta));
 }

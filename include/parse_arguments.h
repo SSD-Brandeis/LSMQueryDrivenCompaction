@@ -72,6 +72,13 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
       group1, "enable_sanity_check",
       "Enable Sanity check to verify Database after experiment [def: 0]",
       {"sanity"});
+  args::ValueFlag<int> use_saved_db_cmd(
+      group1, "use_saved_db",
+      "Enable Using Saved DB from last execution (if available) [def: 0]",
+      {"usedb"});
+  args::ValueFlag<long> snapshot_till_cmd(
+      group1, "snapshot_till",
+      "Snapshot satabase till this operation, 0 indexing [def: -1]", {"snap"});
 
   // Range Query Driven Compaction Options
   args::ValueFlag<long> num_inserts_cmd(
@@ -166,6 +173,10 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
   env->SetSanityCheck(enable_sanity_check_cmd
                           ? args::get(enable_sanity_check_cmd)
                           : env->IsSanityCheckEnabled());
+  env->SetUseSavedDB(use_saved_db_cmd ? args::get(use_saved_db_cmd)
+                                      : env->IsUseSavedDBEnabled());
+  env->SetSnapshotTill(snapshot_till_cmd ? args::get(snapshot_till_cmd)
+                                         : env->GetSnapshotTillOp());
 
   // Range Query Driven Compaction Options
   env->num_inserts =

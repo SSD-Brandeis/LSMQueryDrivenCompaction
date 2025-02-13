@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 
@@ -10,6 +11,81 @@
 #include "event_listners.h"
 
 using namespace rocksdb;
+
+std::string GetSavedDBName(std::unique_ptr<DBEnv> &env) {
+  std::stringstream saved_db_dir;
+  saved_db_dir << "db_config_" << "M_" << env->GetBufferSize() << "P_"
+               << env->buffer_size_in_pages << "B_" << env->entries_per_page
+               << "E_" << env->entry_size << "T_" << env->size_ratio << "OP_"
+               << env->GetSnapshotTillOp();
+  return saved_db_dir.str();
+}
+
+bool CheckSavedDBExistence(std::unique_ptr<DBEnv> &env,
+                           std::unique_ptr<Buffer> &buffer) {
+  namespace fs = std::filesystem;
+  fs::path db_dir = fs::relative(DBEnv::kSavedDBPath) / GetSavedDBName(env);
+
+  if (!fs::exists(db_dir) || !fs::is_directory(db_dir)) {
+    (*buffer) << "Saved db " << db_dir << "does not exists" << std::endl;
+    return false;
+  }
+
+  for (const auto &entry : fs::directory_iterator(db_dir)) {
+    if (fs::is_regular_file(entry)) {
+      return true;
+    }
+  }
+
+  (*buffer) << "Saved db " << db_dir << " is empty!" << std::endl;
+  fs::remove(db_dir);
+  return false;
+}
+
+bool MakeCopyOfSnapshot(std::unique_ptr<DBEnv> &env,
+                        std::unique_ptr<Buffer> &buffer) {
+  namespace fs = std::filesystem;
+  fs::path source_dir = fs::relative(DBEnv::kSavedDBPath) / GetSavedDBName(env);
+  fs::path destination_dir = fs::relative(DBEnv::kDBPath);
+
+  assert(fs::exists(source_dir) && fs::is_directory(source_dir));
+  if (!fs::exists(destination_dir)) {
+    fs::create_directories(destination_dir);
+  }
+
+  for (const auto &entry : fs::directory_iterator(source_dir)) {
+    if (fs::is_regular_file(entry)) {
+      fs::path dest_file = destination_dir / entry.path().filename();
+      fs::copy_file(entry.path(), dest_file,
+                    fs::copy_options::overwrite_existing);
+    }
+  }
+  (*buffer) << "using snapshot db from: " << destination_dir.string()
+            << std::endl;
+  return true;
+}
+
+void SnapshotDB(std::unique_ptr<DBEnv> &env, std::unique_ptr<Buffer> &buffer) {
+  namespace fs = std::filesystem;
+  fs::path source_dir = fs::relative(DBEnv::kDBPath);
+  fs::path destination_dir =
+      fs::relative(DBEnv::kSavedDBPath) / GetSavedDBName(env);
+
+  assert(fs::exists(source_dir) && fs::is_directory(source_dir));
+  if (!fs::exists(destination_dir)) {
+    fs::create_directories(destination_dir);
+  }
+
+  for (const auto &entry : fs::directory_iterator(source_dir)) {
+    if (fs::is_regular_file(entry)) {
+      fs::path dest_file = destination_dir / entry.path().filename();
+      fs::copy_file(entry.path(), dest_file,
+                    fs::copy_options::overwrite_existing);
+    }
+  }
+
+  (*buffer) << "snapshot created at: " << destination_dir.string() << std::endl;
+}
 
 template <typename T>
 void PrintColumn(T value, int width, std::unique_ptr<Buffer> &buffer) {

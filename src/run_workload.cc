@@ -9,7 +9,6 @@
 #include "config_options.h"
 #include "utils.h"
 
-std::string kDBPath = "./db";
 std::string buffer_file = "workload.log";
 std::string rqstats_file = "range_queries.csv";
 
@@ -20,6 +19,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   ReadOptions read_options;
   BlockBasedTableOptions table_options;
   FlushOptions flush_options;
+  bool db_snapshot_exist = false;
 
   configOptions(env, &options, &table_options, &write_options, &read_options,
                 &flush_options);
@@ -29,15 +29,23 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       std::make_shared<CompactionsListner>();
   options.listeners.emplace_back(compaction_listener);
 
+  std::unique_ptr<Buffer> buffer = std::make_unique<Buffer>(buffer_file);
+
   if (env->IsDestroyDatabaseEnabled()) {
-    DestroyDB(kDBPath, options);
+    DestroyDB(env->kDBPath, options);
     std::cout << "Destroying database ... done" << std::endl;
+    if (env->IsUseSavedDBEnabled()) {
+      db_snapshot_exist = CheckSavedDBExistence(env, buffer);
+      if (db_snapshot_exist) {
+        assert(env->GetSnapshotTillOp() > 0);
+        MakeCopyOfSnapshot(env, buffer);
+      }
+    }
   }
 
-  std::unique_ptr<Buffer> buffer = std::make_unique<Buffer>(buffer_file);
   PrintExperimentalSetup(env, buffer);
 
-  Status s = DB::Open(options, kDBPath, &db);
+  Status s = DB::Open(options, env->kDBPath, &db);
   if (!s.ok())
     std::cerr << s.ToString() << std::endl;
   assert(s.ok());
@@ -86,11 +94,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   Buffer rqstats(rqstats_file);
   rqstats // adds a header
       << "RQ Number, RQ Total Time, "
-        //  "Data uBytes Written Back, Total "
-        //  "uBytes Written Back, uEntries Count Written Back, "
+         //  "Data uBytes Written Back, Total "
+         //  "uBytes Written Back, uEntries Count Written Back, "
          "Total Entries Read, "
-        //  "Data unBytes Written Back, Total unBytes "
-        //  "Written Back, unEntries Count Written Back, "
+         //  "Data unBytes Written Back, Total unBytes "
+         //  "Written Back, unEntries Count Written Back, "
          "Total Entries Returned, "
          "RQ Refresh Time, RQ Reset Time, Actual RQ Time"
       << std::endl;
@@ -105,6 +113,18 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       break;
     bool is_last_line = (workload_file.peek() == EOF);
 
+    if (env->GetSnapshotTillOp() > 0 && ith_op + 1 > env->GetSnapshotTillOp() &&
+        !db_snapshot_exist) {
+      {
+        std::vector<std::string> live_files;
+        uint64_t manifest_size;
+        db->GetLiveFiles(live_files, &manifest_size, true /*flush_memtable*/);
+        WaitForCompactions(db);
+      }
+      SnapshotDB(env, buffer);
+      db_snapshot_exist = true;
+    }
+
     std::istringstream stream(line);
     char operation;
     stream >> operation;
@@ -114,6 +134,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     case 'I': {
       std::string key, value;
       stream >> key >> value;
+      if (env->GetSnapshotTillOp() >= ith_op + 1 && db_snapshot_exist) {
+        ith_op += 1;
+        continue;
+      }
+
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
@@ -130,6 +155,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     case 'U': {
       std::string key, value;
       stream >> key >> value;
+      if (env->GetSnapshotTillOp() >= ith_op + 1 && db_snapshot_exist) {
+        ith_op += 1;
+        continue;
+      }
+
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
@@ -146,6 +176,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     case 'D': {
       std::string key;
       stream >> key;
+      if (env->GetSnapshotTillOp() >= ith_op + 1 && db_snapshot_exist) {
+        ith_op += 1;
+        continue;
+      }
+
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
@@ -162,6 +197,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     case 'Q': {
       std::string key, value;
       stream >> key;
+      if (env->GetSnapshotTillOp() >= ith_op + 1 && db_snapshot_exist) {
+        ith_op += 1;
+        continue;
+      }
+
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
@@ -178,6 +218,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     case 'S': {
       std::string start_key, end_key;
       stream >> start_key >> end_key;
+      if (env->GetSnapshotTillOp() >= ith_op + 1 && db_snapshot_exist) {
+        ith_op += 1;
+        continue;
+      }
+
       std::cout << "Running Range Query: " << ith_op << std::endl << std::flush;
 
       uint64_t keys_returned = 0, keys_read = 0;
@@ -186,8 +231,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
 #endif // TIMER
 
       if (ith_op == 8463292) {
-        std::cout << " START KEY: " << start_key
-                  << " END KEY: " << end_key
+        std::cout << " START KEY: " << start_key << " END KEY: " << end_key
                   << std::endl
                   << std::flush;
         auto two = db->GetTreeState();
@@ -233,11 +277,13 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       auto duration =
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
-      rqstats << ++rqnumber << ", " << duration.count() << ", "
+      rqstats << ++rqnumber << ", " << duration.count()
+              << ", "
               // << range_reduce_listener->useful_data_blocks_size_ << ", "
               // << range_reduce_listener->useful_file_size_ << ", "
-              // << range_reduce_listener->useful_entries_ << ", " 
-              << keys_read << ", " 
+              // << range_reduce_listener->useful_entries_ << ", "
+              << keys_read
+              << ", "
               // << range_reduce_listener->un_useful_data_blocks_size_
               // << ", " << range_reduce_listener->un_useful_file_size_ << ", "
               // << range_reduce_listener->un_useful_entries_ << ", "
@@ -338,7 +384,7 @@ void runSanityCheck(std::unique_ptr<DBEnv> &env, size_t total_operations) {
   configOptions(env, &options, &table_options, &write_options, &read_options,
                 &flush_options);
 
-  Status s = DB::Open(options, kDBPath, &db);
+  Status s = DB::Open(options, env->kDBPath, &db);
   if (!s.ok())
     std::cerr << s.ToString() << std::endl;
   assert(s.ok());

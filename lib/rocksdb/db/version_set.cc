@@ -1371,7 +1371,7 @@ void LevelIterator::Seek(const Slice& target) {
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
       ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                      "%s:%d: %s - Partial flush request for kCompleteOverlap "
-                     "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                      __FILE__, __LINE__, __FUNCTION__,
                      file_meta->fd.GetNumber(), true, level_);
       db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kCompleteOverlap,
@@ -1403,7 +1403,7 @@ void LevelIterator::Seek(const Slice& target) {
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
       ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                      "%s:%d: %s - Partial flush request for kHeadOverlap "
-                     "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                      __FILE__, __LINE__, __FUNCTION__,
                      file_meta->fd.GetNumber(), true, level_);
       db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kHeadOverlap,
@@ -1433,7 +1433,7 @@ void LevelIterator::Seek(const Slice& target) {
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
       ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                      "%s:%d: %s - Partial flush request for kTailOverlap "
-                     "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                      __FILE__, __LINE__, __FUNCTION__,
                      file_meta->fd.GetNumber(), true, level_);
       db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kTailOverlap,
@@ -1452,7 +1452,7 @@ void LevelIterator::Seek(const Slice& target) {
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
       ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                      "%s:%d: %s - Partial flush request for kContainedRQ "
-                     "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                      __FILE__, __LINE__, __FUNCTION__,
                      file_meta->fd.GetNumber(), true, level_);
       db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kContainedRQ,
@@ -1647,7 +1647,7 @@ bool LevelIterator::SkipEmptyFileForward() {
           ROCKS_LOG_INFO(
               db_impl_->GetOptions().info_log,
               "%s:%d: %s - Partial flush request for kCompleteOverlap "
-              "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+              "File: %" PRIu64 " JustDelete: %d Level: %d \n",
               __FILE__, __LINE__, __FUNCTION__, file_meta->fd.GetNumber(), true,
               level_);
           db_impl_->AddPartialFileFlushRequest(
@@ -1680,7 +1680,7 @@ bool LevelIterator::SkipEmptyFileForward() {
           FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
           ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                          "%s:%d: %s - Partial flush request for kHeadOverlap "
-                         "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                          __FILE__, __LINE__, __FUNCTION__,
                          file_meta->fd.GetNumber(), true, level_);
           db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kHeadOverlap,
@@ -1711,7 +1711,7 @@ bool LevelIterator::SkipEmptyFileForward() {
           FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
           ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                          "%s:%d: %s - Partial flush request for kTailOverlap "
-                         "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                          __FILE__, __LINE__, __FUNCTION__,
                          file_meta->fd.GetNumber(), true, level_);
           db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kTailOverlap,
@@ -1731,7 +1731,7 @@ bool LevelIterator::SkipEmptyFileForward() {
           FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
           ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
                          "%s:%d: %s - Partial flush request for kContainedRQ "
-                         "File: %" PRIu64 "JustDelete: %d Level: %d \n",
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
                          __FILE__, __LINE__, __FUNCTION__,
                          file_meta->fd.GetNumber(), true, level_);
           db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kContainedRQ,

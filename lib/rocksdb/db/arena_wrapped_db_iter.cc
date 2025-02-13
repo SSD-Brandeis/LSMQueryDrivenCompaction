@@ -161,12 +161,12 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     return false;
   }
 
-  if (db_impl_->immutable_db_options().verbosity > 1) {
-    std::cout << "\nDecision Matrix Meta: " << std::endl;
-    for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
-      std::cout << "Level: " << i + 1 << " --> Total in-range entries: "
-                << decision_matrix_meta_data[i] << std::endl;
-    }
+  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                 "Decision Matrix Meta:");
+  for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                   "Level: %zu --> Total in-range entries: %" PRIu64, i + 1,
+                   static_cast<uint64_t>(decision_matrix_meta_data[i]));
   }
 
   std::vector<std::vector<DecisionCell>> decision_matrix(
@@ -205,12 +205,10 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
       db_impl_->range_query_last_level_ = best_decision_cell.GetEndLevel();
-      if (db_impl_->immutable_db_options().verbosity > 0) {
-        std::cout << "\n[Verbosity]: Best decision cell: ("
-                  << best_decision_cell.GetStartLevel() << ", "
-                  << best_decision_cell.GetEndLevel() << ")\n\n"
-                  << std::endl;
-      }
+      ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                     "[Verbosity]: Best decision cell: (%d, %d)",
+                     best_decision_cell.GetStartLevel(),
+                     best_decision_cell.GetEndLevel());
       break;
     }
   }

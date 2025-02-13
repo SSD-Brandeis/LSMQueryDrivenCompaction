@@ -284,14 +284,12 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
                                     0 /* output_path_id not applicable */);
   FileOptions fo_copy = file_options_;
   ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                 "Creating File #%" PRIu64 " or level %d",
-                 file_number, level);
+                 "Creating File #%" PRIu64 " or level %d", file_number, level);
 
   if (file_meta != nullptr) {
     ROCKS_LOG_INFO(immutable_db_options_.info_log,
                    "File #%" PRIu64 " is against File #%" PRIu64 "\n",
-                   file_number,
-                   file_meta->fd.GetNumber());
+                   file_number, file_meta->fd.GetNumber());
   }
   std::cout << std::endl << std::flush;
   Status s;
@@ -421,25 +419,19 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
     FileMetaData* file_meta = flush_req.meta_data;
     int level = flush_req.level;
 
-    ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                   "Processing partial flush request for Level: %d, Overlap "
-                   "Type: %d, OldFileNo: %" PRIu64,
-                   level, static_cast<int>(overlap_type),
-                   file_meta->fd.GetNumber());
-
     if (overlap_type == RQueryFileOverlap::kHeadOverlap &&
         level == range_query_last_level_ &&
         !rq_done.load(std::memory_order_relaxed)) {
       range_reduce_flush_queue_.push_back(flush_req);
       unscheduled_partial_flushes_++;
-      ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                     "Flush request deferred due to ongoing query processing "
-                     "Level: %d, Overlap "
-                     "Type: %d, OldFileNo: %" PRIu64,
-                     level, static_cast<int>(overlap_type),
-                     file_meta->fd.GetNumber());
       break;
     }
+
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "Processing partial flush request for Level: %d, Overlap "
+                   "Type: %d, OldFileNo: %" PRIu64,
+                   level, static_cast<int>(overlap_type),
+                   file_meta->fd.GetNumber());
 
     superversion_contexts.clear();
     superversion_contexts.reserve(
@@ -595,7 +587,7 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
       }
       ROCKS_LOG_INFO(immutable_db_options_.info_log,
                      "Completed processing for Level %d OldFileNo: #%" PRIu64
-                     "New FileNo: #%" PRIu64 " Overlap Type: %d \n",
+                     " New FileNo: #%" PRIu64 " Overlap Type: %d \n",
                      level, file_meta->fd.GetNumber(),
                      new_file_meta->fd.GetNumber(),
                      static_cast<int>(overlap_type));
@@ -803,12 +795,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
         fswriteable_file.reset();
         new_file_meta->fd.file_size = tmp_memtable->FileSize();
         add_files_->AddFile(level, *new_file_meta);
-        new_files << "[FNo. #" << new_file_meta->fd.GetNumber() << " : "
-                  << level << "], ";
-        ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                       "File: #%" PRIu64
-                       " written successfully by RangeReduce at Level: %d",
-                       new_file_meta->fd.GetNumber(), level);
+        new_files << "FNo. #" << new_file_meta->fd.GetNumber() << ":"
+                  << level << " ";
       }
     }
 
@@ -822,7 +810,7 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
                   << std::flush;
       }
       ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                     "Successfully applied log for newly generated files {%s}",
+                     "Successfully applied log for newly generated files [%s]",
                      new_files.str().c_str());
       assert(ss.ok());
 
@@ -894,7 +882,7 @@ void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
   }
   ROCKS_LOG_INFO(immutable_db_options_.info_log,
                  "Foreground partial flush completed successfully for Level: "
-                 "%d, OldFileNo: #%" PRIu64 "NewFileNo. #%" PRIu64 "\n",
+                 "%d, OldFileNo: #%" PRIu64 " NewFileNo. #%" PRIu64 "\n",
                  level, file_meta->fd.GetNumber(),
                  new_file_meta->fd.GetNumber());
 }

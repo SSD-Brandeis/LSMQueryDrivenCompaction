@@ -283,10 +283,15 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
   std::string fname = TableFileName(cfd->ioptions()->cf_paths, file_number,
                                     0 /* output_path_id not applicable */);
   FileOptions fo_copy = file_options_;
-  std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
-            << " Creating file: " << file_number << " for level: " << level;
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "Creating File #%" PRIu64 " or level %d",
+                 file_number, level);
+
   if (file_meta != nullptr) {
-    std::cout << " against " << file_meta->fd.GetNumber();
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "File #%" PRIu64 " is against File #%" PRIu64 "\n",
+                   file_number,
+                   file_meta->fd.GetNumber());
   }
   std::cout << std::endl << std::flush;
   Status s;
@@ -295,10 +300,9 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
 
   if (!s.ok()) {
     range_reduce_seen_error_.store(true, std::memory_order_relaxed);
-    ROCKS_LOG_ERROR(immutable_db_options_.info_log,
-                    "OpenCompactionOutputFiles for table #%" PRIu64
-                    " fails at NewWritableFile with status %s",
-                    file_number, s.ToString().c_str());
+    ROCKS_LOG_ERROR(
+        immutable_db_options_.info_log, "Failed to create table file #%llu: %s",
+        static_cast<unsigned long long>(file_number), s.ToString().c_str());
     LogFlush(immutable_db_options_.info_log);
     return;
   }
@@ -349,7 +353,7 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
   if (!s.ok()) {
     range_reduce_seen_error_.store(true, std::memory_order_relaxed);
     ROCKS_LOG_ERROR(immutable_db_options_.info_log,
-                    "[%s] file #%" PRIu64 " failed to generate unique id: %s.",
+                    "[%s] File #%" PRIu64 " failed to generate unique id: %s.",
                     cfd->GetName().c_str(), meta->fd.GetNumber(),
                     s.ToString().c_str());
     return;
@@ -379,6 +383,10 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
       NewTableBuilder(tboptions, writable_file_writer.get()));
   range_reduce_outputs_[level].push(std::make_shared<RangeReduceOutputs>(
       cfd, writable_file_writer, piggyback_table, meta, file_meta));
+
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "TableBuilder created for File #%llu at Level %d",
+                 static_cast<unsigned long long>(file_number), level);
 }
 
 Status DBImpl::BackgroundPartialFlush(bool* made_progress,
@@ -410,17 +418,28 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
     RangeReduceFlushRequest flush_req = range_reduce_flush_queue_.front();
     range_reduce_flush_queue_.pop_front();
     RQueryFileOverlap overlap_type = flush_req.overlap_type;
+    FileMetaData* file_meta = flush_req.meta_data;
     int level = flush_req.level;
+
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "Processing partial flush request for Level: %d, Overlap "
+                   "Type: %d, OldFileNo: %" PRIu64,
+                   level, static_cast<int>(overlap_type),
+                   file_meta->fd.GetNumber());
 
     if (overlap_type == RQueryFileOverlap::kHeadOverlap &&
         level == range_query_last_level_ &&
         !rq_done.load(std::memory_order_relaxed)) {
       range_reduce_flush_queue_.push_back(flush_req);
       unscheduled_partial_flushes_++;
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Flush request deferred due to ongoing query processing "
+                     "Level: %d, Overlap "
+                     "Type: %d, OldFileNo: %" PRIu64,
+                     level, static_cast<int>(overlap_type),
+                     file_meta->fd.GetNumber());
       break;
     }
-
-    FileMetaData* file_meta = flush_req.meta_data;
 
     superversion_contexts.clear();
     superversion_contexts.reserve(
@@ -434,6 +453,10 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
       status = GetRangeReduceOutputs(level, cfd, rroutput, file_meta);
 
       if (!status.ok()) {
+        ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                        "Failed to get the file from GetRangeReduceOutputs for "
+                        "Level %d: %s",
+                        level, status.ToString().c_str());
         cfd->UnrefAndTryDelete();
         return status;
       }
@@ -443,6 +466,12 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
       uint64_t max_size =
           MaxFileSizeForLevel((*cfd->GetLatestMutableCFOptions()), level,
                               cfd->ioptions()->compaction_style);
+
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Created new SST table for Level %d, New FileNo: #%" PRIu64
+                     "\n",
+                     level, new_file_meta->fd.GetNumber());
+
       Arena arena;
       auto file_iter = cfd->table_cache()->NewIterator(
           read_options_, file_options_, cfd->internal_comparator(), *file_meta,
@@ -459,6 +488,11 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
 
       if (overlap_type == RQueryFileOverlap::kContainedRQ) {
         file_iter->SeekToFirst();
+        ROCKS_LOG_INFO(
+            immutable_db_options_.info_log,
+            "Processing kContainedRQ overlap for Level %d OldFileNo: %" PRIu64
+            "New FileNo: #%" PRIu64 "\n",
+            level, file_meta->fd.GetNumber(), new_file_meta->fd.GetNumber());
         for (; file_iter->Valid() &&
                cfd->internal_comparator()
                        .user_comparator()
@@ -496,6 +530,11 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
           }
         }
       } else if (overlap_type == RQueryFileOverlap::kHeadOverlap) {
+        ROCKS_LOG_INFO(
+            immutable_db_options_.info_log,
+            "Processing kHeadOverlap overlap for Level %d OldFileNo: %" PRIu64
+            "New FileNo: #%" PRIu64 "\n",
+            level, file_meta->fd.GetNumber(), new_file_meta->fd.GetNumber());
         file_iter->Seek(read_options_.range_end_key);
         while (file_iter->Valid() &&
                cfd->internal_comparator()
@@ -511,6 +550,11 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
             status = GetRangeReduceOutputs(level, cfd, new_rroutput);
 
             if (!status.ok()) {
+              ROCKS_LOG_ERROR(
+                  immutable_db_options_.info_log,
+                  "Failed to get the file from GetRangeReduceOutputs for "
+                  "Level %d: %s",
+                  level, status.ToString().c_str());
               cfd->UnrefAndTryDelete();
               return status;
             }
@@ -527,6 +571,11 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
                                           parsed_key.type);
         }
       } else if (overlap_type == RQueryFileOverlap::kTailOverlap) {
+        ROCKS_LOG_INFO(
+            immutable_db_options_.info_log,
+            "Processing kTailOverlap overlap for Level %d OldFileNo: #%" PRIu64
+            "New FileNo: #%" PRIu64 "\n",
+            level, file_meta->fd.GetNumber(), new_file_meta->fd.GetNumber());
         file_iter->SeekToFirst();
         for (; file_iter->Valid() &&
                cfd->internal_comparator()
@@ -544,6 +593,12 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
                                           parsed_key.type);
         }
       }
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Completed processing for Level %d OldFileNo: #%" PRIu64
+                     "New FileNo: #%" PRIu64 " Overlap Type: %d \n",
+                     level, file_meta->fd.GetNumber(),
+                     new_file_meta->fd.GetNumber(),
+                     static_cast<int>(overlap_type));
       cfd->UnrefAndTryDelete();
     }
   }
@@ -690,6 +745,8 @@ void DBImpl::UnschedulePartialFlushCallback(void* arg) {
 void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
   std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
   if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
+    ROCKS_LOG_WARN(immutable_db_options_.info_log,
+                   "Seen error during RangeReduce porcess, cleaning up!");
     only_deletes_->Clear();
     for (const auto& pair : range_reduce_outputs_) {
       int level = pair.first;
@@ -704,6 +761,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       }
     }
     cfd_->UnrefAndTryDelete();
+    ROCKS_LOG_WARN(immutable_db_options_.info_log,
+                   "Seen error during RangeReduce porcess, cleanup done!");
     return;
   }
 
@@ -713,14 +772,19 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
     Status ss = versions_->LogAndApply(cfd_, *cfd_->GetLatestMutableCFOptions(),
                                        read_options_, only_deletes_, &mutex_,
                                        directories_.GetDbDir());
-
     if (!ss.ok()) {
-      std::cout << " Unable to delete files in left over function "
-                << ss.ToString() << std::endl
-                << std::flush;
+      ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                      "Failed to delete files for RangeReduce: %s",
+                      ss.ToString().c_str());
     }
+    ROCKS_LOG_INFO(
+        immutable_db_options_.info_log,
+        "Applied log and cleaned up older files for ColumnFamily: %s",
+        cfd_->GetName().c_str());
+
     VersionEdit* add_files_ = new VersionEdit();
     ColumnFamilyData* cfd = nullptr;
+    std::stringstream new_files;
 
     for (const auto& pair : range_reduce_outputs_) {
       int level = pair.first;
@@ -739,26 +803,40 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
         fswriteable_file.reset();
         new_file_meta->fd.file_size = tmp_memtable->FileSize();
         add_files_->AddFile(level, *new_file_meta);
+        new_files << "[FNo. #" << new_file_meta->fd.GetNumber() << " : "
+                  << level << "], ";
+        ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                       "File: #%" PRIu64
+                       " written successfully by RangeReduce at Level: %d",
+                       new_file_meta->fd.GetNumber(), level);
       }
     }
 
-    ss = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
-                                read_options_, add_files_, &mutex_,
-                                directories_.GetDbDir());
-    if (!ss.ok()) {
-      std::cout << " Unable to delete files in left over function "
-                << ss.ToString() << std::endl
-                << std::flush;
-    }
-    assert(ss.ok());
+    if (cfd != nullptr) {
+      ss = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
+                                  read_options_, add_files_, &mutex_,
+                                  directories_.GetDbDir());
+      if (!ss.ok()) {
+        std::cout << " Unable to delete files in left over function "
+                  << ss.ToString() << std::endl
+                  << std::flush;
+      }
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Successfully applied log for newly generated files {%s}",
+                     new_files.str().c_str());
+      assert(ss.ok());
 
-    JobContext job_context(next_job_id_.fetch_add(1), true);
-    SuperVersionContext* superversion_context =
-        &job_context.superversion_contexts.back();
-    InstallSuperVersionAndScheduleWork(cfd_, superversion_context,
-                                       *cfd_->GetLatestMutableCFOptions());
-    cfd_->current()->storage_info()->ComputeCompactionScore(
-        *cfd->ioptions(), *cfd_->GetLatestMutableCFOptions());
+      JobContext job_context(next_job_id_.fetch_add(1), true);
+      SuperVersionContext* superversion_context =
+          &job_context.superversion_contexts.back();
+      InstallSuperVersionAndScheduleWork(cfd_, superversion_context,
+                                         *cfd_->GetLatestMutableCFOptions());
+      cfd_->current()->storage_info()->ComputeCompactionScore(
+          *cfd->ioptions(), *cfd_->GetLatestMutableCFOptions());
+      ROCKS_LOG_INFO(
+          immutable_db_options_.info_log,
+          "Installed new SuperVersion and compaction score updated.");
+    }
     range_reduce_outputs_.clear();
     only_deletes_->Clear();
   }
@@ -766,10 +844,19 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
 
 void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
                                     FileMetaData* file_meta, int level) {
+  ROCKS_LOG_INFO(
+      immutable_db_options_.info_log,
+      "Starting foreground partial flush for ColumnFamily: %s, Level: "
+      "%d, OldFileNo: #%" PRIu64 "\n",
+      cfd->GetName().c_str(), level, file_meta->fd.GetNumber());
   std::shared_ptr<RangeReduceOutputs> rroutput;
   Status status = GetRangeReduceOutputs(level, cfd, rroutput, file_meta);
 
   if (!status.ok()) {
+    ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                    "Failed to get the file from GetRangeReduceOutputs for "
+                    "Level %d: %s",
+                    level, status.ToString().c_str());
     return;
   }
 
@@ -805,6 +892,11 @@ void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
     new_file_meta->UpdateBoundaries(key, value, parsed_key.sequence,
                                     parsed_key.type);
   }
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "Foreground partial flush completed successfully for Level: "
+                 "%d, OldFileNo: #%" PRIu64 "NewFileNo. #%" PRIu64 "\n",
+                 level, file_meta->fd.GetNumber(),
+                 new_file_meta->fd.GetNumber());
 }
 
 void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
@@ -815,7 +907,15 @@ void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
     return;
   }
 
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "Adding partial flush request for Level: %d, Overlap Type: "
+                 "%d, FileNo. #%" PRIu64 "\n",
+                 level, static_cast<int>(overlap_type),
+                 file_meta->fd.GetNumber());
+
   if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
+    ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                    "Flush request ignored due to seen range reduce error.");
     return;
   }
 
@@ -826,14 +926,25 @@ void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
   uint64_t file_number = file_meta->fd.GetNumber();
   only_deletes_->DeleteFile(level, file_number);
 
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "Marked FileNo. #%llu for deletion from Level %d.",
+                 static_cast<unsigned long long>(file_number), level);
+
   // This below check cannot go up than this line
   if (overlap_type == RQueryFileOverlap::kCompleteOverlap) {
+    ROCKS_LOG_INFO(
+        immutable_db_options_.info_log,
+        "File %llu has a complete overlap. No further action required.",
+        static_cast<unsigned long long>(file_number));
     return;
   }
 
   if (level == range_query_last_level_) {
     if (overlap_type == RQueryFileOverlap::kTailOverlap ||
         overlap_type == RQueryFileOverlap::kContainedRQ) {
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Processing foreground flush for Level: %d, File: %llu",
+                     level, static_cast<unsigned long long>(file_number));
       ForegroundPartialFlush(cfd, file_meta, level);
     }
     if (overlap_type == RQueryFileOverlap::kHeadOverlap ||
@@ -844,6 +955,9 @@ void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
         InstrumentedMutexLock l(&mutex_);
         SchedulePendingPartialRangeFlush(req);
         SchedulePartialFileFlush();
+        ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                       "Scheduled partial flush for Level: %d, File: %llu",
+                       level, static_cast<unsigned long long>(file_number));
       }
     }
   } else {
@@ -852,6 +966,9 @@ void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
       InstrumentedMutexLock l(&mutex_);
       SchedulePendingPartialRangeFlush(req);
       SchedulePartialFileFlush();
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Scheduled partial flush for Level: %d, File: %llu", level,
+                     static_cast<unsigned long long>(file_number));
     }
   }
 }

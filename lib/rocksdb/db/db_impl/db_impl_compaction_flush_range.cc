@@ -483,7 +483,7 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
         ROCKS_LOG_INFO(
             immutable_db_options_.info_log,
             "Processing kContainedRQ overlap for Level %d OldFileNo: %" PRIu64
-            "New FileNo: #%" PRIu64 "\n",
+            " New FileNo: #%" PRIu64 "\n",
             level, file_meta->fd.GetNumber(), new_file_meta->fd.GetNumber());
         for (; file_iter->Valid() &&
                cfd->internal_comparator()
@@ -525,7 +525,7 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
         ROCKS_LOG_INFO(
             immutable_db_options_.info_log,
             "Processing kHeadOverlap overlap for Level %d OldFileNo: %" PRIu64
-            "New FileNo: #%" PRIu64 "\n",
+            " New FileNo: #%" PRIu64 "\n",
             level, file_meta->fd.GetNumber(), new_file_meta->fd.GetNumber());
         file_iter->Seek(read_options_.range_end_key);
         while (file_iter->Valid() &&
@@ -566,7 +566,7 @@ Status DBImpl::BackgroundPartialFlush(bool* made_progress,
         ROCKS_LOG_INFO(
             immutable_db_options_.info_log,
             "Processing kTailOverlap overlap for Level %d OldFileNo: #%" PRIu64
-            "New FileNo: #%" PRIu64 "\n",
+            " New FileNo: #%" PRIu64 "\n",
             level, file_meta->fd.GetNumber(), new_file_meta->fd.GetNumber());
         file_iter->SeekToFirst();
         for (; file_iter->Valid() &&

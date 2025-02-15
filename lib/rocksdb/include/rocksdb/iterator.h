@@ -116,7 +116,9 @@ class Iterator : public Cleanable {
 
   // If supported, behave similar to Refresh() with RangeReduce
   virtual Status Refresh(const std::string& /*start_key*/,
-                         const std::string& /*end_key*/, uint64_t& /*entries_count*/, bool /*rqdc_enabled*/) {
+                         const std::string& /*end_key*/,
+                         uint64_t& /*entries_count*/, bool /*rqdc_enabled*/,
+                         long long /*min_entries_shld_be_read_per_lvl*/) {
     return Status::NotSupported(
         "Refresh(const std::string, const std::string) is not supported");
   }

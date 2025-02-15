@@ -231,7 +231,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
 #endif // TIMER
 
       it->Refresh(start_key, end_key, keys_read,
-                  env->enable_range_query_compaction);
+                  env->enable_range_query_compaction,
+                  env->min_entries_shld_be_read_per_lvl);
 #ifdef TIMER
       auto refresh_time = std::chrono::high_resolution_clock::now();
       auto refresh_duration =

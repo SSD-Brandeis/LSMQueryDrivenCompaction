@@ -437,11 +437,14 @@ public:
   size_t num_updates = 0;
   size_t num_range_queries = 0;
 
-  bool enable_range_query_compaction = false;
-  bool enable_level_renaming = false;
+  bool enable_range_query_compaction = false; // [re]
+  bool enable_level_renaming = false;         // [rq]
 
-  float lower_threshold = 0.0f;
-  float upper_threshold = std::numeric_limits<float>::max();
+  float lower_threshold = 0.0f;                              // [lb]
+  float upper_threshold = std::numeric_limits<float>::max(); // [ub]
+
+  long long min_entries_shld_be_read_per_lvl =
+      entries_per_page * buffer_size_in_pages; // [epl]
 
   // number of runs(tiers) in smaller levels
   int num_runs_in_smaller_level = 1;

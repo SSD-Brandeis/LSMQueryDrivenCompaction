@@ -69,7 +69,7 @@ long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
 }
 
 bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
-    uint64_t& entries_count) {
+    uint64_t& entries_count, long long min_entries_shld_be_read_per_lvl) {
   auto storage_info = cfd_->current()->storage_info();
 
   if (storage_info->num_non_empty_levels() <= 2) {
@@ -150,7 +150,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     entries_count += E_useful_entries_in_level;
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
-    if (num_files_are_overlapping > 0) {
+    if (num_files_are_overlapping > 0 &&
+        E_useful_entries_in_level > min_entries_shld_be_read_per_lvl) {
       num_levels_are_overlapping++;
     }
   }
@@ -346,7 +347,8 @@ Status ArenaWrappedDBIter::Refresh() {
 
 Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
                                    const std::string& end_key,
-                                   uint64_t& entries_count, bool rqdc_enabled) {
+                                   uint64_t& entries_count, bool rqdc_enabled,
+                                   long long min_entries_shld_be_read_per_lvl) {
   if (!rqdc_enabled) {
     return Refresh();
   }
@@ -358,7 +360,9 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
   db_impl_->read_options_ = read_options_;
 
   auto pause_status = db_impl_->PauseBackgroundWork();
-  if (!pause_status.ok() || !CanPerformRangeQueryCompaction(entries_count)) {
+  if (!pause_status.ok() ||
+      !CanPerformRangeQueryCompaction(entries_count,
+                                      min_entries_shld_be_read_per_lvl)) {
     ResumeBackgroundWork();
   } else {
     db_impl_->was_decision_true = true;

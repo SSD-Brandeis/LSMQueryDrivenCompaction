@@ -112,6 +112,11 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
       group1, "lower_bound",
       "Lower threshold between adjacent levels to perform compaction [def: 0]",
       {"lb", "lower_threshold"});
+  args::ValueFlag<long> min_entries_shld_be_read_per_lvl_cmd(
+      group1, "min_entries_shld_be_read_per_lvl",
+      "Minimum entries that must be read from a level to qualify for "
+      "RangeReduce compaction [def: P x B]",
+      {"epl", "min_entries_read_per_level"});
   args::ValueFlag<float> range_query_selectivity_cmd(
       group1, "Y", "Range query selectivity [def: 0]",
       {'Y', "range_query_selectivity"});
@@ -198,6 +203,10 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
                                              : env->lower_threshold;
   env->upper_threshold = upper_threshold_cmd ? args::get(upper_threshold_cmd)
                                              : env->upper_threshold;
+  env->min_entries_shld_be_read_per_lvl =
+      min_entries_shld_be_read_per_lvl_cmd
+          ? args::get(min_entries_shld_be_read_per_lvl_cmd)
+          : env->min_entries_shld_be_read_per_lvl;
 
   // Fluid LSM parameters
   env->num_runs_in_smaller_level = smaller_lvl_runs_count_cmd

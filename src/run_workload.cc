@@ -113,8 +113,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       break;
     bool is_last_line = (workload_file.peek() == EOF);
 
-    if (env->GetSnapshotTillOp() > 0 && ith_op + 1 > env->GetSnapshotTillOp() &&
-        !db_snapshot_exist) {
+    if (env->IsUseSavedDBEnabled() && env->GetSnapshotTillOp() > 0 &&
+        ith_op + 1 > env->GetSnapshotTillOp() && !db_snapshot_exist) {
       {
         std::vector<std::string> live_files;
         uint64_t manifest_size;

@@ -443,8 +443,7 @@ public:
   float lower_threshold = 0.0f;                              // [lb]
   float upper_threshold = std::numeric_limits<float>::max(); // [ub]
 
-  long long min_entries_shld_be_read_per_lvl =
-      entries_per_page * buffer_size_in_pages; // [epl]
+  long long min_entries_shld_be_read_per_lvl = 0; // [epl]
 
   // number of runs(tiers) in smaller levels
   int num_runs_in_smaller_level = 1;

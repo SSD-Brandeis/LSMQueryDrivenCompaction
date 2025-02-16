@@ -223,8 +223,6 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         continue;
       }
 
-      std::cout << "Running Range Query: " << ith_op << std::endl << std::flush;
-
       uint64_t keys_returned = 0, keys_read = 0;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();

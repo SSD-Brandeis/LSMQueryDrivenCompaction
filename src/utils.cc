@@ -231,17 +231,11 @@ void LogRocksDBStatistics(rocksdb::DB *db, const rocksdb::Options &options,
   (*buffer) << "rocksdb.flush.write.bytes: "
             << options.statistics->getTickerCount(FLUSH_WRITE_BYTES)
             << std::endl;
-  (*buffer) << "rocksdb.partial.file.flush.count: "
-            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_COUNT)
+  (*buffer) << "rocksdb.rangereduce.file.count: "
+            << options.statistics->getTickerCount(RANGEREDUCE_FILE_FLUSH_COUNT)
             << std::endl;
-  (*buffer) << "rocksdb.partial.file.flush.bytes: "
-            << options.statistics->getTickerCount(PARTIAL_FILE_FLUSH_BYTES)
-            << std::endl;
-  (*buffer) << "rocksdb.full.file.flush.count: "
-            << options.statistics->getTickerCount(FULL_FILE_FLUSH_COUNT)
-            << std::endl;
-  (*buffer) << "rocksdb.full.file.flush.bytes: "
-            << options.statistics->getTickerCount(FULL_FILE_FLUSH_BYTES)
+  (*buffer) << "rocksdb.rangereduce.write.bytes: "
+            << options.statistics->getTickerCount(RANGEREDUCE_FILE_WRITE_BYTES)
             << std::endl;
   (*buffer) << "rocksdb.compaction.times.micros: "
             << options.statistics->getTickerCount(COMPACTION_TIME) << std::endl

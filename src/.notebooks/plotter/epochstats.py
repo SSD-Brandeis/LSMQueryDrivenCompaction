@@ -121,9 +121,7 @@ class EpochStats:
         write_bytes = 0
 
         for line in epoch_stats:
-            if line.startswith("rocksdb.partial.file.flush.bytes") or line.startswith(
-                "rocksdb.full.file.flush.bytes"
-            ):
+            if line.startswith("rocksdb.rangereduce.write.bytes"):
                 write_bytes += int(line.split(":")[1])
 
         return write_bytes

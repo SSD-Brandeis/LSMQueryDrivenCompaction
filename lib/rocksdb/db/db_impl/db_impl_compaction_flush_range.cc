@@ -777,6 +777,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
     VersionEdit* add_files_ = new VersionEdit();
     ColumnFamilyData* cfd = nullptr;
     std::stringstream new_files;
+    uint64_t bytes_written = 0;
+    uint64_t files_flushed = 0;
 
     for (const auto& pair : range_reduce_outputs_) {
       int level = pair.first;
@@ -797,6 +799,8 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
         add_files_->AddFile(level, *new_file_meta);
         new_files << "FNo. #" << new_file_meta->fd.GetNumber() << ":" << level
                   << " ";
+        bytes_written += new_file_meta->fd.GetFileSize();
+        files_flushed += 1;
       }
     }
 
@@ -813,6 +817,9 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
                      "Successfully applied log for newly generated files [%s]",
                      new_files.str().c_str());
       assert(ss.ok());
+
+      RecordTick(stats_, RANGEREDUCE_FILE_WRITE_BYTES, IOSTATS(bytes_written));
+      RecordTick(stats_, RANGEREDUCE_FILE_FLUSH_COUNT, files_flushed);
 
       JobContext job_context(next_job_id_.fetch_add(1), true);
       SuperVersionContext* superversion_context =

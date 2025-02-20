@@ -20,7 +20,7 @@ const int MAX_WRITE_BUFFER_NUMBER = 2;
 const int LEVEL0_FILE_NUM_COMPACTION_TRIGGER = 1;
 
 // kMaxMultiTrivialMove, default is 4 for RocksDB
-const size_t MAX_MULTI_TRIVIAL_MOVE = 1;
+const size_t MAX_MULTI_TRIVIAL_MOVE = 4;
 
 const int MAX_OPEN_FILES = 1000;
 const int MAX_FILE_OPENING_THREADS = 1000;

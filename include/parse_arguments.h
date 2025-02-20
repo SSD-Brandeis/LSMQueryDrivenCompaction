@@ -99,6 +99,10 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
       "Enable range query comapaction [def: 0]",
       {"rq", "range_query_compaction"});
 
+  args::ValueFlag<int> max_multi_trivial_move_cmd(
+      group1, "max_multi_trivial_move",
+      "Maximum file it can move trivially [def: 4]",
+      {"tmv", "multi_trivial_move"});
   args::ValueFlag<int> level_renaming_enabled_cmd(
       group1, "enable_level_renaming",
       "Enable level renaming when to add new level", {"re", "renaming_level"});
@@ -207,6 +211,9 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
       min_entries_shld_be_read_per_lvl_cmd
           ? args::get(min_entries_shld_be_read_per_lvl_cmd)
           : (env->entries_per_page * env->buffer_size_in_pages) / 2;
+  env->max_multi_trivial_move = max_multi_trivial_move_cmd
+                                    ? args::get(max_multi_trivial_move_cmd)
+                                    : env->max_multi_trivial_move;
 
   // Fluid LSM parameters
   env->num_runs_in_smaller_level = smaller_lvl_runs_count_cmd

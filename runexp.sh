@@ -1,22 +1,23 @@
 #!/bin/bash
 
 TAG=paperplots2
-ENTRY_SIZE=1024
+ENTRY_SIZE=128
 LAMBDA=0.125
-ENTRIES_PER_PAGE=4
+ENTRIES_PER_PAGE=32
 PAGES_PER_FILE=1024
-SIZE_RATIO=2
+SIZE_RATIO=4
 
-INSERTS=80000
-UPDATES=80000
-RANGE_QUERIES=100
+INSERTS=8388608
+UPDATES=8388608
+RANGE_QUERIES=900
 SELECTIVITY=0.1
 
 SHOW_PROGRESS=1
 VERSION=0
 SANITY_CHECK=0
-USE_DB=0
-SNAP=0
+USE_DB=1
+SNAP=8388608
+MAX_TRIVIAL_MOVE=1
 
 echo "Starting experiments with TAG=${TAG}, ENTRY_SIZE=${ENTRY_SIZE}"
 echo "Debug: INSERTS=${INSERTS}, UPDATES=${UPDATES}, RANGE_QUERIES=${RANGE_QUERIES}"
@@ -30,61 +31,84 @@ cd .vstats
 mkdir -p $EXP_DIR
 cd $EXP_DIR
 
-mkdir -p VanillaRandom RangeReduceRandom RangeReduceRandomRE1 RangeReduceRandom0
+mkdir -p RocksDB RocksDBTuned RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1] RangeReduce[lb=0]
 
 echo "Generating workload..."
-cd VanillaRandom
+cd RocksDB
 echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
 ../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}
 
-echo "Copying workload to RangeReduceRandom..."
-cd ../RangeReduceRandom
-if [ -f "../VanillaRandom/workload.txt" ]; then
-    cp ../VanillaRandom/workload.txt ./workload.txt
+echo "Copying workload to RocksDBTuned..."
+cd ../RocksDBTuned
+if [ -f "../RocksDB/workload.txt" ]; then
+    cp ../RocksDB/workload.txt ./workload.txt
     echo "workload.txt copied successfully"
 else
-    echo "Error: workload.txt not found in VanillaRandom"
+    echo "Error: workload.txt not found in RocksDB"
     exit 1
 fi
 
-echo "Copying workload to RangeReduceRandomRE1..."
-cd ../RangeReduceRandomRE1
-if [ -f "../VanillaRandom/workload.txt" ]; then
-    cp ../VanillaRandom/workload.txt ./workload.txt
+echo "Copying workload to RangeReduce[lb=T^-1]..."
+cd ../RangeReduce[lb=T^-1]
+if [ -f "../RocksDB/workload.txt" ]; then
+    cp ../RocksDB/workload.txt ./workload.txt
     echo "workload.txt copied successfully"
 else
-    echo "Error: workload.txt not found in VanillaRandom"
+    echo "Error: workload.txt not found in RocksDB"
     exit 1
 fi
 
-echo "Copying workload to RangeReduceRandom0..."
-cd ../RangeReduceRandom0
-if [ -f "../VanillaRandom/workload.txt" ]; then
-    cp ../VanillaRandom/workload.txt ./workload.txt
+echo "Copying workload to RangeReduce[lb=T^-1ANDre=1]..."
+cd ../RangeReduce[lb=T^-1ANDre=1]
+if [ -f "../RocksDB/workload.txt" ]; then
+    cp ../RocksDB/workload.txt ./workload.txt
     echo "workload.txt copied successfully"
 else
-    echo "Error: workload.txt not found in VanillaRandom"
+    echo "Error: workload.txt not found in RocksDB"
     exit 1
 fi
 
-echo "Running VanillaRandom workload..."
-cd ../VanillaRandom
+echo "Copying workload to RangeReduce[lb=0]..."
+cd ../RangeReduce[lb=0]
+if [ -f "../RocksDB/workload.txt" ]; then
+    cp ../RocksDB/workload.txt ./workload.txt
+    echo "workload.txt copied successfully"
+else
+    echo "Error: workload.txt not found in RocksDB"
+    exit 1
+fi
+
+echo "Running RocksDB workload..."
+cd ../RocksDB
+../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb 0 --snap ${SNAP} --tmv ${MAX_TRIVIAL_MOVE}
+rm -rf db
+
+echo "Running RocksDBTuned workload..."
+cd ../RocksDBTuned
 ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
 rm -rf db
 
-echo "Running RangeReduceRandom workload [with lb=${LOWER_BOUND}]..."
-cd ../RangeReduceRandom
+echo "Running RangeReduce[lb=T^-1] workload [with lb=${LOWER_BOUND}]..."
+cd ../RangeReduce[lb=T^-1]
+echo "Moving saveddb from RocksDBTuned to RangeReduce[lb=T^-1]"
+mv ../RocksDBTuned/saveddb ./
 ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
 rm -rf db
 
-echo "Running RangeReduceRandomRE1 workload [with lb=${LOWER_BOUND} && re=1]..."
-cd ../RangeReduceRandomRE1
+echo "Running RangeReduce[lb=T^-1ANDre=1] workload [with lb=${LOWER_BOUND} && re=1]..."
+cd ../RangeReduce[lb=T^-1ANDre=1]
 ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 1 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
 rm -rf db
 
-echo "Running RangeReduceRandom workload [with lb=0]..."
-cd ../RangeReduceRandom0
+echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
+cd ../RangeReduce[lb=0]
+echo "Moving saveddb from RangeReduce[lb=T^-1] RangeReduce[lb=0]"
+mv ../RangeReduce[lb=T^-1]/saveddb ./
 ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb 0 --re 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
 rm -rf db
+
+cd ../RocksDBTuned
+echo "Moving saveddb back to RocksDBTuned"
+mv ../RangeReduce[lb=0]/saveddb ./
 
 cd ../../..

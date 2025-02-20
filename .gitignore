@@ -67,3 +67,7 @@ logs.txt
 
 #__pycache__
 __pycache__
+
+# db
+db/**
+saveddb/**

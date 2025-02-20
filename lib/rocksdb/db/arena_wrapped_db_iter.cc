@@ -242,6 +242,7 @@ Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
     db_impl_->TakecareOfLeftoverPart(cfd_);
   }
 
+  db_impl_->range_reduce_seen_error_.store(false, std::memory_order_relaxed);
   db_impl_->was_decision_true = false;
   db_impl_->rq_done.store(false);
   ResumeBackgroundWork();

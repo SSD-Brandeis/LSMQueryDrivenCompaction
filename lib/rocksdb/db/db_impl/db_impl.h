@@ -497,6 +497,7 @@ class DBImpl : public DB {
                                 Env::Priority thread_pri);
   void ForegroundPartialFlush(ColumnFamilyData* cfd, FileMetaData* file_meta,
                               int level);
+  void TryCleaningUpRangeReduce(ColumnFamilyData* cfd, JobContext *job_context);
   void SchedulePartialFileFlush();
   static void UnschedulePartialFlushCallback(void* arg);
   Status FlushPartialFile(ColumnFamilyData* cfd,

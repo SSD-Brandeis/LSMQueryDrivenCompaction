@@ -181,7 +181,7 @@ long long DBImpl::GetRoughOverlappingEntries(const std::string given_start_key,
     auto [skip_count, min_key] =
         table_reader->GetNumOfRangeOverlappingEntriesFromFile(read_options,
                                                               target);
-    overlapping_count = file_meta->num_entries -
+    overlapping_count = table_properties->num_entries -
                         (skip_count / (avg_raw_key_size + avg_raw_value_size));
     useful_min_key = min_key;
   } else if (given_start_key.empty() && !given_end_key.empty()) {
@@ -356,7 +356,7 @@ void DBImpl::GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
                     s.ToString().c_str());
     return;
   }
-  fs_writable_file->SetIOPriority(Env::IOPriority::IO_USER);
+  fs_writable_file->SetIOPriority(Env::IOPriority::IO_LOW);
   fs_writable_file->SetWriteLifeTimeHint(cfd->CalculateSSTWriteHint(level));
   FileTypeSet tmp_set = immutable_db_options_.checksum_handoff_file_types;
   fs_writable_file->SetPreallocationBlockSize(max_size);
@@ -640,29 +640,6 @@ void DBImpl::BackgroundCallPartialFlush(Env::Priority thread_pri) {
     TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:FlushFinish:0");
     ReleaseFileNumberFromPendingOutputs(pending_outputs_inserted_elem);
 
-    // If flush failed, we want to delete all temporary files that we might
-    // have created. Thus, we force full scan in FindObsoleteFiles()
-    FindObsoleteFiles(&job_context, !s.ok() && !s.IsShutdownInProgress() &&
-                                        !s.IsColumnFamilyDropped());
-    // delete unnecessary files if any, this is done outside the mutex
-    if (job_context.HaveSomethingToClean() ||
-        job_context.HaveSomethingToDelete() || !log_buffer.IsEmpty()) {
-      mutex_.Unlock();
-      TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:FilesFound");
-      // Have to flush the info logs before bg_flush_scheduled_--
-      // because if bg_flush_scheduled_ becomes 0 and the lock is
-      // released, the deconstructor of DB can kick in and destroy all the
-      // states of DB so info_log might not be available after that point.
-      // It also applies to access other states that DB owns.
-      log_buffer.FlushBufferToLog();
-      if (job_context.HaveSomethingToDelete()) {
-        PurgeObsoleteFiles(job_context);
-      }
-      job_context.Clean();
-      mutex_.Lock();
-    }
-    TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:ContextCleanedUp");
-
     assert(num_running_flushes_ > 0);
     num_running_flushes_--;
     bg_partial_flush_scheduled_--;
@@ -734,51 +711,76 @@ void DBImpl::UnschedulePartialFlushCallback(void* arg) {
   TEST_SYNC_POINT("DBImpl::UnscheduleFlushCallback");
 }
 
-void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
-  std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
-  if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
-    ROCKS_LOG_WARN(immutable_db_options_.info_log,
-                   "Seen error during RangeReduce porcess, cleaning up!");
-    only_deletes_->Clear();
-    for (const auto& pair : range_reduce_outputs_) {
-      int level = pair.first;
-      auto range_reduce_queue = range_reduce_outputs_[level];
-      while (!range_reduce_queue.empty()) {
-        auto rr_output = range_reduce_queue.front();
-        range_reduce_queue.pop();
-        auto tmp_memtable = rr_output->builder_;
-        auto fswriteable_file = rr_output->writable_file_writer_;
+void DBImpl::TryCleaningUpRangeReduce(ColumnFamilyData* cfd,
+                                      JobContext* job_context) {
+  ROCKS_LOG_WARN(immutable_db_options_.info_log,
+                 "Seen error during RangeReduce porcess, cleaning up!");
+  only_deletes_->Clear();
+
+  for (const auto& pair : range_reduce_outputs_) {
+    auto range_reduce_queue = range_reduce_outputs_[pair.first /* level */];
+    while (!range_reduce_queue.empty()) {
+      auto rr_output = range_reduce_queue.front();
+      range_reduce_queue.pop();
+      auto tmp_memtable = rr_output->builder_;
+      auto fswritable_file = rr_output->writable_file_writer_;
+
+      if (fswritable_file != nullptr) {
         tmp_memtable->Abandon();
-        fswriteable_file.reset();
+        fswritable_file.reset();
       }
     }
-    cfd_->UnrefAndTryDelete();
-    ROCKS_LOG_WARN(immutable_db_options_.info_log,
-                   "Seen error during RangeReduce porcess, cleanup done!");
+  }
+  Status s = Status::IOError();
+  // If flush failed, we want to delete all temporary files that we might
+  // have created. Thus, we force full scan in FindObsoleteFiles()
+  FindObsoleteFiles(job_context, !s.ok() && !s.IsShutdownInProgress() &&
+                                     !s.IsColumnFamilyDropped());
+  // delete unnecessary files if any, this is done outside the mutex
+  if (job_context->HaveSomethingToClean() ||
+      job_context->HaveSomethingToDelete()) {
+    mutex_.Unlock();
+    TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:FilesFound");
+    // Have to flush the info logs before bg_flush_scheduled_--
+    // because if bg_flush_scheduled_ becomes 0 and the lock is
+    // released, the deconstructor of DB can kick in and destroy all the
+    // states of DB so info_log might not be available after that point.
+    // It also applies to access other states that DB owns.
+    if (job_context->HaveSomethingToDelete()) {
+      PurgeObsoleteFiles(*job_context);
+    }
+    job_context->Clean();
+    mutex_.Lock();
+  }
+  TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:ContextCleanedUp");
+
+  cfd->UnrefAndTryDelete();
+  range_reduce_outputs_.clear();
+  ROCKS_LOG_WARN(immutable_db_options_.info_log,
+                 "Seen error during RangeReduce porcess, cleanup done!");
+  return;
+}
+
+void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
+  std::lock_guard<std::mutex> lock(range_reduce_outputs_mutex_);
+  JobContext job_context(next_job_id_.fetch_add(1), true);
+  if (range_reduce_seen_error_.load(std::memory_order_relaxed)) {
+    TryCleaningUpRangeReduce(cfd_, &job_context);
     return;
   }
 
   {
     InstrumentedMutexLock l(&mutex_);
 
-    Status ss = versions_->LogAndApply(cfd_, *cfd_->GetLatestMutableCFOptions(),
-                                       read_options_, only_deletes_, &mutex_,
-                                       directories_.GetDbDir());
-    if (!ss.ok()) {
-      ROCKS_LOG_ERROR(immutable_db_options_.info_log,
-                      "Failed to delete files for RangeReduce: %s",
-                      ss.ToString().c_str());
-    }
-    ROCKS_LOG_INFO(
-        immutable_db_options_.info_log,
-        "Applied log and cleaned up older files for ColumnFamily: %s",
-        cfd_->GetName().c_str());
-
-    VersionEdit* add_files_ = new VersionEdit();
+    Status ss;
+    std::unique_ptr<VersionEdit> add_files_ = std::make_unique<VersionEdit>();
     ColumnFamilyData* cfd = nullptr;
     std::stringstream new_files;
     uint64_t bytes_written = 0;
     uint64_t files_flushed = 0;
+    auto sfm = static_cast<SstFileManagerImpl*>(
+        initial_db_options_.sst_file_manager.get());
+    assert(sfm != nullptr);
 
     for (const auto& pair : range_reduce_outputs_) {
       int level = pair.first;
@@ -792,11 +794,38 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
         auto fswriteable_file = rr_output->writable_file_writer_;
         auto file_meta = rr_output->old_file_meta_;
         tmp_memtable->Finish();
+        new_file_meta->fd.file_size = tmp_memtable->FileSize();
+        new_file_meta->tail_size = tmp_memtable->GetTailSize();
+        new_file_meta->user_defined_timestamps_persisted =
+            static_cast<bool>(tmp_memtable->GetTableProperties()
+                                  .user_defined_timestamps_persisted);
         fswriteable_file->Flush();
         fswriteable_file->Sync(true);
         fswriteable_file.reset();
-        new_file_meta->fd.file_size = tmp_memtable->FileSize();
         add_files_->AddFile(level, *new_file_meta);
+
+        if (sfm && new_file_meta != nullptr &&
+            new_file_meta->fd.GetPathId() == 0) {
+          ROCKS_LOG_INFO(
+              immutable_db_options_.info_log,
+              "Informing new file creation to SFM for File: #%" PRIu64
+              " FileSize: %" PRIu64 "\n",
+              new_file_meta->fd.GetNumber(), new_file_meta->fd.GetFileSize());
+          Status add_s = sfm->OnAddFile(TableFileName(
+              cfd->ioptions()->cf_paths, new_file_meta->fd.GetNumber(),
+              0 /* output path id*/));
+          if (!add_s.ok()) {
+            ROCKS_LOG_ERROR(
+                immutable_db_options_.info_log,
+                "Failed informing new file creation to SFM for File: #%" PRIu64
+                ". Error: %s FileSize: %" PRIu64 "\n",
+                new_file_meta->fd.GetNumber(), add_s.ToString().c_str(),
+                new_file_meta->fd.GetFileSize());
+            range_reduce_seen_error_.store(true, std::memory_order_relaxed);
+            break;
+          }
+        }
+
         new_files << "FNo. #" << new_file_meta->fd.GetNumber() << ":" << level
                   << " ";
         bytes_written += new_file_meta->fd.GetFileSize();
@@ -804,34 +833,49 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
       }
     }
 
-    if (cfd != nullptr) {
-      ss = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
-                                  read_options_, add_files_, &mutex_,
-                                  directories_.GetDbDir());
-      if (!ss.ok()) {
-        ROCKS_LOG_ERROR(immutable_db_options_.info_log,
-                        "Failed to apply log for new files in RangeReduce: %s",
-                        ss.ToString().c_str());
-      }
-      ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                     "Successfully applied log for newly generated files [%s]",
-                     new_files.str().c_str());
-      assert(ss.ok());
-
-      RecordTick(stats_, RANGEREDUCE_FILE_WRITE_BYTES, IOSTATS(bytes_written));
-      RecordTick(stats_, RANGEREDUCE_FILE_FLUSH_COUNT, files_flushed);
-
-      JobContext job_context(next_job_id_.fetch_add(1), true);
-      SuperVersionContext* superversion_context =
-          &job_context.superversion_contexts.back();
-      InstallSuperVersionAndScheduleWork(cfd_, superversion_context,
-                                         *cfd_->GetLatestMutableCFOptions());
-      cfd_->current()->storage_info()->ComputeCompactionScore(
-          *cfd->ioptions(), *cfd_->GetLatestMutableCFOptions());
-      ROCKS_LOG_INFO(
-          immutable_db_options_.info_log,
-          "Installed new SuperVersion and compaction score updated.");
+    if (range_reduce_seen_error_.load(std::memory_order_relaxed) ||
+        cfd == nullptr) {
+      TryCleaningUpRangeReduce(cfd, &job_context);
+      return;
     }
+
+    ss = versions_->LogAndApply(cfd_, *cfd_->GetLatestMutableCFOptions(),
+                                read_options_, only_deletes_, &mutex_,
+                                directories_.GetDbDir());
+    if (!ss.ok()) {
+      ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                      "Failed to delete files for RangeReduce: %s",
+                      ss.ToString().c_str());
+    }
+    ROCKS_LOG_INFO(
+        immutable_db_options_.info_log,
+        "Applied log and cleaned up older files for ColumnFamily: %s",
+        cfd_->GetName().c_str());
+
+    ss = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
+                                read_options_, add_files_.get(), &mutex_,
+                                directories_.GetDbDir());
+    if (!ss.ok()) {
+      ROCKS_LOG_ERROR(immutable_db_options_.info_log,
+                      "Failed to apply log for new files in RangeReduce: %s",
+                      ss.ToString().c_str());
+    }
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "Successfully applied log for newly generated files [%s]",
+                   new_files.str().c_str());
+    assert(ss.ok());
+
+    RecordTick(stats_, RANGEREDUCE_FILE_WRITE_BYTES, IOSTATS(bytes_written));
+    RecordTick(stats_, RANGEREDUCE_FILE_FLUSH_COUNT, files_flushed);
+
+    SuperVersionContext* superversion_context =
+        &job_context.superversion_contexts.back();
+    InstallSuperVersionAndScheduleWork(cfd_, superversion_context,
+                                       *cfd_->GetLatestMutableCFOptions());
+    cfd_->current()->storage_info()->ComputeCompactionScore(
+        *cfd->ioptions(), *cfd_->GetLatestMutableCFOptions());
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "Installed new SuperVersion and compaction score updated.");
     range_reduce_outputs_.clear();
     only_deletes_->Clear();
   }

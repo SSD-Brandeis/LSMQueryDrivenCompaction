@@ -124,7 +124,7 @@ class Iterator : public Cleanable {
   }
 
   // If supported, reset the start_key & end_key to empty string
-  virtual Status Reset(uint64_t& /*total_keys_read*/) {
+  virtual Status Reset(uint64_t& /*total_keys_read*/, bool& /*did_run_RR*/) {
     return Status::NotSupported("Reset() is not supported");
   }
 

@@ -865,7 +865,7 @@ void DBImpl::TakecareOfLeftoverPart(ColumnFamilyData* cfd_) {
                    new_files.str().c_str());
     assert(ss.ok());
 
-    RecordTick(stats_, RANGEREDUCE_FILE_WRITE_BYTES, IOSTATS(bytes_written));
+    RecordTick(stats_, RANGEREDUCE_FILE_WRITE_BYTES, bytes_written);
     RecordTick(stats_, RANGEREDUCE_FILE_FLUSH_COUNT, files_flushed);
 
     SuperVersionContext* superversion_context =

@@ -100,7 +100,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
          //  "Data unBytes Written Back, Total unBytes "
          //  "Written Back, unEntries Count Written Back, "
          "Total Entries Returned, "
-         "RQ Refresh Time, RQ Reset Time, Actual RQ Time"
+         "RQ Refresh Time, RQ Reset Time, Actual RQ Time, Did Run RR"
       << std::endl;
   unsigned long rqnumber = 0;
 #endif // TIMER
@@ -224,6 +224,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       }
 
       uint64_t keys_returned = 0, keys_read = 0;
+      bool did_run_RR = false;
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
@@ -251,7 +252,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
 #ifdef TIMER
       auto reset_start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
-      it->Reset(keys_read);
+      it->Reset(keys_read, did_run_RR);
 #ifdef TIMER
       auto reset_end = std::chrono::high_resolution_clock::now();
       auto actual_range_time =
@@ -277,7 +278,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
               // << ", " << range_reduce_listener->un_useful_file_size_ << ", "
               // << range_reduce_listener->un_useful_entries_ << ", "
               << keys_returned << ", " << refresh_duration << ", "
-              << reset_duration << ", " << actual_range_time << std::endl;
+              << reset_duration << ", " << actual_range_time << ", "
+              << did_run_RR << std::endl;
 #endif // TIMER
       break;
     }

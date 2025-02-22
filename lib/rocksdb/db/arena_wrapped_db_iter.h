@@ -94,7 +94,7 @@ class ArenaWrappedDBIter : public Iterator {
                  const std::string& /*end_key*/, uint64_t& /*entries_count*/,
                  bool /*rqdc_enabled*/,
                  long long /*min_entries_shld_be_read_per_lvl*/) override;
-  Status Reset(uint64_t& /*total_keys_read*/) override;
+  Status Reset(uint64_t& /*total_keys_read*/, bool& /*did_run_RR*/) override;
 
   void Init(Env* env, const ReadOptions& read_options,
             const ImmutableOptions& ioptions,

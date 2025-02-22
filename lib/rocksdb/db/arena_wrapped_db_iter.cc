@@ -225,8 +225,9 @@ void ArenaWrappedDBIter::ResumeBackgroundWork() {
   db_impl_->ContinueBackgroundWork();
 }
 
-Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read) {
+Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read, bool& did_run_RR) {
   total_keys_read = db_iter_->GetKeysReadCount();
+  did_run_RR = db_impl_->was_decision_true;
 
   if (!read_options_.enable_range_query_compaction) {
     return Status::OK();

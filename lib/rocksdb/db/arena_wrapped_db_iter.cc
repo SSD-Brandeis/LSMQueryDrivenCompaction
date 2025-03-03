@@ -150,8 +150,8 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     entries_count += E_useful_entries_in_level;
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
-    if (num_files_are_overlapping > 0 &&
-        E_useful_entries_in_level > min_entries_shld_be_read_per_lvl) {
+    if (num_files_are_overlapping > 0 && (min_entries_shld_be_read_per_lvl == 0 ||
+        E_useful_entries_in_level > min_entries_shld_be_read_per_lvl)) {
       num_levels_are_overlapping++;
     }
   }

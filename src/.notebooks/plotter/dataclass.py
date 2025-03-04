@@ -105,17 +105,17 @@ class Metric(Enum):
     SPACE_AMP = ("Space Amplification",)
     COMPACTION_DEBT = ("Compaction Debt (MB)",)
     AVG_RQ_LATENCY = ("RQ Latency (avg ms)",)
-    AVG_BYTES_READ_RQ = ("Average Bytes Read RQ (MB)",)
     OVERALL_DATA_MOVEMENT = ("Overall Data Movement (GB)",)
     WL_EXECUTION_TIME = ("W/L Execution Time (sec)",)
     RR_TRIGGERED_COUNT = ("RR Triggered Count",)
-    AVG_BYTES_WRITTENT_BY_RR = ("Average Bytes Written By RR (MB)",)
-    TAIL_RQ_LATENCY_98 = ("Tail RQ Latency 98",)
-    TAIL_RQ_LATENCY_100 = ("Tail RQ Latency 100",)
-    AVG_RQ_READ_AMP = ("Average RQ Read Amplification",)
-    TOTAL_COMP_READ_NOT_FOR_RR = ("Total Compaction Read (Not RR)",)
     AVG_FILE_SIZE = ("Average File Size",)
     TOTAL_FILES_COUNT = ("Total Files Count",)
+    # AVG_RQ_READ_AMP = ("Average RQ Read Amplification",)
+    AVG_BYTES_READ_RQ = ("Average Bytes Read RQ (MB)",)
+    AVG_BYTES_WRITTENT_BY_RR = ("Average Bytes Written By RR (MB)",)
+    TOTAL_COMP_READ_NOT_FOR_RR = ("Total Compaction Read (Not RR) (GB)",)
+    TAIL_RQ_LATENCY_98 = ("Tail RQ Latency 98",)
+    TAIL_RQ_LATENCY_100 = ("Tail RQ Latency 100",)
 
     def __str__(self):
         return "%s" % self.value

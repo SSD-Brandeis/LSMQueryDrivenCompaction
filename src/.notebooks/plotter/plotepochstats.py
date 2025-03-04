@@ -58,16 +58,10 @@ def log_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
         TABLE_DATA[str(Approach.ROCKSDB)][str(metric)] = round(
             approach_data["RocksDB"][0], 2
         )
-        print("RocksDB", approach_data["RocksDB"][0])
     if "RocksDB" in approach_data.keys() and "RocksDBTuned" in approach_data.keys():
         TABLE_DATA[str(Approach.ROCKSDB_TUNED)][
             str(metric)
         ] = f'{round(((approach_data["RocksDBTuned"][0] - approach_data["RocksDB"][0])/ approach_data["RocksDB"][0]) * 100,2,)}%'
-        print(
-            "RocksDBTuned",
-            (approach_data["RocksDBTuned"][0] - approach_data["RocksDB"][0])
-            / approach_data["RocksDB"][0],
-        )
     if (
         "RocksDBTuned" in approach_data.keys()
         and "RangeReduce[lb=0 & smlck=0]" in approach_data.keys()
@@ -75,14 +69,6 @@ def log_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_0_AND_SMLCK_0)][
             str(metric)
         ] = f'{round(((approach_data["RangeReduce[lb=0 & smlck=0]"][0] - approach_data["RocksDBTuned"][0]) / approach_data["RocksDBTuned"][0]) * 100,2,)}%'
-        print(
-            "RangeReduce[lb=0 & smlck=0]",
-            (
-                approach_data["RangeReduce[lb=0 & smlck=0]"][0]
-                - approach_data["RocksDBTuned"][0]
-            )
-            / approach_data["RocksDBTuned"][0],
-        )
     if (
         "RocksDBTuned" in approach_data.keys()
         and "RangeReduce[lb=0]" in approach_data.keys()
@@ -90,12 +76,6 @@ def log_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_0)][
             str(metric)
         ] = f'{round(((approach_data["RangeReduce[lb=0]"][0] - approach_data["RocksDBTuned"][0])/ approach_data["RocksDBTuned"][0]) * 100,2,)}%'
-        print(
-            "RangeReduce[lb=0]",
-            (approach_data["RangeReduce[lb=0]"][0] - approach_data["RocksDBTuned"][0])
-            / approach_data["RocksDBTuned"][0],
-        )
-
     if (
         "RocksDBTuned" in approach_data.keys()
         and "RangeReduce[lb=T^-1]" in approach_data.keys()
@@ -103,14 +83,6 @@ def log_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_T_MINUS_1)][
             str(metric)
         ] = f'{round(((approach_data["RangeReduce[lb=T^-1]"][0] - approach_data["RocksDBTuned"][0])/ approach_data["RocksDBTuned"][0]) * 100,2,)}%'
-        print(
-            "RangeReduce[lb=T^-1]",
-            (
-                approach_data["RangeReduce[lb=T^-1]"][0]
-                - approach_data["RocksDBTuned"][0]
-            )
-            / approach_data["RocksDBTuned"][0],
-        )
     if (
         "RocksDBTuned" in approach_data.keys()
         and "RangeReduce[lb=T^-1 & re=1]" in approach_data.keys()
@@ -118,14 +90,6 @@ def log_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_T_MINUS_1_AND_RE_1)][
             str(metric)
         ] = f'{round(((approach_data["RangeReduce[lb=T^-1 & re=1]"][0] - approach_data["RocksDBTuned"][0])/ approach_data["RocksDBTuned"][0]) * 100,2,)}%'
-        print(
-            "RangeReduce[lb=T^-1 & re=1]",
-            (
-                approach_data["RangeReduce[lb=T^-1 & re=1]"][0]
-                - approach_data["RocksDBTuned"][0]
-            )
-            / approach_data["RocksDBTuned"][0],
-        )
 
 
 class PlotEpochStats:
@@ -175,8 +139,6 @@ class PlotEpochStats:
         total_files_count: Dict[str, List[float]] = dict()
         avg_file_size: Dict[str, List[float]] = dict()
         for approach, plot_stat in self.approaches_.items():
-            print(TABLE_DATA)
-            print("What is this? ", TABLE_DATA[approach][str(Metric.RR_TRIGGERED_COUNT)])
             avg_bytes_written_by_RR[approach] = [plot_stat[0].RangeReduceWrittenBytes / (TABLE_DATA[approach][str(Metric.RR_TRIGGERED_COUNT)] * 1024**2)]
             total_files_count[approach] = [plot_stat[0].FilesCount]
             avg_file_size[approach] = [plot_stat[0].DBSize / (plot_stat[0].FilesCount * 1024**2)]
@@ -200,7 +162,7 @@ class PlotEpochStats:
 
         log_metric(approach_data, Metric.TOTAL_WRITES)
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
 
         fig, ax = plt.subplots(figsize=fig_size)
 
@@ -238,7 +200,7 @@ class PlotEpochStats:
             approach_data[approach] = [stat.DBSize / convert_to_ for stat in data]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -276,7 +238,7 @@ class PlotEpochStats:
 
         log_metric(approach_data, Metric.COMPACTION_DEBT)
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -310,7 +272,7 @@ class PlotEpochStats:
             approach_data[approach] = [stat.WriteAmpDebt / convert_to_ for stat in data]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -346,7 +308,7 @@ class PlotEpochStats:
             ]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -382,7 +344,7 @@ class PlotEpochStats:
             ]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -419,7 +381,7 @@ class PlotEpochStats:
 
         log_metric(approach_data, Metric.SPACE_AMP)
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -448,7 +410,7 @@ class PlotEpochStats:
     #     vanilla_datamovement = [van.TotalWriteBytes + van.CompactionReadBytes for van in self._vanilla]
     #     rqdc_datamovement = [rqdc.TotalWriteBytes + rqdc.CompactionReadBytes for rqdc in self._rqdc]
 
-    #     fig_size = (6, 4)
+    #     fig_size = (7, 5)
     #     bar_width = 0.35
     #     num_bars_per_group = 2
     #     epochs = NUMEPOCHS
@@ -505,7 +467,7 @@ class PlotEpochStats:
 
         log_metric(approach_data, Metric.TOTAL_COMP_READ_NOT_FOR_RR)
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -543,7 +505,7 @@ class PlotEpochStats:
 
         log_metric(approach_data, Metric.WL_EXECUTION_TIME)
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
@@ -572,7 +534,7 @@ class PlotEpochStats:
         vanilla_levels_state = [van.LevelsState for van in self._vanilla]
         rqdc_levels_state = [rqdc.LevelsState for rqdc in self._rqdc]
 
-        fig_size = (6, 4)
+        fig_size = (7, 5)
         bar_width = 0.35
         # num_bars_per_group = 2
         epochs = NUMEPOCHS
@@ -1087,7 +1049,7 @@ def plot_total_data_movement(
             + data[0].RangeReduceWrittenBytes
         )
 
-    fig_size = (6, 4)
+    fig_size = (7, 5)
     fig, ax = plt.subplots(figsize=fig_size)
 
     for approach, data in approach_data.items():
@@ -1100,44 +1062,6 @@ def plot_total_data_movement(
         log_metric_stats[approach] = [data / convert_to_]
 
     log_metric(log_metric_stats, Metric.OVERALL_DATA_MOVEMENT)
-    # if "RocksDB" in approach_data.keys():
-    #     print("RocksDB", approach_data["RocksDB"])
-    # if "RocksDB" in approach_data.keys() and "RocksDBTuned" in approach_data.keys():
-    #     print(
-    #         "RocksDBTuned",
-    #         (approach_data["RocksDB"] - approach_data["RocksDBTuned"])
-    #         / approach_data["RocksDB"],
-    #     )
-    # if (
-    #     "RocksDBTuned" in approach_data.keys()
-    #     and "RangeReduce[lb=0]" in approach_data.keys()
-    # ):
-    #     print(
-    #         "RangeReduce[lb=0]",
-    #         (approach_data["RocksDBTuned"] - approach_data["RangeReduce[lb=0]"])
-    #         / approach_data["RocksDBTuned"],
-    #     )
-    # if (
-    #     "RocksDBTuned" in approach_data.keys()
-    #     and "RangeReduce[lb=T^-1]" in approach_data.keys()
-    # ):
-    #     print(
-    #         "RangeReduce[lb=T^-1]",
-    #         (approach_data["RocksDBTuned"] - approach_data["RangeReduce[lb=T^-1]"])
-    #         / approach_data["RocksDBTuned"],
-    #     )
-    # if (
-    #     "RocksDBTuned" in approach_data.keys()
-    #     and "RangeReduce[lb=T^-1 & re=1]" in approach_data.keys()
-    # ):
-    #     print(
-    #         "RangeReduce[lb=T^-1 & re=1]",
-    #         (
-    #             approach_data["RocksDBTuned"]
-    #             - approach_data["RangeReduce[lb=T^-1 & re=1]"]
-    #         )
-    #         / approach_data["RocksDBTuned"],
-    #     )
 
     ax.set_ylabel("total datamovement (GB)", fontsize=12)
     ax.set_xlabel("system", fontsize=12)

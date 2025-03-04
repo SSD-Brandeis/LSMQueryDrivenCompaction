@@ -378,7 +378,6 @@ class EpochStats:
         try:
             while epoch > 0:
                 one_epoch_stats_lines = next(filereader)
-                print(one_epoch_stats_lines)
                 columnfamilydata = self._parse_one_epoch(one_epoch_stats_lines)
 
                 self._epoch_stats.append(columnfamilydata)

@@ -101,21 +101,21 @@ class Approach(Enum):
 
 
 class Metric(Enum):
-    TOTAL_WRITES = ("Total Writes (GB)",)
-    SPACE_AMP = ("Space Amplification",)
-    COMPACTION_DEBT = ("Compaction Debt (MB)",)
-    AVG_RQ_LATENCY = ("RQ Latency (avg ms)",)
-    OVERALL_DATA_MOVEMENT = ("Overall Data Movement (GB)",)
-    WL_EXECUTION_TIME = ("W/L Execution Time (sec)",)
-    RR_TRIGGERED_COUNT = ("RR Triggered Count",)
-    AVG_FILE_SIZE = ("Average File Size",)
-    TOTAL_FILES_COUNT = ("Total Files Count",)
+    TOTAL_WRITES = ("tot. writes (GB)",)
+    SPACE_AMP = ("s. amp.",)
+    COMPACTION_DEBT = ("comp. debt. (MB)",)
+    AVG_RQ_LATENCY = ("RQ lat. (avg ms)",)
+    OVERALL_DATA_MOVEMENT = ("overall data mov. (GB)",)
+    WL_EXECUTION_TIME = ("w/l exec. time (sec)",)
+    RR_TRIGGERED_COUNT = ("# RR trig",)
+    AVG_FILE_SIZE = ("avg. fsize",)
+    TOTAL_FILES_COUNT = ("tot. fcount",)
     # AVG_RQ_READ_AMP = ("Average RQ Read Amplification",)
-    AVG_BYTES_READ_RQ = ("Average Bytes Read RQ (MB)",)
-    AVG_BYTES_WRITTENT_BY_RR = ("Average Bytes Written By RR (MB)",)
-    TOTAL_COMP_READ_NOT_FOR_RR = ("Total Compaction Read (Not RR) (GB)",)
-    TAIL_RQ_LATENCY_98 = ("Tail RQ Latency 98",)
-    TAIL_RQ_LATENCY_100 = ("Tail RQ Latency 100",)
+    AVG_BYTES_READ_RQ = ("avg. bytes read RQ (MB)",)
+    AVG_BYTES_WRITTENT_BY_RR = ("avg. bytes written RR (MB)",)
+    TOTAL_COMP_READ_NOT_FOR_RR = ("tot. comp. read (Not RR) (GB)",)
+    TAIL_RQ_LATENCY_98 = ("tail RQ lat. 98",)
+    TAIL_RQ_LATENCY_100 = ("tail RQ lat. 100",)
 
     def __str__(self):
         return "%s" % self.value

@@ -143,7 +143,8 @@ class PlotEpochStats:
             total_files_count[approach] = [plot_stat[0].FilesCount]
             avg_file_size[approach] = [plot_stat[0].DBSize / (plot_stat[0].FilesCount * 1024**2)]
         log_just_metric(avg_bytes_written_by_RR, Metric.AVG_BYTES_WRITTENT_BY_RR)
-        log_metric(total_files_count, Metric.TOTAL_FILES_COUNT)
+        # log_metric(total_files_count, Metric.TOTAL_FILES_COUNT)
+        log_just_metric(total_files_count, Metric.TOTAL_FILES_COUNT)
         log_just_metric(avg_file_size, Metric.AVG_FILE_SIZE)
 
 
@@ -808,7 +809,8 @@ class PlotRangeQueryStats:
             )
             log_metric_stats[approach] = [additional_stats[approach].mean]
 
-        log_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
+        # log_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
+        log_just_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
         self._plot_percentiles(additional_stats, ax)
 
         plt.show()

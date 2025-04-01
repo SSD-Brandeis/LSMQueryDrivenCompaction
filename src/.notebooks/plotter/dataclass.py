@@ -128,3 +128,5 @@ TABLE_DATA = {
     str(Approach.RANGE_REDUCE_LB_T_MINUS_1): {},
     str(Approach.RANGE_REDUCE_LB_T_MINUS_1_AND_RE_1): {},
 }
+
+heatmap_value = dict()

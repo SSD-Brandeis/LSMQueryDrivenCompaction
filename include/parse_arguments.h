@@ -216,12 +216,12 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
                                     : env->max_multi_trivial_move;
 
   // Fluid LSM parameters
-  env->num_runs_in_smaller_level = smaller_lvl_runs_count_cmd
-                                       ? args::get(smaller_lvl_runs_count_cmd)
-                                       : env->num_runs_in_smaller_level;
-  env->num_runs_in_larger_level = larger_lvl_runs_count_cmd
-                                      ? args::get(larger_lvl_runs_count_cmd)
-                                      : env->num_runs_in_larger_level;
+  env->smaller_lvl_runs_count = smaller_lvl_runs_count_cmd
+                                    ? args::get(smaller_lvl_runs_count_cmd)
+                                    : env->smaller_lvl_runs_count;
+  env->larger_lvl_runs_count = larger_lvl_runs_count_cmd
+                                   ? args::get(larger_lvl_runs_count_cmd)
+                                   : env->larger_lvl_runs_count;
 
   return 0;
 }

@@ -71,3 +71,6 @@ __pycache__
 # db
 db/**
 saveddb/**
+
+# YCSB
+lib/ycsb*

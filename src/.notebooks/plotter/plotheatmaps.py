@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 
 from plotter import *
-from .dataclass import HeatMapStat, AdditionalStats, RQColumn
+from .dataclass import HeatMapStat, AdditionalStats, RQColumn, heatmap_value
 
 class PlotHeatMaps:
     LAST_EPOCH_INDEX = NUMEPOCHS-1
@@ -70,6 +70,7 @@ class PlotHeatMaps:
         _, ax = plt.subplots(figsize=self.FIGSIZE)
 
         pivot_table = df.pivot(index="ub", columns="lb", values=col)
+        heatmap_value[col] = pivot_table.to_dict()
         sns.heatmap(
             pivot_table,
             annot=True,

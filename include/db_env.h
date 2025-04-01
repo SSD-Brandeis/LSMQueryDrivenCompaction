@@ -444,11 +444,6 @@ public:
   float upper_threshold = std::numeric_limits<float>::max(); // [ub]
 
   long long min_entries_shld_be_read_per_lvl = 0; // [epl]
-
-  // number of runs(tiers) in smaller levels
-  int num_runs_in_smaller_level = 1;
-  // number of runs(tiers) in larger levels
-  int num_runs_in_larger_level = 1;
 #pragma endregion
 
 #pragma region[FluidLSM]

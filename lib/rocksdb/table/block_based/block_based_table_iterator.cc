@@ -486,6 +486,7 @@ void BlockBasedTableIterator::CheckOutOfBound() {
             /*b_has_ts=*/true) <= 0;
   }
 
+  // (shubham): range_query_partial_block_read is deprecated and no longer used
   if (read_options_.range_query_partial_block_read && Valid()) {
     if (is_seeked_for_range_query_once) {
       is_out_of_bound_ = false;

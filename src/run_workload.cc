@@ -83,9 +83,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   workload_file.seekg(0, std::ios::beg);
 
 #ifdef PROFILE
-  unsigned long num_epochs = 11;
+  unsigned long num_epochs = 8;
   unsigned long op_in_epoch =
       (env->num_updates / num_epochs) + (env->num_range_queries / num_epochs);
+  unsigned long op_done_in_epoch = 0;
+  std::cout << op_in_epoch << std::endl;
 #endif // PROFILE
 
 #ifdef TIMER
@@ -159,6 +161,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         ith_op += 1;
         continue;
       }
+#ifdef PROFILE
+      op_done_in_epoch += 1;
+#endif // PROFILE
 
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
@@ -180,6 +185,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         ith_op += 1;
         continue;
       }
+#ifdef PROFILE
+      op_done_in_epoch += 1;
+#endif // PROFILE
 
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
@@ -201,6 +209,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         ith_op += 1;
         continue;
       }
+#ifdef PROFILE
+      op_done_in_epoch += 1;
+#endif // PROFILE
 
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
@@ -222,6 +233,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         ith_op += 1;
         continue;
       }
+#ifdef PROFILE
+      op_done_in_epoch += 1;
+#endif // PROFILE
 
       uint64_t keys_returned = 0, keys_read = 0;
       bool did_run_RR = false;
@@ -297,13 +311,13 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       (*buffer) << "Inserts are completed ..." << std::endl;
       LogTreeState(db, buffer);
       LogRocksDBStatistics(db, options, buffer);
+    } else if (op_done_in_epoch == op_in_epoch && ith_op > env->num_inserts) {
+      (*buffer) << "=====================" << std::endl;
+      (*buffer) << "One Epoch done ... " << ith_op << " operation" << std::endl;
+      LogTreeState(db, buffer);
+      LogRocksDBStatistics(db, options, buffer);
+      op_done_in_epoch = 0;
     }
-    // else if (ith_op == op_in_epoch) {
-    //     (*buffer) << "=====================" << std::endl;
-    //     (*buffer) << "One Epoch done ... " << ith_op << " operation" <<
-    //     std::endl; LogTreeState(db, buffer); LogRocksDBStatistics(db,
-    //     options, buffer);
-    // }
 #endif // PROFILE
 
     if (is_last_line)

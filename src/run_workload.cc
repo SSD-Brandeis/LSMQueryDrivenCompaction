@@ -8,6 +8,7 @@
 
 #include "config_options.h"
 #include "utils.h"
+#include "perf_counter.h"
 
 std::string buffer_file = "workload.log";
 std::string rqstats_file = "range_queries.csv";
@@ -91,8 +92,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
 #ifdef TIMER
   unsigned long inserts_exec_time = 0, updates_exec_time = 0, pq_exec_time = 0,
                 pdelete_exec_time = 0, rq_exec_time = 0;
-  Buffer rqstats(rqstats_file);
-  rqstats // adds a header
+  std::unique_ptr<Buffer> rqstats = std::make_unique<Buffer>(rqstats_file);
+  (*rqstats) // adds a header
       << "RQ Number, RQ Total Time, "
          //  "Data uBytes Written Back, Total "
          //  "uBytes Written Back, uEntries Count Written Back, "
@@ -100,7 +101,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
          //  "Data unBytes Written Back, Total unBytes "
          //  "Written Back, unEntries Count Written Back, "
          "Total Entries Returned, "
-         "RQ Refresh Time, RQ Reset Time, Actual RQ Time, Did Run RR"
+         "RQ Refresh Time, RQ Reset Time, Actual RQ Time, Did Run RR, "
+         "Instructions, Cycles, L1D Cache Misses"
       << std::endl;
   unsigned long rqnumber = 0;
 #endif // TIMER
@@ -226,6 +228,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       uint64_t keys_returned = 0, keys_read = 0;
       bool did_run_RR = false;
 #ifdef TIMER
+      PerfCounter counter;
+      counter.start();
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
 
@@ -267,7 +271,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       auto duration =
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
-      rqstats << ++rqnumber << ", " << duration.count()
+      counter.stop();
+      counter.read();
+      (*rqstats) << ++rqnumber << ", " << duration.count()
               << ", "
               // << range_reduce_listener->useful_data_blocks_size_ << ", "
               // << range_reduce_listener->useful_file_size_ << ", "
@@ -279,7 +285,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
               // << range_reduce_listener->un_useful_entries_ << ", "
               << keys_returned << ", " << refresh_duration << ", "
               << reset_duration << ", " << actual_range_time << ", "
-              << did_run_RR << std::endl;
+              << did_run_RR;
+        counter.reportCSV(rqstats); 
+        (*rqstats) << std::endl;
 #endif // TIMER
       break;
     }

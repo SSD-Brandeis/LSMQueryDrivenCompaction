@@ -311,12 +311,28 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       (*buffer) << "Inserts are completed ..." << std::endl;
       LogTreeState(db, buffer);
       LogRocksDBStatistics(db, options, buffer);
+#ifdef TIMER
+      (*buffer) << "Inserts Execution Time: " << inserts_exec_time << std::endl;
+      (*buffer) << "Updates Execution Time: " << updates_exec_time << std::endl;
+      (*buffer) << "PointQuery Execution Time: " << pq_exec_time << std::endl;
+      (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time
+                << std::endl;
+      (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
+#endif // TIMER
     } else if (op_done_in_epoch == op_in_epoch && ith_op > env->num_inserts) {
       (*buffer) << "=====================" << std::endl;
       (*buffer) << "One Epoch done ... " << ith_op << " operation" << std::endl;
       LogTreeState(db, buffer);
       LogRocksDBStatistics(db, options, buffer);
       op_done_in_epoch = 0;
+#ifdef TIMER
+      (*buffer) << "Inserts Execution Time: " << inserts_exec_time << std::endl;
+      (*buffer) << "Updates Execution Time: " << updates_exec_time << std::endl;
+      (*buffer) << "PointQuery Execution Time: " << pq_exec_time << std::endl;
+      (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time
+                << std::endl;
+      (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
+#endif // TIMER
     }
 #endif // PROFILE
 

@@ -358,7 +358,7 @@ Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
   read_options_.enable_range_query_compaction = rqdc_enabled;
   read_options_.range_start_key = start_key;
   read_options_.range_end_key = end_key;
-  read_options_.seq = db_impl_->GetLatestSequenceNumber();
+  // read_options_.seq = db_impl_->GetLatestSequenceNumber();
   db_impl_->read_options_ = read_options_;
 
   auto pause_status = db_impl_->PauseBackgroundWork();

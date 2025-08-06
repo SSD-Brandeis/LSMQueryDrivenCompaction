@@ -7,8 +7,8 @@
 #include <tuple>
 
 #include "config_options.h"
-#include "utils.h"
 #include "perf_counter.h"
+#include "utils.h"
 
 std::string buffer_file = "workload.log";
 std::string rqstats_file = "range_queries.csv";
@@ -93,7 +93,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
 
 #ifdef TIMER
   unsigned long inserts_exec_time = 0, updates_exec_time = 0, pq_exec_time = 0,
-                pdelete_exec_time = 0, rq_exec_time = 0;
+                pdelete_exec_time = 0, rq_exec_time = 0, rdelete_exec_time = 0;
   std::unique_ptr<Buffer> rqstats = std::make_unique<Buffer>(rqstats_file);
   (*rqstats) // adds a header
       << "RQ Number, RQ Total Time, "
@@ -187,9 +187,6 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         ith_op += 1;
         continue;
       }
-#ifdef PROFILE
-      op_done_in_epoch += 1;
-#endif // PROFILE
 
 #ifdef TIMER
       auto start = std::chrono::high_resolution_clock::now();
@@ -242,8 +239,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       uint64_t keys_returned = 0, keys_read = 0;
       bool did_run_RR = false;
 #ifdef TIMER
-      PerfCounter counter;
-      counter.start();
+      // PerfCounter counter;
+      // counter.start();
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
 
@@ -285,23 +282,43 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       auto duration =
           std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       rq_exec_time += duration.count();
-      counter.stop();
-      counter.read();
-      (*rqstats) << ++rqnumber << ", " << duration.count()
-              << ", "
-              // << range_reduce_listener->useful_data_blocks_size_ << ", "
-              // << range_reduce_listener->useful_file_size_ << ", "
-              // << range_reduce_listener->useful_entries_ << ", "
-              << keys_read
-              << ", "
-              // << range_reduce_listener->un_useful_data_blocks_size_
-              // << ", " << range_reduce_listener->un_useful_file_size_ << ", "
-              // << range_reduce_listener->un_useful_entries_ << ", "
-              << keys_returned << ", " << refresh_duration << ", "
-              << reset_duration << ", " << actual_range_time << ", "
-              << did_run_RR;
-        counter.reportCSV(rqstats); 
-        (*rqstats) << std::endl;
+      // counter.stop();
+      // counter.read();
+      (*rqstats)
+          << ++rqnumber << ", " << duration.count()
+          << ", "
+          // << range_reduce_listener->useful_data_blocks_size_ << ", "
+          // << range_reduce_listener->useful_file_size_ << ", "
+          // << range_reduce_listener->useful_entries_ << ", "
+          << keys_read
+          << ", "
+          // << range_reduce_listener->un_useful_data_blocks_size_
+          // << ", " << range_reduce_listener->un_useful_file_size_ << ", "
+          // << range_reduce_listener->un_useful_entries_ << ", "
+          << keys_returned << ", " << refresh_duration << ", " << reset_duration
+          << ", " << actual_range_time << ", " << did_run_RR;
+      // counter.reportCSV(rqstats);
+      (*rqstats) << std::endl;
+#endif // TIMER
+      break;
+    }
+      // [RangeDelete]
+    case 'R': {
+      std::string start_key, end_key;
+      stream >> start_key >> end_key;
+      if (env->GetSnapshotTillOp() >= ith_op + 1 && db_snapshot_exist) {
+        ith_op += 1;
+        continue;
+      }
+#ifdef TIMER
+      auto start = std::chrono::high_resolution_clock::now();
+#endif // TIMER
+      s = db->DeleteRange(write_options, start_key, end_key);
+#ifdef TIMER
+      auto stop = std::chrono::high_resolution_clock::now();
+      rdelete_exec_time +=
+          std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start)
+              .count();
 #endif // TIMER
       break;
     }
@@ -326,6 +343,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time
                 << std::endl;
       (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
+      (*buffer) << "RangeDelete Execution Time: " << rdelete_exec_time
+                << std::endl;
 #endif // TIMER
     } else if (op_done_in_epoch == op_in_epoch && ith_op > env->num_inserts) {
       (*buffer) << "=====================" << std::endl;
@@ -340,6 +359,8 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time
                 << std::endl;
       (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
+      (*buffer) << "RangeDelete Execution Time: " << rdelete_exec_time
+                << std::endl;
 #endif // TIMER
     }
 #endif // PROFILE
@@ -366,6 +387,7 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
   (*buffer) << "PointQuery Execution Time: " << pq_exec_time << std::endl;
   (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time << std::endl;
   (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
+  (*buffer) << "RangeDelete Execution Time: " << rdelete_exec_time << std::endl;
 #endif // TIMER
 
   // delete iterator and close db

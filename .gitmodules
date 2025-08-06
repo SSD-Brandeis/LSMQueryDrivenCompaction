@@ -4,3 +4,6 @@
 [submodule "lib/KV-WorkloadGenerator"]
 	path = lib/KV-WorkloadGenerator
 	url = https://github.com/SSD-Brandeis/KV-WorkloadGenerator.git
+[submodule "lib/tectonic"]
+	path = lib/tectonic
+	url = https://github.com/SSD-Brandeis/tectonic

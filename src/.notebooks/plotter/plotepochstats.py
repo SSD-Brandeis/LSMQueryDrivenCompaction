@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 from plotter import *
+from .plotstyles import bar_styles, line_styles
 from .dataclass import (
     AdditionalStats,
     PlottingStats,
@@ -17,6 +18,15 @@ from .dataclass import (
     TABLE_DATA,
 )
 
+method_mapping = {
+    "RocksDB": "RocksDB",
+    "RocksDBTuned": "RocksDBTuned",
+    "RangeReduce[lb=0 & smlck=0]": "MergeOnScan",
+    "RangeReduce[lb=0]": "FileSizeAwareMergeOnScan",
+    "RangeReduce[lb=T^-1]": "BoundedMerge",
+    "RangeReduce[lb=T^-1 & re=1]": "RangeReduce[level renaming & bounded merge]",
+}
+
 def log_just_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
     if "RocksDB" in approach_data.keys():
         TABLE_DATA[str(Approach.ROCKSDB)][str(metric)] = approach_data["RocksDB"][0]
@@ -25,28 +35,28 @@ def log_just_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metri
             str(metric)
         ] = approach_data["RocksDBTuned"][0]
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=0 & smlck=0]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_0_AND_SMLCK_0)][
             str(metric)
         ] = approach_data["RangeReduce[lb=0 & smlck=0]"][0]
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=0]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_0)][
             str(metric)
         ] = approach_data["RangeReduce[lb=0]"][0]
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=T^-1]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_T_MINUS_1)][
             str(metric)
         ] = approach_data["RangeReduce[lb=T^-1]"][0]
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=T^-1 & re=1]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_T_MINUS_1_AND_RE_1)][
@@ -63,74 +73,75 @@ def log_metric(approach_data: Dict[str, List[PlottingStats]], metric: Metric):
             str(metric)
         ] = f'{round(((approach_data["RocksDBTuned"][0] - approach_data["RocksDB"][0])/ approach_data["RocksDB"][0]) * 100,2,)}%'
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=0 & smlck=0]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_0_AND_SMLCK_0)][
             str(metric)
-        ] = f'{round(((approach_data["RangeReduce[lb=0 & smlck=0]"][0] - approach_data["RocksDBTuned"][0]) / approach_data["RocksDBTuned"][0]) * 100,2,)}%'
+        ] = f'{round(((approach_data["RangeReduce[lb=0 & smlck=0]"][0] - approach_data["RocksDB"][0]) / approach_data["RocksDB"][0]) * 100,2,)}%'
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=0]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_0)][
             str(metric)
-        ] = f'{round(((approach_data["RangeReduce[lb=0]"][0] - approach_data["RocksDBTuned"][0])/ approach_data["RocksDBTuned"][0]) * 100,2,)}%'
+        ] = f'{round(((approach_data["RangeReduce[lb=0]"][0] - approach_data["RocksDB"][0])/ approach_data["RocksDB"][0]) * 100,2,)}%'
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=T^-1]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_T_MINUS_1)][
             str(metric)
-        ] = f'{round(((approach_data["RangeReduce[lb=T^-1]"][0] - approach_data["RocksDBTuned"][0])/ approach_data["RocksDBTuned"][0]) * 100,2,)}%'
+        ] = f'{round(((approach_data["RangeReduce[lb=T^-1]"][0] - approach_data["RocksDB"][0])/ approach_data["RocksDB"][0]) * 100,2,)}%'
     if (
-        "RocksDBTuned" in approach_data.keys()
+        "RocksDB" in approach_data.keys()
         and "RangeReduce[lb=T^-1 & re=1]" in approach_data.keys()
     ):
         TABLE_DATA[str(Approach.RANGE_REDUCE_LB_T_MINUS_1_AND_RE_1)][
             str(metric)
-        ] = f'{round(((approach_data["RangeReduce[lb=T^-1 & re=1]"][0] - approach_data["RocksDBTuned"][0])/ approach_data["RocksDBTuned"][0]) * 100,2,)}%'
+        ] = f'{round(((approach_data["RangeReduce[lb=T^-1 & re=1]"][0] - approach_data["RocksDB"][0])/ approach_data["RocksDB"][0]) * 100,2,)}%'
 
 
 class PlotEpochStats:
     kw_args = {
         "RocksDB": {
-            "label": "RocksDB",
+            "label": method_mapping["RocksDB"],
             "color": "None",
             "edgecolor": "black",
             "hatch": "",
         },
         "RocksDBTuned": {
-            "label": "RocksDBTuned",
+            "label": method_mapping["RocksDBTuned"],
             "color": "None",
             "edgecolor": "black",
             "hatch": "/",
         },
         "RangeReduce[lb=0]": {
-            "label": "RangeReduce[lb=0]",
+            "label": method_mapping["RangeReduce[lb=0]"],
             "color": "None",
             "edgecolor": "black",
             "hatch": "\\",
         },
         "RangeReduce[lb=T^-1]": {
-            "label": "RangeReduce[lb=T^-1]",
+            "label": method_mapping["RangeReduce[lb=T^-1]"],
             "color": "None",
             "edgecolor": "black",
-            "hatch": "x",
+            "hatch": "-",
         },
         "RangeReduce[lb=T^-1 & re=1]": {
-            "label": "RangeReduce[lb=T^-1 & re=1]",
+            "label": method_mapping["RangeReduce[lb=T^-1 & re=1]"],
             "color": "None",
             "edgecolor": "black",
             "hatch": "+",
         },
         "RangeReduce[lb=0 & smlck=0]": {
-            "label": "RangeReduce[lb=0 & smlck=0]",
+            "label": method_mapping["RangeReduce[lb=0 & smlck=0]"],
             "color": "None",
             "edgecolor": "black",
             "hatch": "*",
         },
     }
+    bar_width = 0.6
 
     def __init__(self, approaches: Dict[str, List[PlottingStats]]):
         self.approaches_: Dict[str, List[PlottingStats]] = deepcopy(approaches)
@@ -149,47 +160,58 @@ class PlotEpochStats:
 
 
     def plot_total_bytes_written(self):
-        convert_to_ = 1024**3
+        convert_to_ = 1024**4
         approach_data: Dict[str, List[PlottingStats]] = dict()
         max_ylim = 0
 
         for approach, data in self.approaches_.items():
             approach_data[approach] = [
                 (stat.CompactionWrittenBytes + stat.RangeReduceWrittenBytes)
-                / convert_to_
+                # / convert_to_
                 for stat in data
             ]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
         log_metric(approach_data, Metric.TOTAL_WRITES)
 
-        fig_size = (7, 5)
-
+        fig_size = (2.8, 4.4)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
             ax.bar(
                 approach,
                 data,
-                **self.kw_args[approach],
+                width=self.bar_width,
+                # **self.kw_args[approach],
+                **bar_styles[approach],
             )
 
-        ax.set_ylabel("total write (GB)", fontsize=12)
-        ax.set_xlabel("system", fontsize=12)
+        ax.set_ylabel("total write (TB)")
         ax.set_xticks([])
 
-        ax.set_ylim(bottom=0, top=max_ylim + max_ylim * 0.18)
+        desired_yticks = [0, 0.5, 1]
+        desired_tb_yticks = [byte * convert_to_ for byte in desired_yticks]
+        ax.set_yticks(desired_tb_yticks)
+        ax.set_yticklabels([0] + [f"{byte:.1f}" for byte in desired_yticks[1:]])
 
-        ax.set_title("total write (compaction + RangeReduce compactions)", fontsize=12)
+        ax.set_ylim(bottom=0, top=desired_yticks[-1] * convert_to_)
+        ax.set_xticks(range(len(approach_data)))
+        # ax.set_xticklabels([per for per in ['RDB', 'MOS', 'FSMS', 'BM']], rotation=90)
+        ax.set_xticklabels([per for per in ['RDB', 'BM', 'RR']], rotation=90)
+        # ax.set_title("total write (compaction + RangeReduce compactions)")
 
-        fig.legend(
-            loc="upper center",
-            ncol=2,
-            fontsize=10,
-            bbox_to_anchor=(0.51, 0.90),
-            frameon=False,
-            columnspacing=0.5,
-        )
+        # fig.legend(
+        #     loc="upper center",
+        #     ncol=2,
+        #     fontsize=10,
+        #     bbox_to_anchor=(0.51, 0.90),
+        #     frameon=False,
+        #     columnspacing=0.5,
+        # )
+        ax.text(-0.4, -0.24, "(E)", transform=ax.transAxes,
+                fontweight="bold", va="bottom")
+        # plt.tight_layout()
+        plt.savefig(f'{TAG}-total-writes.pdf', bbox_inches='tight', pad_inches=0.06)
         plt.show()
 
     def plot_database_size(self):
@@ -227,41 +249,74 @@ class PlotEpochStats:
         plt.show()
 
     def plot_compaction_debt(self):
-        convert_to_ = 1024**2
+        convert_to_ = 1024**3
         approach_data: Dict[str, List[PlottingStats]] = dict()
         max_ylim = 0
 
         for approach, data in self.approaches_.items():
             approach_data[approach] = [
-                stat.CompactionDebt / convert_to_ for stat in data
+                stat.CompactionDebt 
+                # / convert_to_ 
+                for stat in data
             ]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
         log_metric(approach_data, Metric.COMPACTION_DEBT)
 
-        fig_size = (7, 5)
+        fig_size = (2.8, 4.4)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
             ax.bar(
                 approach,
                 data,
-                **self.kw_args[approach],
+                width=self.bar_width,
+                **bar_styles[approach],
+                # **self.kw_args[approach],
             )
 
-        ax.set_ylabel("compaction debt (MB)", fontsize=12)
-        ax.set_xlabel("system", fontsize=12)
-        ax.set_ylim(bottom=0, top=max_ylim + max_ylim * 0.25)
-        ax.set_xticks([])
+        ax.set_ylabel("compaction debt (GB)")
+        ax.yaxis.set_label_coords(-0.2, 0.48)
+        # ax.set_xlabel("system")
 
-        fig.legend(
-            loc="upper center",
-            ncol=2,
-            fontsize=10,
-            bbox_to_anchor=(0.51, 0.90),
-            frameon=False,
-            columnspacing=0.5,
-        )
+        desired_yticks = [0, 5, 10, 15]
+        desired_tb_yticks = [byte * convert_to_ for byte in desired_yticks]
+        ax.set_yticks(desired_tb_yticks)
+        ax.set_yticklabels([0] + [f"{byte}" for byte in desired_yticks[1:]])
+
+        # desired_yticks = [0, 0.5, 1, 1.5]
+        # desired_gb_yticks = [byte * convert_to_ for byte in desired_yticks]
+        # ax.set_yticks(desired_gb_yticks)
+        # ax.set_yticklabels([f"{byte:.2f}" for byte in desired_yticks])
+
+        ax.set_ylim(bottom=0, top=desired_tb_yticks[-1])
+        ax.set_xticks(range(len(approach_data)))
+        # ax.set_xticklabels([per for per in ['RDB', 'MOS', 'FSMS', 'BM']], rotation=90)
+        ax.set_xticklabels([per for per in ['RDB', 'BM', 'RR']], rotation=90)
+
+        # fig.legend(
+        #     loc="upper center",
+        #     ncol=2,
+        #     bbox_to_anchor=(0.51, 0.90),
+        #     frameon=False,
+        #     columnspacing=0.5,
+        # )
+        ax.text(-0.4, -0.24, "(C)", transform=ax.transAxes,
+                fontweight="bold", va="bottom")
+        # plt.tight_layout()
+        plt.savefig(f'{TAG}-compaction-debt.pdf', bbox_inches='tight', pad_inches=0.06)
+
+        handles, labels = ax.get_legend_handles_labels()
+        
+        # Create a new figure solely for the legend
+        legend_fig = plt.figure(figsize=(8, 2))
+
+        # Add legend to the new figure (centered, with 2 columns and desired spacing)
+        legend_fig.legend(handles, labels, loc="center", ncol=4, frameon=False, borderaxespad=0, labelspacing=0, 
+                    borderpad=0)
+        
+        # Save the legend figure separately; bbox_inches='tight' helps crop extra whitespace.
+        legend_fig.savefig(f'{TAG}-bounded-metric-legend.pdf', bbox_inches='tight', pad_inches=0.015)
         plt.show()
 
     def plot_write_amp_debt(self):
@@ -382,29 +437,35 @@ class PlotEpochStats:
 
         log_metric(approach_data, Metric.SPACE_AMP)
 
-        fig_size = (7, 5)
+        fig_size = (2.8, 4.4)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
             ax.bar(
                 approach,
                 data,
-                **self.kw_args[approach],
+                width=self.bar_width,
+                **bar_styles[approach],
             )
 
-        ax.set_ylabel("space amplification", fontsize=12)
-        ax.set_xlabel("system", fontsize=12)
+        ax.set_ylabel("space amplification")
+        # ax.set_xlabel("system")
         ax.set_ylim(bottom=0, top=max_ylim + max_ylim * 0.25)
-        ax.set_xticks([])
+        ax.set_xticks(range(len(approach_data)))
+        # ax.set_xticklabels([per for per in ['RDB', 'MOS', 'FSMS', 'BM']], rotation=90)
+        ax.set_xticklabels([per for per in ['RDB', 'BM', 'RR']], rotation=90)
 
-        fig.legend(
-            loc="upper center",
-            ncol=2,
-            fontsize=10,
-            bbox_to_anchor=(0.51, 0.90),
-            frameon=False,
-            columnspacing=0.5,
-        )
+        # fig.legend(
+        #     loc="upper center",
+        #     ncol=2,
+        #     bbox_to_anchor=(0.51, 0.90),
+        #     frameon=False,
+        #     columnspacing=0.5,
+        # )
+        ax.text(-0.4, -0.24, "(D)", transform=ax.transAxes,
+                fontweight="bold", va="bottom")
+        # plt.tight_layout()
+        plt.savefig(f'{TAG}-space-amplification.pdf', bbox_inches='tight', pad_inches=0.06)
         plt.show()
 
     # def plot_total_data_movement(self):
@@ -495,40 +556,65 @@ class PlotEpochStats:
 
     def plot_workload_exec_time(self):
         convert_to_ = 1000**3
+        to_hours = 1/(60 * 60)
         approach_data: Dict[str, List[PlottingStats]] = dict()
         max_ylim = 0
 
         for approach, data in self.approaches_.items():
             approach_data[approach] = [
-                stat.WorkloadExecutionTime / convert_to_ for stat in data
+                stat.WorkloadExecutionTime for stat in data
             ]
             max_ylim = max(max_ylim, max(approach_data[approach]))
 
         log_metric(approach_data, Metric.WL_EXECUTION_TIME)
 
-        fig_size = (7, 5)
+        fig_size = (2.8, 4.4)
         fig, ax = plt.subplots(figsize=fig_size)
 
         for approach, data in approach_data.items():
             ax.bar(
                 approach,
                 data,
-                **self.kw_args[approach],
+                width=self.bar_width,
+                **bar_styles[approach],
             )
 
-        ax.set_ylabel("workload execution time (sec)", fontsize=12)
-        ax.set_xlabel("system", fontsize=12)
-        ax.set_ylim(bottom=0, top=max_ylim + max_ylim * 0.25)
+        ax.set_ylabel("execution time (hour)")
+        # ax.set_xlabel("system", fontsize=12)
+        # ax.set_ylim(bottom=0, top=max_ylim + max_ylim * 0.25)
         ax.set_xticks([])
 
-        fig.legend(
-            loc="upper center",
-            ncol=2,
-            fontsize=10,
-            bbox_to_anchor=(0.51, 0.90),
-            frameon=False,
-            columnspacing=0.5,
-        )
+        desired_yticks = [0, 2, 4]
+        desired_sec_yticks = [(byte/to_hours) * convert_to_ for byte in desired_yticks]
+        ax.set_yticks(desired_sec_yticks)
+        ax.set_yticklabels([0] + [f"{byte:.1f}" for byte in desired_yticks[1:]])
+
+        ax.set_ylim(bottom=0, top=(desired_yticks[-1]/to_hours) * convert_to_)
+        ax.set_xticks(range(len(approach_data)))
+        # ax.set_xticklabels([per for per in ['RDB', 'MOS', 'FSMS', 'BM']], rotation=90)
+        ax.set_xticklabels([per for per in ['RDB', 'BM', 'RR']], rotation=90)
+        # ax.set_title("total write (compaction + RangeReduce compactions)")
+
+        # fig.legend(
+        #     loc="upper center",
+        #     ncol=2,
+        #     fontsize=10,
+        #     bbox_to_anchor=(0.51, 0.90),
+        #     frameon=False,
+        #     columnspacing=0.5,
+        # )
+        ax.text(-0.4, -0.24, "(F)", transform=ax.transAxes,
+                fontweight="bold", va="bottom")
+        plt.savefig(f'{TAG}-wkl-execution-time.pdf', bbox_inches='tight', pad_inches=0.06)
+
+        # fig.legend(
+        #     loc="upper center",
+        #     ncol=2,
+        #     fontsize=10,
+        #     bbox_to_anchor=(0.51, 0.90),
+        #     frameon=False,
+        #     columnspacing=0.5,
+        # )
         plt.show()
 
     def plot_levels_state(self):
@@ -536,7 +622,7 @@ class PlotEpochStats:
         rqdc_levels_state = [rqdc.LevelsState for rqdc in self._rqdc]
 
         fig_size = (7, 5)
-        bar_width = 0.35
+        bar_width = 0.3
         # num_bars_per_group = 2
         epochs = NUMEPOCHS
         num_lvls = len(vanilla_levels_state[0])
@@ -626,24 +712,38 @@ class PlotEpochStats:
 class PlotRangeQueryStats:
     kw_args = {
         "RocksDB": {
-            "color": "saddlebrown",
+            "color": "black",
+            "linestyle": "--",  # dashed line
+            "markersize": 8,
         },
         "RocksDBTuned": {
-            "color": "steelblue",
+            "color": "black",
+            "linestyle": "-.",  # dash-dot line
+            "markersize": 8,
         },
         "RangeReduce[lb=0]": {
-            "color": "#1B9E77",  # Teal
+            "color": "black",
+            "linestyle": ":",   # dotted line
+            "markersize": 8,
         },
         "RangeReduce[lb=T^-1]": {
-            "color": "#D95F02",  # Burnt Orange
+            "color": "black",
+            "linestyle": "-",   # solid line
+            "markersize": 8,
         },
         "RangeReduce[lb=T^-1 & re=1]": {
-            "color": "#7570B3",  # Muted Purple
+            "color": "black",
+            "linestyle": (0, (3, 1, 1, 1)),  # custom dash pattern
+            "markersize": 8,
         },
         "RangeReduce[lb=0 & smlck=0]": {
-            "color": "#E7298A",
+            "color": "black",
+            "linestyle": (0, (5, 5)),  # custom dash pattern (long dashes)
+            "markersize": 8,
         },
     }
+
+
 
     def __init__(self, approaches: Dict[str, pd.DataFrame]):
         self.approaches_: Dict[str, pd.DataFrame] = deepcopy(approaches)
@@ -765,40 +865,67 @@ class PlotRangeQueryStats:
                 .to_list()
             )
 
-        fig_size = (20, 4)
+        fig_size = (6, 4)
         fig, ax = plt.subplots(figsize=fig_size)
 
+        step = 30
         for approach, data in approach_data.items():
+            # ax.plot(
+            #     range(len(data)),
+            #     data,
+            #     label=approach,
+            #     alpha=0.8,
+            #     **self.kw_args[approach],
+            # )
+            # Compute and plot the rolling average
+            series_data = pd.Series(data)
+            rolling_avg = series_data.rolling(window=500, min_periods=1).mean()
             ax.plot(
-                range(len(data)),
-                data,
-                label=approach,
+                range(0, len(data), step),
+                rolling_avg[::step],
+                # label=method_mapping[approach],
                 alpha=0.8,
-                **self.kw_args[approach],
+                **line_styles[approach],
             )
 
-        ax.set_ylabel("total read (MB)", fontsize=12)
-        ax.set_xlabel("range query number", fontsize=12)
+
+        ax.set_ylabel("bytes read (MB)")
+        ax.set_xlabel("range query number")
 
         ax.set_ylim(bottom=0)
 
         ax.xaxis.set_major_locator(ticker.FixedLocator(ax.get_xticks()))
-        ax.set_xticklabels([f"{int(tick)}" for tick in ax.get_xticks()], fontsize=12)
+        # ax.set_xticklabels([f"{int(tick)}" for tick in ax.get_xticks()])
 
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
-        ax.set_yticklabels(
-            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
-            fontsize=12,
-        )
-        ax.set_title("total read", fontsize=12)
 
-        fig.legend(
-            loc="lower center",
-            ncol=5,
-            fontsize=12,
-            bbox_to_anchor=(0.5, 0.1),
-            frameon=False,
+        desired_mb_ticks = [0, 100, 200]
+        desired_byte_ticks = [mb * convert_to_ for mb in desired_mb_ticks]
+        ax.set_yticks(desired_byte_ticks)
+        ax.set_yticklabels([0] + [str(round(mb)) for mb in desired_mb_ticks[1:]])
+        ax.set_ylim(0, desired_mb_ticks[-1] * convert_to_)
+        ax.set_yticklabels(
+            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()]
         )
+
+        desired_xticks = [0, 2250, 4500, 6750, 9000]
+        ax.set_xticks(desired_xticks)
+        ax.set_xticklabels([str(x) for x in desired_xticks])
+
+        ax.text(-0.15, -0.22, "(A)", transform=ax.transAxes,
+                fontweight="bold", va="bottom")
+        ax.text(0.2, 0.1, "500-point rolling average", transform=ax.transAxes,
+                fontweight="bold", va="bottom", fontsize=20)
+
+        # fig.legend(
+        #     loc="lower center",
+        #     ncol=5,
+        #     fontsize=12,
+        #     bbox_to_anchor=(0.5, 0.1),
+        #     frameon=False,
+        # )
+        plt.tight_layout()
+        plt.savefig(f'{TAG}-range-query-bytes-read.pdf', bbox_inches='tight', pad_inches=0.06)
 
         additional_stats: Dict[str, AdditionalStats] = dict()
         log_metric_stats: Dict[str, List[float]] = dict()
@@ -809,53 +936,114 @@ class PlotRangeQueryStats:
             )
             log_metric_stats[approach] = [additional_stats[approach].mean]
 
-        # log_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
+        # # log_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
         log_just_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
-        self._plot_percentiles(additional_stats, ax)
+        log_just_metric(log_metric_stats, Metric.AVG_BYTES_READ_RQ)
+        # self._plot_percentiles(additional_stats, ax)
 
         plt.show()
 
     def latency_for_each_range_query(self, range_query_pattern=""):
         plotting_column = str(RQColumn.RQ_TOTAL_TIME)
-        convert_to_ = 1000**2
+        convert_to_ = 1000**3
         approach_data = dict()
 
         for approach, data in self.approaches_.items():
             approach_data[approach] = data[plotting_column].to_list()
 
-        fig_size = (20, 4)
+        fig_size = (6, 4)
         fig, ax = plt.subplots(figsize=fig_size)
 
+        step=30
+
         for approach, data in approach_data.items():
+            # ax.plot(
+            #     range(len(data)),
+            #     data,
+            #     label=approach,
+            #     alpha=0.8,
+            #     **self.kw_args[approach],
+            # )
+            # Compute and plot the rolling average
+            series_data = pd.Series(data)
+            rolling_avg = series_data.rolling(window=500, min_periods=1).mean()
             ax.plot(
-                range(len(data)),
-                data,
-                label=approach,
+                range(0, len(data), step),
+                rolling_avg[::step],
+                # label=method_mapping[approach],
                 alpha=0.8,
-                **self.kw_args[approach],
+                **line_styles[approach],
             )
 
-        ax.set_ylabel("latency (ms)", fontsize=12)  # µ
-        ax.set_xlabel("range query number", fontsize=12)
 
-        ax.set_ylim(bottom=0)
+        ax.set_ylabel("latency (s)")  # µ
+        ax.set_xlabel("range query number")
+
 
         ax.xaxis.set_major_locator(ticker.FixedLocator(ax.get_xticks()))
-        ax.set_xticklabels([f"{int(tick)}" for tick in ax.get_xticks()], fontsize=12)
-
+        # ax.set_xticklabels([f"{int(tick)}" for tick in ax.get_xticks()])
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
-        ax.set_yticklabels(
-            [f"{int(i/convert_to_)}" if i != 0 else "0" for i in ax.get_yticks()],
-            fontsize=12,
-        )
 
-        fig.legend(
-            loc="lower center",
-            ncol=5,
-            fontsize=12,
-            bbox_to_anchor=(0.5, 0.1),
-            frameon=False,
+
+        desired_ticks = [0, 0.5, 1.0, 1.5, 2]
+        desired_sec_ticks = [mb * convert_to_ for mb in desired_ticks]
+        ax.set_yticks(desired_sec_ticks)
+        ax.set_yticklabels([0] + [str(round(mb)) for mb in desired_ticks[1:]])
+        ax.set_yticklabels(
+            [f"{i/convert_to_}" if i != 0 else "0" for i in ax.get_yticks()]
         )
+        ax.set_ylim(bottom=0, top=desired_sec_ticks[-1])
+
+        desired_xticks = [0, 2250, 4500, 6750, 9000]
+        ax.set_xticks(desired_xticks)
+        ax.set_xticklabels([str(x) for x in desired_xticks])
+
+        ax.text(-0.18, -0.22, "(B)", transform=ax.transAxes,
+                fontweight="bold", va="bottom")
+        ax.text(0.2, 0.1, "500-point rolling average", transform=ax.transAxes,
+                fontweight="bold", va="bottom", fontsize=20)
+        
+        # fig.legend(
+        #     loc="lower center",
+        #     ncol=5,
+        #     fontsize=12,
+        #     bbox_to_anchor=(0.5, 0.1),
+        #     frameon=False,
+        # )
+
+        plt.tight_layout()
+        plt.savefig(f'{TAG}-range-query-latency.pdf', bbox_inches='tight', pad_inches=0.04)
+
+        # Create a new figure solely for the legend
+        legend_fig = plt.figure(figsize=(8, 2))
+
+        # Add your custom text above the legend
+        # legend_text = r"E=128\hspace{1cm}I=8388608\hspace{1cm}U=8388608\hspace{1cm}S=900\hspace{1cm}T=6\hspace{1cm}B=32\hspace{1cm}P=1024"
+        legend_text = (
+            f"M={round((ENTRY_SIZE*ENTRIES_PER_PAGE*NUM_PAGE_PER_FILE)/(1024*1024))}MB\\hspace{{1cm}}"
+            f"E={ENTRY_SIZE}B\\hspace{{1cm}}"
+            f"T={SIZE_RATIO}\\hspace{{1cm}}"
+            f"I={round(INSERTS/1000000, 1)}M\\hspace{{1cm}}"
+            f"U={round(UPDATES/1000000, 1)}M\\hspace{{1cm}}"
+            f"S={round(RANGE_QUERIES/1000)}K\\hspace{{1cm}}"
+            f"s={SELECTIVITY}\\hspace{{1cm}}"
+            # f"B={ENTRIES_PER_PAGE}\\hspace{{1cm}}"
+            # f"P={NUM_PAGE_PER_FILE}"
+        )
+        legend_fig.text(0.5, 0.85, legend_text, ha='center', va='center')
+        legend_fig.savefig(f'{TAG}-bounded-legend-config.pdf', bbox_inches='tight', pad_inches=0.015)
+
+        handles, labels = ax.get_legend_handles_labels()
+        
+        # Create a new figure solely for the legend
+        legend_fig = plt.figure(figsize=(8, 2))
+
+        # Add legend to the new figure (centered, with 2 columns and desired spacing)
+        legend_fig.legend(handles, labels, loc="center", ncol=4, frameon=False, borderaxespad=0, labelspacing=0, 
+                    borderpad=0)
+        
+        # Save the legend figure separately; bbox_inches='tight' helps crop extra whitespace.
+        legend_fig.savefig(f'{TAG}-bounded-legend.pdf', bbox_inches='tight', pad_inches=0.015)
 
         additional_stats: Dict[str, AdditionalStats] = dict()
         log_metric_stats: Dict[str, List[float]] = dict()
@@ -873,10 +1061,79 @@ class PlotRangeQueryStats:
         log_metric(log_metric_stats, Metric.AVG_RQ_LATENCY)
         log_metric(log_metric_stats_98, Metric.TAIL_RQ_LATENCY_98)
         log_metric(log_metric_stats_100, Metric.TAIL_RQ_LATENCY_100)
-        self._plot_percentiles(additional_stats, ax)
+        # self._plot_percentiles(additional_stats, ax)
 
         plt.show()
 
+    def plot_instructions_executed_per_range_query(self):
+        approach_data = dict()
+        convert_to_ = 10**9 # Convert to billions for easier readability
+
+        for approach, data in self.approaches_.items():
+            approach_data[approach] = (
+                data[[str(RQColumn.INSTRUCTIONS)]]
+                .apply(lambda x: x/convert_to_)[str(RQColumn.INSTRUCTIONS)]
+                .to_list()
+            )
+
+        fig_size = (6, 4)
+        fig, ax = plt.subplots(figsize=fig_size)
+
+        for approach, data in approach_data.items():
+            # Compute and plot the rolling average
+            series_data = pd.Series(data)
+            rolling_avg = series_data.rolling(window=500, min_periods=1).mean()
+            ax.plot(
+                range(len(data)),
+                rolling_avg,
+                # label=method_mapping[approach],
+                alpha=0.8,
+                **line_styles[approach],
+            )
+        ax.set_ylabel("instructions count (B)")
+        ax.set_xlabel("range query number")
+        ax.set_ylim(bottom=0, top=5)
+
+        desired_xticks = [0, 2250, 4500, 6750, 9000]
+        ax.set_xticks(desired_xticks)
+        ax.set_xticklabels([str(x) for x in desired_xticks])
+        plt.tight_layout()
+        plt.savefig(f'{TAG}-instrcutions-per-range-query.pdf', bbox_inches='tight', pad_inches=0.04)
+
+    def plot_CPU_cycles_spent_per_range_query(self):
+        approach_data = dict()
+        convert_to_ = 10**9 # Convert to billions for easier readability
+
+        for approach, data in self.approaches_.items():
+            approach_data[approach] = (
+                data[[str(RQColumn.CYCLES)]]
+                .apply(lambda x: x/convert_to_)[str(RQColumn.CYCLES)]
+                .to_list()
+            )
+
+        fig_size = (6, 4)
+        fig, ax = plt.subplots(figsize=fig_size)
+
+        for approach, data in approach_data.items():
+            # Compute and plot the rolling average
+            series_data = pd.Series(data)
+            rolling_avg = series_data.rolling(window=500, min_periods=1).mean()
+            ax.plot(
+                range(len(data)),
+                rolling_avg,
+                # label=method_mapping[approach],
+                alpha=0.8,
+                **line_styles[approach],
+            )
+        ax.set_ylabel("CPU cycles (B)")
+        ax.set_xlabel("range query number")
+        ax.set_ylim(bottom=0)
+
+        desired_xticks = [0, 2250, 4500, 6750, 9000]
+        ax.set_xticks(desired_xticks)
+        ax.set_xticklabels([str(x) for x in desired_xticks])
+        plt.tight_layout()
+        plt.savefig(f'{TAG}-cpu-cycles-per-range-query.pdf', bbox_inches='tight', pad_inches=0.04)
     # def plot_cpu_cycles(self, range_query_pattern=""):
 
     #     plotting_column = str(RQColumn.CPU_CYCLES)
@@ -1012,7 +1269,7 @@ def plot_total_data_movement(
             "label": "RangeReduce[lb=T^-1]",
             "color": "None",
             "edgecolor": "black",
-            "hatch": "x",
+            "hatch": "-",
         },
         "RangeReduce[lb=T^-1 & re=1]": {
             "label": "RangeReduce[lb=T^-1 & re=1]",
@@ -1027,8 +1284,9 @@ def plot_total_data_movement(
             "hatch": "*",
         },
     }
+    bar_width = 0.6
 
-    convert_to_ = 1024**3
+    convert_to_ = 1024**4
     plotting_stats = deepcopy(approaches_plotting_stats)
     rq_stats = deepcopy(approaches_rq_stats)
     max_ylim = 0
@@ -1051,31 +1309,45 @@ def plot_total_data_movement(
             + data[0].RangeReduceWrittenBytes
         )
 
-    fig_size = (7, 5)
+    fig_size = (2.8, 4.4)
     fig, ax = plt.subplots(figsize=fig_size)
 
     for approach, data in approach_data.items():
         ax.bar(
             approach,
-            data / convert_to_,
-            **kw_args[approach],
+            data, 
+            width=bar_width,
+            # / convert_to_,
+            **bar_styles[approach],
         )
         max_ylim = max(max_ylim, (data / convert_to_))
         log_metric_stats[approach] = [data / convert_to_]
 
     log_metric(log_metric_stats, Metric.OVERALL_DATA_MOVEMENT)
 
-    ax.set_ylabel("total datamovement (GB)", fontsize=12)
-    ax.set_xlabel("system", fontsize=12)
-    ax.set_ylim(bottom=0, top=max_ylim + max_ylim * 0.25)
-    ax.set_xticks([])
+    ax.set_ylabel("data movement (TB)")
+    # ax.set_xlabel("system")
 
-    fig.legend(
-        loc="upper center",
-        ncol=2,
-        fontsize=10,
-        bbox_to_anchor=(0.51, 0.90),
-        frameon=False,
-        columnspacing=0.5,
-    )
+    desired_ticks = [0, 1, 2]
+    desired_tb_ticks = [byte * convert_to_  for byte in desired_ticks]
+    ax.set_yticks(desired_tb_ticks)
+    ax.set_yticklabels([0] + [str(round(tb)) for tb in desired_ticks[1:]])
+
+    ax.set_ylim(bottom=0, top=2 * convert_to_)
+    ax.set_xticks(range(len(approach_data)))
+    # ax.set_xticklabels([per for per in ['RDB', 'MOS', 'FSMS', 'BM']], rotation=90)
+    ax.set_xticklabels([per for per in ['RDB', 'BM', 'RR']], rotation=90)
+
+    # fig.legend(
+    #     loc="upper center",
+    #     ncol=2,
+    #     fontsize=10,
+    #     bbox_to_anchor=(0.51, 0.90),
+    #     frameon=False,
+    #     columnspacing=0.5,
+    # )
+    ax.text(-0.4, -0.24, "(F)", transform=ax.transAxes,
+            fontweight="bold", va="bottom")
+    # plt.tight_layout()
+    plt.savefig(f'{TAG}-overall-data-movement.pdf', bbox_inches='tight', pad_inches=0.06)
     plt.show()

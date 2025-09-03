@@ -22,6 +22,11 @@ PlottingStats = namedtuple(
         "RangeReduceWrittenBytes",
         "LevelsState",
         "WorkloadExecutionTime",
+        "InsertsExecutionTime",
+        "UpdatesExecutionTime",
+        "PointQueriesExecutionTime",
+        "RangeQueriesExecutionTime",
+        "ithOp",
     ],
 )
 
@@ -63,6 +68,9 @@ class RQColumn(Enum):
     RQ_RESET_TIME = ("RQ Reset Time",)
     RQ_TIME = ("Actual RQ Time",)
     DID_RUN_RR = ("Did Run RR",)
+    INSTRUCTIONS = ("Instructions",)
+    CYCLES = ("Cycles",)
+    L1D_CACHE_MISSES = ("L1D Cache Misses",)
     # CPU_CYCLES = ("CPU Cycles",)
 
     def __str__(self):

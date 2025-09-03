@@ -3,6 +3,7 @@ import os
 
 import pandas as pd
 
+from . import SIZE_RATIO, NUMEPOCHS, TOTAL_OPERATIONS, TAG
 from .dataclass import PlottingStats
 
 
@@ -21,7 +22,7 @@ class EpochStats:
         for lvl, data in enumerate(levels):
             if lvl == last_lvl_index or levels[lvl + 1]["LevelSize"] == 0:
                 break
-            sum_of_bytes += data["LevelSize"]
+            sum_of_bytes += data["LevelSize"] * SIZE_RATIO * (last_lvl_index - lvl + 1)
 
         return sum_of_bytes
 
@@ -135,7 +136,52 @@ class EpochStats:
                 break
         return execution_time
 
-    def _read_one_epoch(self, string_to_check=["===========", "===========", "===========END HERE========="], i=0):
+    def _inserts_execution_time(self, epoch_stats: List[str]):
+        _time = 0
+
+        for line in epoch_stats:
+            if line.startswith("Inserts Execution Time"):
+                _time = int(line.split(": ")[1])
+                break
+        return _time
+
+    def _updates_execution_time(self, epoch_stats: List[str]):
+        _time = 0
+
+        for line in epoch_stats:
+            if line.startswith("Updates Execution Time"):
+                _time = int(line.split(": ")[1])
+                break
+        return _time
+
+    def _pointqueries_execution_time(self, epoch_stats: List[str]):
+        _time = 0
+
+        for line in epoch_stats:
+            if line.startswith("PointQuery Execution Time"):
+                _time = int(line.split(": ")[1])
+                break
+        return _time
+
+    def _rangequery_execution_time(self, epoch_stats: List[str]):
+        _time = 0
+
+        for line in epoch_stats:
+            if line.startswith("RangeQuery Execution Time"):
+                _time = int(line.split(": ")[1])
+                break
+        return _time
+    
+    def _get_ith_epoch_value(self, epoch_stats: List[str]):
+        val = 0
+
+        for line in epoch_stats:
+            if line.startswith("One Epoch done ..."):
+                val = int(line.split(" ")[-2])
+                break
+        return val if val != 0 else TOTAL_OPERATIONS
+
+    def _read_one_epoch(self, string_to_check=["==========="]*NUMEPOCHS+["===========END HERE========="], i=0):
         with open(self.filepath, "r") as file:
             epoch_data = list()
             grabbing_data = False
@@ -371,15 +417,18 @@ class EpochStats:
 
     def _parse_logfile(self):
         epoch = self.NUMEPOCHS
-        filereader = self._read_one_epoch()
+        if TAG not in ("pointqueries"):
+            filereader = self._read_one_epoch(string_to_check=["====================="]*10 + [ "===========END HERE========="])
+        else:
+            filereader = self._read_one_epoch()
         next(filereader)
-        next(filereader)  # Inserts are completed
+        if TAG not in ("pointqueries"):
+            next(filereader)  # Inserts are completed
 
         try:
             while epoch > 0:
                 one_epoch_stats_lines = next(filereader)
                 columnfamilydata = self._parse_one_epoch(one_epoch_stats_lines)
-
                 self._epoch_stats.append(columnfamilydata)
                 sorted_cfd = sorted(
                     columnfamilydata["Levels"], key=lambda x: x["Level"]
@@ -422,11 +471,25 @@ class EpochStats:
                                 lvl["LevelFilesCount"] for lvl in sorted_cfd
                             ],
                             "WorkloadExecutionTime": wrkld_exec_time,
+                            "InsertsExecutionTime": self._inserts_execution_time(
+                                one_epoch_stats_lines
+                            ),
+                            "UpdatesExecutionTime": self._updates_execution_time(
+                                one_epoch_stats_lines
+                            ),
+                            "PointQueriesExecutionTime": self._pointqueries_execution_time(
+                                one_epoch_stats_lines
+                            ),
+                            "RangeQueriesExecutionTime": self._rangequery_execution_time(
+                                one_epoch_stats_lines
+                            ),
+                            "ithOp": self._get_ith_epoch_value(one_epoch_stats_lines),
                         }
                     )
                 )
                 epoch -= 1
         except Exception as e:
+            print(e)
             raise Exception(
                 f"failed to parse epoch {self.NUMEPOCHS - epoch} from log file: {self.filepath}"
             )

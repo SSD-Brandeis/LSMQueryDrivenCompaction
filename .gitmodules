@@ -1,9 +1,10 @@
 [submodule "text/paper-draft"]
 	path = text/paper-draft
 	url = https://github.com/SSD-Brandeis/LSMQueryDrivenCompactionText.git
-[submodule "lib/KV-WorkloadGenerator"]
-	path = lib/KV-WorkloadGenerator
-	url = https://github.com/SSD-Brandeis/KV-WorkloadGenerator.git
 [submodule "lib/tectonic"]
 	path = lib/tectonic
 	url = https://github.com/SSD-Brandeis/tectonic
+[submodule "lib/rocksdb"]
+	path = lib/rocksdb
+	url = https://github.com/SSD-Brandeis/RocksDB-SSD.git
+	branch = RangeReduce

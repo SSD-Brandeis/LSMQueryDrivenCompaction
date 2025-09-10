@@ -8,22 +8,22 @@ def build_specs(args):
     val_size = args.entry_size * (1 - args.lmbda)
 
     group1 = {
-        "inserts": {"amount": numexpr(args.inserts), "key": { "uniform": { "len": key_size}}, "val": { "uniform": { "len": val_size}}}}
+        "inserts": {"op_count": numexpr(args.inserts), "key": { "uniform": { "len": key_size}}, "val": { "uniform": { "len": val_size}}}}
     group2 = {
-        "updates": {"amount": numexpr(args.updates), "val": { "uniform": { "len": val_size}}, "selection": {"uniform": {"min": 0, "max": 1}}},
+        "updates": {"op_count": numexpr(args.updates), "val": { "uniform": { "len": val_size}}, "selection": {"uniform": {"min": 0, "max": 1}}},
         "range_queries": {
-            "amount": numexpr(args.range_queries),
+            "op_count": numexpr(args.range_queries),
             "selectivity": numexpr(args.range_selectivity),
             "range_format": "StartEnd",
         },
         "point_queries": {
-            "amount": numexpr(args.point_queries),
+            "op_count": numexpr(args.point_queries),
         },
         "point_deletes": {
-            "amount": numexpr(args.point_deletes),
+            "op_count": numexpr(args.point_deletes),
         },
         "range_deletes": {
-            "amount": numexpr(args.range_deletes),
+            "op_count": numexpr(args.range_deletes),
             "selectivity": numexpr(args.range_delete_selectivity),
             "range_format": "StartEnd",
         },

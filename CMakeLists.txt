@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(LSMQueryDrivenCompaction VERSION 1.0)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -DPROFILE")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPROFILE")
@@ -28,14 +28,13 @@ option(WITH_TRACE_TOOLS "Build with trace tools" OFF)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/rocksdb/include)
 
-# Build tectonic
 add_custom_target(tectonic-cli ALL
-    COMMAND cargo build --release
+    COMMAND RUSTUP_TOOLCHAIN=nightly cargo build --release
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_SOURCE_DIR}/lib/tectonic/target/release/tectonic-cli
             ${CMAKE_CURRENT_SOURCE_DIR}/bin/tectonic-cli
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/tectonic
-    COMMENT "Building tectonic in release mode"
+    COMMENT "Building tectonic in release mode with nightly"
 )
 
 #! Deprecated

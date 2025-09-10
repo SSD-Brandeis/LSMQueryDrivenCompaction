@@ -244,9 +244,11 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       auto start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
 
-      it->Refresh(start_key, end_key, keys_read,
-                  env->enable_range_query_compaction,
-                  env->min_entries_shld_be_read_per_lvl);
+      it->Refresh();
+      it->is_rq_iter = 1;
+      // start_key, end_key, keys_read,
+      //             env->enable_range_query_compaction,
+      //             env->min_entries_shld_be_read_per_lvl);
 #ifdef TIMER
       auto refresh_time = std::chrono::high_resolution_clock::now();
       auto refresh_duration =
@@ -261,13 +263,16 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
         }
         keys_returned++;
       }
+      std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " entries read in total: " << it->entries_read_in_total_ << std::endl;
+      std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " entries skipped: " << it->entries_skipped_ << std::endl;
       if (!it->status().ok()) {
         (*buffer) << it->status().ToString() << std::endl << std::flush;
       }
 #ifdef TIMER
       auto reset_start = std::chrono::high_resolution_clock::now();
 #endif // TIMER
-      it->Reset(keys_read, did_run_RR);
+      // it->Reset(keys_read, did_run_RR);
+      it->is_rq_iter = 0;
 #ifdef TIMER
       auto reset_end = std::chrono::high_resolution_clock::now();
       auto actual_range_time =

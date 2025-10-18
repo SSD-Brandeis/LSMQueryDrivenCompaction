@@ -41,7 +41,7 @@ bin
 .vscode
 
 # .vstats
-.vstats
+.vstats*
 
 # .DS_Store (Mac)
 **/.DS_Store
@@ -74,3 +74,6 @@ saveddb/**
 
 # YCSB
 lib/ycsb*
+
+# .env file
+.env

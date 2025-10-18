@@ -3,7 +3,7 @@ set -e
 
 bash ./scripts/rebuild.sh
 
-TAG=succinctKV
+TAG=succinctKV-overlapping100
 ENTRY_SIZE=128
 LAMBDA=0.125
 ENTRIES_PER_PAGE=32
@@ -11,8 +11,10 @@ PAGES_PER_FILE=1024
 SIZE_RATIO=6
 
 INSERTS=8388608
-RANGE_QUERY_PERCENT=(0.000003814697265625 0.0000152587890625 0.00006103515625 0.000244140625 0.0009765625 0.00390625 0.015625) # 0.0625 0.25)
+RANGE_QUERY_PERCENT=(0.000003814697265625 0.0000152587890625 0.00006103515625) # 0.000244140625 0.0009765625 0.00390625 0.015625) # 0.0625 0.25)
 SELECTIVITY=0.1
+RANGE_QUERY_OVERLAPPING_COUNT=100
+RANGE_QUERY_OVERLAPPING_PERCENT=1
 
 SHOW_PROGRESS=1
 VERSION=0
@@ -46,14 +48,16 @@ do
     cd RocksDB || exit
     # ../../../bin/tectonic-cli generate -w ../workload.specs.json
 
-    echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
+    echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
     ../../../bin/load_gen \
             -I ${INSERTS} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
             -Y ${SELECTIVITY} \
             -E ${ENTRY_SIZE} \
-            -L ${LAMBDA}
+            -L ${LAMBDA} \
+            -O ${RANGE_QUERY_OVERLAPPING_COUNT} \
+            --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}
 
     echo "Copying workload to RangeReduce[lb=0]..."
     cd ../RangeReduce[lb=0]

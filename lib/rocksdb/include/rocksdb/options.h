@@ -480,6 +480,11 @@ struct DBOptions {
   // default to 0 (means no prints)
   Verbosity verbosity = Verbosity::NO_PRINTS;
 
+  // SuccinctKV trigger enable/disable
+  // if true, levels will be picked for compaction
+  // based on level saturation state
+  bool succinct_kv_trigger = false;
+
   bool enable_level_renaming = false;
 
   // If true, the database will be created if it is missing.

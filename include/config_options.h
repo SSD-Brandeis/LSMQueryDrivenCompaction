@@ -32,6 +32,7 @@ void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
       env->delete_obsolete_files_period_micros;
   options->allow_mmap_reads = env->allow_mmap_reads;
   options->allow_mmap_writes = env->allow_mmap_writes;
+  options->succinct_kv_trigger = env->succinct_kv_trigger;
 
   switch (env->verbosity) {
   case 0:

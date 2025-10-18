@@ -79,6 +79,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   auto user_comparator_ = cfd_->internal_comparator().user_comparator();
   int num_levels_are_overlapping = 0;
   std::vector<float> decision_matrix_meta_data;
+  std::vector<int> succinct_kv_lvls;
 
   for (int lvl = 1; lvl < storage_info->num_non_empty_levels(); lvl++) {
     int num_files_are_overlapping = 0;
@@ -150,9 +151,16 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     entries_count += E_useful_entries_in_level;
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
-    if (num_files_are_overlapping > 0 && (min_entries_shld_be_read_per_lvl == 0 ||
-        E_useful_entries_in_level > min_entries_shld_be_read_per_lvl)) {
+    if (num_files_are_overlapping > 0 &&
+        (min_entries_shld_be_read_per_lvl == 0 ||
+         E_useful_entries_in_level > min_entries_shld_be_read_per_lvl)) {
       num_levels_are_overlapping++;
+    }
+    if (db_impl_->immutable_db_options().succinct_kv_trigger) {
+      if (storage_info->CompactionScoreLevel(lvl) >= 0.9 &&
+          E_useful_entries_in_level > (2 * min_entries_shld_be_read_per_lvl)) {
+        succinct_kv_lvls.push_back(lvl);
+      }
     }
   }
 
@@ -168,6 +176,52 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
                    "Level: %zu --> Total in-range entries: %" PRIu64, i + 1,
                    static_cast<uint64_t>(decision_matrix_meta_data[i]));
+  }
+
+  if (db_impl_->immutable_db_options().succinct_kv_trigger) {
+    // find the consecutive levels to compact
+    // and set DecisionCell to with start_level_
+    // and end_level_
+    if (succinct_kv_lvls.size() <= 1) {
+      db_impl_->decision_cell_ = DecisionCell{};
+      return false;
+    }
+
+    int last = succinct_kv_lvls.back();
+    int first = last;
+
+    for (int i = static_cast<int>(succinct_kv_lvls.size()) - 2; i >= 0; --i) {
+      if (succinct_kv_lvls[i] == first - 1) {
+        first = succinct_kv_lvls[i];
+      } else {
+        if (last > first) {
+          DecisionCell dc;
+          dc.start_level_ = first;
+          dc.end_level_ = last;
+          db_impl_->decision_cell_ = dc;
+          ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                         "[Verbosity]: SuccinctKV Best decision cell: (%d, %d)",
+                         first, last);
+          return true;
+        }
+
+        last = first = succinct_kv_lvls[i];
+      }
+    }
+
+    if (last > first) {
+      DecisionCell dc;
+      dc.start_level_ = first;
+      dc.end_level_ = last;
+      db_impl_->decision_cell_ = dc;
+      ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                     "[Verbosity]: SuccinctKV Best decision cell: (%d, %d)",
+                     first, last);
+      return true;
+    }
+
+    db_impl_->decision_cell_ = DecisionCell{};
+    return false;
   }
 
   std::vector<std::vector<DecisionCell>> decision_matrix(

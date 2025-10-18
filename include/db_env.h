@@ -142,6 +142,9 @@ public:
    * 4 for EXTREME
    */
   int verbosity = 0;
+
+  // if true, trigger compaction in succinctKV way
+  bool succinct_kv_trigger = false; // [succinctkv]
 #pragma endregion
 
   // entry size including key and value size in bytes

@@ -757,6 +757,7 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       compaction_service(options.compaction_service),
       enforce_single_del_contracts(options.enforce_single_del_contracts),
       verbosity(options.verbosity),
+      succinct_kv_trigger(options.succinct_kv_trigger),
       enable_level_renaming(options.enable_level_renaming) {
   fs = env->GetFileSystem();
   clock = env->GetSystemClock().get();

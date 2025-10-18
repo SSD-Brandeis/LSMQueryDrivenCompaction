@@ -45,6 +45,9 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
   args::ValueFlag<int> verbosity_cmd(
       group1, "verbosity", "The verbosity level of execution [0,1,2; def: 0]",
       {'V', "verbosity"});
+  args::ValueFlag<int> succinct_kv_trigger_cmd(
+      group1, "succinct_kv_trigger",
+      "Trigger RQ-based compaction in SuccinctKV way", {"succinctkv"});
   args::ValueFlag<int> compaction_pri_cmd(
       group1, "compaction_pri",
       "[Compaction priority: 1 for kMinOverlappingRatio, 2 for "
@@ -167,6 +170,9 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
           ? args::get(file_to_memtable_size_ratio_cmd)
           : env->file_to_memtable_size_ratio;
   env->verbosity = verbosity_cmd ? args::get(verbosity_cmd) : env->verbosity;
+  env->succinct_kv_trigger = succinct_kv_trigger_cmd
+                                 ? args::get(succinct_kv_trigger_cmd)
+                                 : env->succinct_kv_trigger;
   env->compaction_pri =
       compaction_pri_cmd ? args::get(compaction_pri_cmd) : env->compaction_pri;
   env->compaction_style = compaction_style_cmd ? args::get(compaction_style_cmd)

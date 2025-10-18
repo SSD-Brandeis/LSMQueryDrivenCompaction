@@ -199,6 +199,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
           dc.start_level_ = first;
           dc.end_level_ = last;
           db_impl_->decision_cell_ = dc;
+          db_impl_->range_query_last_level_ = last;
           ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
                          "[Verbosity]: SuccinctKV Best decision cell: (%d, %d)",
                          first, last);
@@ -214,6 +215,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
       dc.start_level_ = first;
       dc.end_level_ = last;
       db_impl_->decision_cell_ = dc;
+      db_impl_->range_query_last_level_ = last;
       ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
                      "[Verbosity]: SuccinctKV Best decision cell: (%d, %d)",
                      first, last);

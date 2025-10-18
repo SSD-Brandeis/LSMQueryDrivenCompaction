@@ -94,3 +94,21 @@ do
     rm workload.txt
     cd ../../..
 done
+
+source .env
+
+# ------------- Slack Notification -------------
+SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+HOSTNAME=$(hostname)
+
+MESSAGE="SuccinctKV Experiments Completed on ${HOSTNAME}:
+- ENTRY_SIZE=${ENTRY_SIZE}
+- INSERTS=${INSERTS}
+- RANGE_QUERY_PERCENT=${RANGE_QUERY_PERCENT[*]}
+- SELECTIVITY=${SELECTIVITY}"
+PAYLOAD="{
+    \"text\": \"${MESSAGE}\"
+}"
+
+curl -X POST -H 'Content-type: application/json' --data "${PAYLOAD}" ${SLACK_WEBHOOK_URL}
+# ------------- End Slack Notification -------------

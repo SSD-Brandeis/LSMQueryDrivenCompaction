@@ -3,19 +3,19 @@ set -e
 
 bash ./scripts/rebuild.sh
 
-TAG=figure9-random-rq
+TAG=figure9-overlapping-rq
 ENTRY_SIZE=128
 LAMBDA=0.125
 ENTRIES_PER_PAGE=32
 PAGES_PER_FILE=1024
-SIZE_RATIO=(2 4) # 6 8 10)
+SIZE_RATIO=(2 4)
 
 INSERTS=8388608
 UPDATES=8388608
 RANGE_QUERIES=9000
 SELECTIVITY=0.1
-# RANGE_QUERY_OVERLAPPING_COUNT=100
-# RANGE_QUERY_OVERLAPPING_PERCENT=1
+RANGE_QUERY_OVERLAPPING_COUNT=100
+RANGE_QUERY_OVERLAPPING_PERCENT=1
 
 SHOW_PROGRESS=1
 VERSION=0
@@ -46,16 +46,16 @@ do
     cd RocksDB || exit
     # ../../../bin/tectonic-cli generate -w ../workload.specs.json
 
-    echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}" # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+    echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
     ../../../bin/load_gen \
             -I ${INSERTS} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
             -Y ${SELECTIVITY} \
             -E ${ENTRY_SIZE} \
-            -L ${LAMBDA} #\
-            # -O ${RANGE_QUERY_OVERLAPPING_COUNT} \
-            # --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}
+            -L ${LAMBDA} \
+            -O ${RANGE_QUERY_OVERLAPPING_COUNT} \
+            --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}
 
     echo "Copying workload to RangeReduce[lb=0]..."
     cd ../RangeReduce[lb=0]
@@ -99,11 +99,7 @@ source .env
 SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
 HOSTNAME=$(hostname)
 
-MESSAGE="SuccinctKV Experiments Completed on ${HOSTNAME}:
-- ENTRY_SIZE=${ENTRY_SIZE}
-- INSERTS=${INSERTS}
-- RANGE_QUERY_PERCENT=${RANGE_QUERY_PERCENT[*]}
-- SELECTIVITY=${SELECTIVITY}"
+MESSAGE="SuccinctKV Experiments Completed on ${HOSTNAME} TAG: ${TAG}"
 PAYLOAD="{
     \"text\": \"${MESSAGE}\"
 }"

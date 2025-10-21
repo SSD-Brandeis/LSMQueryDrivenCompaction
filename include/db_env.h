@@ -187,7 +187,7 @@ public:
   uint16_t memtable_factory = 1; // [m]
 
   // if true, RocksDB will pick target size of each level dynamically
-  bool level_compaction_dynamic_level_bytes = false;
+  bool level_compaction_dynamic_level_bytes = false; // [lcd]
 
   /**
    * Compaction Style

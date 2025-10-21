@@ -96,6 +96,10 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
       group1, "range_queries",
       "The number of unique range queries to issue in the experiment [def: 0]",
       {'S', "range_queries"});
+  args::ValueFlag<bool> level_compaction_dynamic_level_bytes_cmd(
+      group1, "level_compaction_dynamic_level_bytes",
+      "If true, levels will be formed bottom up",
+      {"lcd", "level_compaction_dynamic"});
 
   args::ValueFlag<int> enable_range_query_compaction_cmd(
       group1, "enable_range_query_compaction",
@@ -220,6 +224,10 @@ int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
   env->max_multi_trivial_move = max_multi_trivial_move_cmd
                                     ? args::get(max_multi_trivial_move_cmd)
                                     : env->max_multi_trivial_move;
+  env->level_compaction_dynamic_level_bytes =
+      level_compaction_dynamic_level_bytes_cmd
+          ? args::get(level_compaction_dynamic_level_bytes_cmd)
+          : env->level_compaction_dynamic_level_bytes;
 
   // Fluid LSM parameters
   env->smaller_lvl_runs_count = smaller_lvl_runs_count_cmd

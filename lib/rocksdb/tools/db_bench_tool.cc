@@ -242,9 +242,11 @@ DEFINE_string(
     "operation includes a rare but possible retry in case it got "
     "`Status::Incomplete()`. This happens upon encountering more keys than "
     "have ever been seen by the thread (or eight initially)\n"
-    "\tbackup --  Create a backup of the current DB and verify that a new backup is corrected. "
+    "\tbackup --  Create a backup of the current DB and verify that a new "
+    "backup is corrected. "
     "Rate limit can be specified through --backup_rate_limit\n"
-    "\trestore -- Restore the DB from the latest backup available, rate limit can be specified through --restore_rate_limit\n");
+    "\trestore -- Restore the DB from the latest backup available, rate limit "
+    "can be specified through --restore_rate_limit\n");
 
 DEFINE_int64(num, 1000000, "Number of key/values to place in database");
 
@@ -1041,7 +1043,6 @@ DEFINE_string(
 static enum ROCKSDB_NAMESPACE::CompressionType
     FLAGS_blob_db_compression_type_e = ROCKSDB_NAMESPACE::kSnappyCompression;
 
-
 // Integrated BlobDB options
 DEFINE_bool(
     enable_blob_files,
@@ -1112,7 +1113,6 @@ DEFINE_int32(prepopulate_blob_cache, 0,
              "[Integrated BlobDB] Pre-populate hot/warm blobs in blob cache. 0 "
              "to disable and 1 to insert during flush.");
 
-
 // Secondary DB instance Options
 DEFINE_bool(use_secondary_db, false,
             "Open a RocksDB secondary instance. A primary instance can be "
@@ -1126,13 +1126,11 @@ DEFINE_int32(secondary_update_interval, 5,
              "Secondary instance attempts to catch up with the primary every "
              "secondary_update_interval seconds.");
 
-
 DEFINE_bool(report_bg_io_stats, false,
             "Measure times spents on I/Os while in compactions. ");
 
 DEFINE_bool(use_stderr_info_logger, false,
             "Write info logs to stderr instead of to LOG file. ");
-
 
 DEFINE_string(trace_file, "", "Trace workload to a file. ");
 
@@ -1742,6 +1740,18 @@ DEFINE_bool(build_info, false,
 DEFINE_bool(track_and_verify_wals_in_manifest, false,
             "If true, enable WAL tracking in the MANIFEST");
 
+// RangeReduce Options
+DEFINE_bool(enable_range_query_compaction, false,
+            "If true, perform compactions during range queries");
+DEFINE_double(lower_threshold, 0.0, "RangeReduce lower threshold");
+DEFINE_double(upper_threshold, std::numeric_limits<double>::max(),
+              "RangeReduce upper threshold");
+DEFINE_bool(enable_level_renaming, false,
+            "If true, perform level shifting when last level saturate");
+DEFINE_uint64(
+    min_enteris_shld_be_read_per_lvl, 0,
+    "Minimum entries must be read per level to qualify for RangeReduce");
+
 namespace ROCKSDB_NAMESPACE {
 namespace {
 static Status CreateMemTableRepFactory(
@@ -1929,11 +1939,7 @@ struct DBWithColumnFamilies {
   std::vector<int> cfh_idx_to_prob;  // ith index holds probability of operating
                                      // on cfh[i].
 
-  DBWithColumnFamilies()
-      : db(nullptr)
-        ,
-        opt_txn_db(nullptr)
-  {
+  DBWithColumnFamilies() : db(nullptr), opt_txn_db(nullptr) {
     cfh.clear();
     num_created = 0;
     num_hot = 0;
@@ -1945,8 +1951,7 @@ struct DBWithColumnFamilies {
         opt_txn_db(other.opt_txn_db),
         num_created(other.num_created.load()),
         num_hot(other.num_hot),
-        cfh_idx_to_prob(other.cfh_idx_to_prob) {
-  }
+        cfh_idx_to_prob(other.cfh_idx_to_prob) {}
 
   void DeleteDBs() {
     std::for_each(cfh.begin(), cfh.end(),
@@ -2813,6 +2818,11 @@ class Benchmark {
               options.memtable_factory->GetId().c_str());
     }
     fprintf(stdout, "Perf Level: %d\n", FLAGS_perf_level);
+    fprintf(stdout, "Level Renaming: %d\n", FLAGS_enable_level_renaming);
+    fprintf(stdout, "Range Query Compaction: %d\n",
+            FLAGS_enable_range_query_compaction);
+    fprintf(stdout, "Lower threshold: %f\n", FLAGS_lower_threshold);
+    fprintf(stdout, "Upper threshold: %f\n", FLAGS_upper_threshold);
 
     PrintWarnings(compression.c_str());
     fprintf(stdout, "------------------------------------------------\n");
@@ -3324,6 +3334,9 @@ class Benchmark {
     if (!SanityCheck()) {
       ErrorExit();
     }
+
+
+
     Open(&open_options_);
     PrintHeader(open_options_);
     std::stringstream benchmark_stream(FLAGS_benchmarks);
@@ -3360,6 +3373,10 @@ class Benchmark {
       read_options_.adaptive_readahead = FLAGS_adaptive_readahead;
       read_options_.async_io = FLAGS_async_io;
       read_options_.optimize_multiget_for_io = FLAGS_optimize_multiget_for_io;
+      read_options_.enable_range_query_compaction =
+          FLAGS_enable_range_query_compaction;
+      read_options_.lower_threshold = static_cast<float>(FLAGS_lower_threshold);
+      read_options_.upper_threshold = static_cast<float>(FLAGS_upper_threshold);
 
       void (Benchmark::*method)(ThreadState*) = nullptr;
       void (Benchmark::*post_process_method)() = nullptr;
@@ -6639,6 +6656,7 @@ class Benchmark {
     int64_t read = 0;
     int64_t found = 0;
     int64_t bytes = 0;
+    uint64_t actual_read = 0;
     ReadOptions options = read_options_;
     std::unique_ptr<char[]> ts_guard;
     Slice ts;
@@ -6716,6 +6734,14 @@ class Benchmark {
         iter_to_use = single_iter.get();
       }
 
+      long long min_entries_must_be_read_per_lvl =
+          static_cast<long long>(FLAGS_min_enteris_shld_be_read_per_lvl);
+
+      iter_to_use->Refresh(key.ToString(), upper_bound.ToString(), actual_read,
+                           options.enable_range_query_compaction,
+                           min_entries_must_be_read_per_lvl);
+      options.iterate_upper_bound = nullptr;
+
       iter_to_use->Seek(key);
       read++;
       if (iter_to_use->Valid() && iter_to_use->key().compare(key) == 0) {
@@ -6750,8 +6776,9 @@ class Benchmark {
     }
 
     char msg[100];
-    snprintf(msg, sizeof(msg), "(%" PRIu64 " of %" PRIu64 " found)\n", found,
-             read);
+    snprintf(msg, sizeof(msg),
+             "(%" PRIu64 " of %" PRIu64 " found) from actual read %" PRIu64 "\n",
+             found, read, actual_read);
     thread->stats.AddBytes(bytes);
     thread->stats.AddMessage(msg);
   }
@@ -8361,7 +8388,6 @@ class Benchmark {
     }
   }
 
-
   void Replay(ThreadState* thread) {
     if (db_.db != nullptr) {
       Replay(thread, &db_);
@@ -8449,7 +8475,6 @@ class Benchmark {
     assert(s.ok());
     delete backup_engine;
   }
-
 };
 
 int db_bench_tool(int argc, char** argv) {

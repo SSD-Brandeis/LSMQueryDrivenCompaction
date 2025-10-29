@@ -79,18 +79,22 @@ class ArenaWrappedDBIter : public Iterator {
   bool IsBlob() const { return db_iter_->IsBlob(); }
 
   // Algorithm to decide if range query compaction can be performed
-  bool CanPerformRangeQueryCompaction(uint64_t& entries_count);
+  bool CanPerformRangeQueryCompaction(
+      uint64_t& entries_count, long long min_entries_shld_be_read_per_lvl);
   long long GuessTheNumberOfKeysBWStartAndEnd(
       const std::string& given_start_key, const std::string& given_end_key,
       int level, FileMetaData* file_meta, Slice& useful_min_key,
       Slice& useful_max_key);
+  void ResumeBackgroundWork();
 
   Status GetProperty(std::string prop_name, std::string* prop) override;
 
   Status Refresh() override;
   Status Refresh(const std::string& /*start_key*/,
-                 const std::string& /*end_key*/, uint64_t& /*entries_count*/, bool /*rqdc_enabled*/) override;
-  Status Reset(uint64_t& /*entries_skipped*/, uint64_t& /*entries_to_compact*/) override;
+                 const std::string& /*end_key*/, uint64_t& /*entries_count*/,
+                 bool /*rqdc_enabled*/,
+                 long long /*min_entries_shld_be_read_per_lvl*/) override;
+  Status Reset(uint64_t& /*total_keys_read*/, bool& /*did_run_RR*/) override;
 
   void Init(Env* env, const ReadOptions& read_options,
             const ImmutableOptions& ioptions,

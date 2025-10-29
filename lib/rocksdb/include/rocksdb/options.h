@@ -63,7 +63,7 @@ struct DbPath;
 using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
 
 enum Verbosity {
-  NONE = 0,
+  NO_PRINTS = 0,
   LOW = 1,
   MEDIUM = 2,
   HIGH = 3,
@@ -478,7 +478,12 @@ struct DBOptions {
 
   // verbosity to see print statements
   // default to 0 (means no prints)
-  Verbosity verbosity = Verbosity::NONE;
+  Verbosity verbosity = Verbosity::NO_PRINTS;
+
+  // SuccinctKV trigger enable/disable
+  // if true, levels will be picked for compaction
+  // based on level saturation state
+  bool succinct_kv_trigger = false;
 
   bool enable_level_renaming = false;
 
@@ -1469,38 +1474,6 @@ enum ReadTier {
   kMemtableTier = 0x3     // data in memtable. used for memtable-only iterators.
 };
 
-// Options that collect range query stats
-struct RangeQueryOptions{
-  bool is_range_query_running = false;
-  uint64_t count_of_entries = 0;  // total entries that fall in range query
-  uint64_t count_of_total_invalid = 0;  // invalid entries that exists in entries that fall in range
-  uint64_t count_of_entries_to_compact = 0; // this includes both valid and logically invalid entries that were selected for compaction
-  uint64_t count_of_entries_compacted = 0;  // entries that were selected for compaction
-  uint64_t count_of_entries_removed = 0;  // entries removed from the entries that were selected for compaction
-  uint64_t count_of_extra_write_for_partial = 0;  // extra write for partial files
-
-  void reset() {
-    // reset all variables
-    is_range_query_running = false;
-    count_of_entries = 0;
-    count_of_total_invalid = 0;
-    count_of_entries_to_compact = 0;
-    count_of_entries_compacted = 0;
-    count_of_entries_removed = 0;
-    count_of_extra_write_for_partial = 0;
-  }
-
-  void initiate() {
-    is_range_query_running = false;
-    count_of_entries = 0;
-    count_of_total_invalid = 0;
-    count_of_entries_to_compact = 0;
-    count_of_entries_compacted = 0;
-    count_of_entries_removed = 0;
-    count_of_extra_write_for_partial = 0;
-  }
-};
-
 // Options that control read operations
 struct ReadOptions {
   // *** BEGIN options relevant to point lookups as well as scans ***
@@ -1656,13 +1629,13 @@ struct ReadOptions {
   // end_key represent the end key of the range query
   std::string range_start_key;
   std::string range_end_key;
+  // SequenceNumber seq;
   bool range_query_partial_block_read = false;
 
   // Used to check if the range query compaction is enabled
   bool enable_range_query_compaction = false;
-  RangeQueryOptions *range_query_options = new RangeQueryOptions();
 
-  // number of entries overlap from lower to upper level 
+  // number of entries overlap from lower to upper level
   float upper_threshold = 0;  // default: [inf]
   // number of entries overlap from upper to lower level
   float lower_threshold = 0;  // default: [0f]

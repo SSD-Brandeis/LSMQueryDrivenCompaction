@@ -280,6 +280,8 @@ class ColumnFamilyData {
   // holding a DB mutex, or as the leader in a write batch group).
   void Ref() { refs_.fetch_add(1); }
 
+  // std::atomic_int GetRefCount() { return refs_.load(std::memory_order_relaxed); }
+
   // UnrefAndTryDelete() decreases the reference count and do free if needed,
   // return true if this is freed else false, UnrefAndTryDelete() can only
   // be called while holding a DB mutex, or during single-threaded recovery.
@@ -345,8 +347,6 @@ class ColumnFamilyData {
   MemTableList* imm() { return &imm_; }
   MemTable* mem() { return mem_; }
 
-  MemTable* mem_range() { return mem_range_; }
-
   bool IsEmpty() {
     return mem()->GetFirstSequenceNumber() == 0 && imm()->NumNotFlushed() == 0;
   }
@@ -364,11 +364,11 @@ class ColumnFamilyData {
     mem_ = new_mem;
   }
 
-  void SetMemtableRange(MemTable* new_mem_range) {
-    uint64_t memtable_id = last_memtable_id_.fetch_add(1) + 1;
-    new_mem_range->SetID(memtable_id);
-    mem_range_ = new_mem_range;
-  }
+  // void SetMemtableRange(std::shared_ptr<TableBuilder> new_mem_range) {
+  //   uint64_t memtable_id = last_memtable_id_.fetch_add(1) + 1;
+  //   new_mem_range->SetID(memtable_id);
+  //   piggyback_table_map_ = new_mem_range;
+  // }
 
   // calculate the oldest log needed for the durability of this column family
   uint64_t OldestLogToKeep();
@@ -376,6 +376,9 @@ class ColumnFamilyData {
   // See Memtable constructor for explanation of earliest_seq param.
   MemTable* ConstructNewMemtable(const MutableCFOptions& mutable_cf_options,
                                  SequenceNumber earliest_seq);
+  // always construct new vector memtable.
+  MemTable* ConstructNewVectorMemtable(
+      const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq);
   void CreateNewMemtable(const MutableCFOptions& mutable_cf_options,
                          SequenceNumber earliest_seq);
 
@@ -590,7 +593,6 @@ class ColumnFamilyData {
 
   MemTable* mem_;
   MemTableList imm_;
-  MemTable* mem_range_;
   SuperVersion* super_version_;
 
   // An ordinal representing the current SuperVersion. Updated by
@@ -854,11 +856,6 @@ class ColumnFamilyMemTablesImpl : public ColumnFamilyMemTables {
   // REQUIRES: use this function of DBImpl::column_family_memtables_ should be
   //           under a DB mutex OR from a write thread
   virtual MemTable* GetMemTable() const override;
-
-  // REQUIRES: Seek() called first
-  // REQUIRES: use this function of DBImpl::column_family_memtables_ should be
-  //           under a DB mutex OR from a write thread
-  virtual MemTable* GetRangeMemTable() const override;
 
   // Returns column family handle for the selected column family
   // REQUIRES: use this function of DBImpl::column_family_memtables_ should be

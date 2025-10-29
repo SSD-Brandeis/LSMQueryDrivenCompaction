@@ -24,7 +24,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "db/arena_wrapped_db_iter.h"
 #include "db/builder.h"
@@ -785,7 +784,6 @@ void DBImpl::PrintStatistics() {
 }
 
 Status DBImpl::StartPeriodicTaskScheduler() {
-
 #ifndef NDEBUG
   // It only used by test to disable scheduler
   bool disable_scheduler = false;
@@ -1867,12 +1865,10 @@ InternalIterator* DBImpl::NewInternalIterator(
   auto mem_iter = super_version->mem->NewIterator(read_options, arena);
   Status s;
   if (!read_options.ignore_range_deletions) {
-
     TruncatedRangeDelIterator* mem_tombstone_iter = nullptr;
     auto range_del_iter = super_version->mem->NewRangeTombstoneIterator(
         read_options, sequence, false /* immutable_memtable */);
     if (range_del_iter == nullptr || range_del_iter->empty()) {
-
       delete range_del_iter;
     } else {
       mem_tombstone_iter = new TruncatedRangeDelIterator(
@@ -3898,7 +3894,6 @@ Status DBImpl::GetPropertiesOfTablesInRange(ColumnFamilyHandle* column_family,
   return s;
 }
 
-
 const std::string& DBImpl::GetName() const { return dbname_; }
 
 Env* DBImpl::GetEnv() const { return env_; }
@@ -3916,7 +3911,6 @@ SystemClock* DBImpl::GetSystemClock() const {
   return immutable_db_options_.clock;
 }
 
-
 Status DBImpl::StartIOTrace(const TraceOptions& trace_options,
                             std::unique_ptr<TraceWriter>&& trace_writer) {
   assert(trace_writer != nullptr);
@@ -3928,7 +3922,6 @@ Status DBImpl::EndIOTrace() {
   io_tracer_->EndIOTrace();
   return Status::OK();
 }
-
 
 Options DBImpl::GetOptions(ColumnFamilyHandle* column_family) const {
   InstrumentedMutexLock l(&mutex_);
@@ -6160,36 +6153,43 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 //   ColumnFamilyData* cfd_ = cfh__->cfd();
 //   Version* version = cfd_->current();
 //   assert(version);
-//   std::vector<CompactionInputFiles> all_input_files(version->storage_info()->num_non_empty_levels());
+//   std::vector<CompactionInputFiles>
+//   all_input_files(version->storage_info()->num_non_empty_levels());
 
 //   // Combine level and file metadata collection loops
-//   for (int level = 0; level < version->storage_info()->num_non_empty_levels(); level++) {
+//   for (int level = 0; level <
+//   version->storage_info()->num_non_empty_levels(); level++) {
 //     auto& cif = all_input_files[level];
 //     cif.level = level;
-//     auto num_files = version->storage_info()->LevelFilesBrief(level).num_files;
+//     auto num_files =
+//     version->storage_info()->LevelFilesBrief(level).num_files;
 //     cif.files.reserve(num_files);
-    
+
 //     for (size_t i = 0; i < num_files; i++) {
 //       cif.files.push_back(version->storage_info()->LevelFilesBrief(level).files[i].file_metadata);
 //     }
 //   }
 
 //   // Filter files that can be compacted
-//   std::vector<CompactionInputFiles> files_to_be_compacted = FilterFileThatCanBeCompacted(all_input_files, start_key, end_key, cfd_);
+//   std::vector<CompactionInputFiles> files_to_be_compacted =
+//   FilterFileThatCanBeCompacted(all_input_files, start_key, end_key, cfd_);
 
 //   if (!files_to_be_compacted.empty()) {
-//     int level_to_write_at = GetHighestLevelFromCompact(files_to_be_compacted);
+//     int level_to_write_at =
+//     GetHighestLevelFromCompact(files_to_be_compacted);
 //     std::vector<std::string> input_file_names{};
 
 //     for (auto& cif : files_to_be_compacted) {
 //       for (auto* ff : cif.files) {
-//         std::string file_name = TableFileName(cfd_->ioptions()->cf_paths, ff->fd.GetNumber(), ff->fd.GetPathId());
+//         std::string file_name = TableFileName(cfd_->ioptions()->cf_paths,
+//         ff->fd.GetNumber(), ff->fd.GetPathId());
 //         input_file_names.push_back(file_name);
 //       }
 //     }
 //     CompactionOptions coptions;
-//     coptions.output_file_size_limit = 512 * 1024;  // setting output file size to 512KB
-//     Status status = this->CompactFiles(coptions, input_file_names, level_to_write_at);
+//     coptions.output_file_size_limit = 512 * 1024;  // setting output file
+//     size to 512KB Status status = this->CompactFiles(coptions,
+//     input_file_names, level_to_write_at);
 //   }
 // }
 
@@ -6197,7 +6197,8 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 //   * This function is used to find the highest level from the files that are
 //   * going to be compacted.
 // */
-// int DBImpl::GetHighestLevelFromCompact(const std::vector<CompactionInputFiles>& files) {
+// int DBImpl::GetHighestLevelFromCompact(const
+// std::vector<CompactionInputFiles>& files) {
 //   int max_level = -1;
 
 //   for (const auto& cif : files) {
@@ -6210,19 +6211,30 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 // /*
 //   * This function is used to filter the files that can be compacted.
 //   * The files that can be compacted are the files that are in the range
-//   * [start_key, end_key] and are completely overlapping with the files in other levels
+//   * [start_key, end_key] and are completely overlapping with the files in
+//   other levels
 // */
-// std::vector<CompactionInputFiles> DBImpl::FilterFileThatCanBeCompacted(std::vector<CompactionInputFiles> all_files, 
-//                                                               Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_) {
-//   std::vector<CompactionInputFiles> in_range_files = FilterOnlyInRangeFiles(all_files, start_key, end_key, cfd_);
-//   std::vector<std::vector<CompactionInputFiles>> files_that_can_be_compacted{};
-//   std::queue<TrackLevels> track_levels_queue{};
+// std::vector<CompactionInputFiles>
+// DBImpl::FilterFileThatCanBeCompacted(std::vector<CompactionInputFiles>
+// all_files,
+//                                                               Slice&
+//                                                               start_key,
+//                                                               Slice& end_key,
+//                                                               ColumnFamilyData*
+//                                                               cfd_) {
+//   std::vector<CompactionInputFiles> in_range_files =
+//   FilterOnlyInRangeFiles(all_files, start_key, end_key, cfd_);
+//   std::vector<std::vector<CompactionInputFiles>>
+//   files_that_can_be_compacted{}; std::queue<TrackLevels>
+//   track_levels_queue{};
 
 //   // Iterate files from last level to first
 //   if (in_range_files.size() > 1) {
 //     int level_i1 = in_range_files[in_range_files.size()-1].level;
-//     Slice current_start = in_range_files[in_range_files.size()-1].files[0]->smallest.user_key();
-//     Slice current_end = in_range_files[in_range_files.size()-1].files[in_range_files[in_range_files.size()-1].files.size()-1]->largest.user_key();
+//     Slice current_start =
+//     in_range_files[in_range_files.size()-1].files[0]->smallest.user_key();
+//     Slice current_end =
+//     in_range_files[in_range_files.size()-1].files[in_range_files[in_range_files.size()-1].files.size()-1]->largest.user_key();
 
 //     // Iterate files from second last level to first
 //     for (int i = in_range_files.size()-2; i >= 0; i--) {
@@ -6249,13 +6261,18 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 //       }
 
 //       Slice empty_slice{};
-//       if (((_new_start.compare(empty_slice) == 0) || (_new_end.compare(empty_slice) == 0) ||
-//           (_new_start.compare(_new_end) >= 0)) && track_levels_queue.size() > 0) {
-//           // pop queue and add data to files_across_levels and push into files_that_can_be_compacted
-//           // also reinitialize files_across_levels to start track the next iteration
-//           files_that_can_be_compacted.push_back(FilesToBeCompactedAcrossLevels(in_range_files, track_levels_queue));
-//           current_start = in_range_files[i].files[0]->smallest.user_key();
-//           current_end = in_range_files[i].files[in_range_files[i].files.size()-1]->largest.user_key();
+//       if (((_new_start.compare(empty_slice) == 0) ||
+//       (_new_end.compare(empty_slice) == 0) ||
+//           (_new_start.compare(_new_end) >= 0)) && track_levels_queue.size() >
+//           0) {
+//           // pop queue and add data to files_across_levels and push into
+//           files_that_can_be_compacted
+//           // also reinitialize files_across_levels to start track the next
+//           iteration
+//           files_that_can_be_compacted.push_back(FilesToBeCompactedAcrossLevels(in_range_files,
+//           track_levels_queue)); current_start =
+//           in_range_files[i].files[0]->smallest.user_key(); current_end =
+//           in_range_files[i].files[in_range_files[i].files.size()-1]->largest.user_key();
 //           level_i1 = _new_level;
 //       } else {
 //         TrackLevels track_level_i;
@@ -6280,20 +6297,26 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 
 //       if (i == 1 && track_levels_queue.size() > 0) {
 //         // if we are at level 0 and track_levels_queue > 0
-//         files_that_can_be_compacted.push_back(FilesToBeCompactedAcrossLevels(in_range_files, track_levels_queue));
+//         files_that_can_be_compacted.push_back(FilesToBeCompactedAcrossLevels(in_range_files,
+//         track_levels_queue));
 //       }
 //     }
 //   }
 //   // if there is only one file in the range
 //   std::vector<CompactionInputFiles> _no_files_can_be_compacted{};
-//   return files_that_can_be_compacted.size() > 0 ? HighestFilesSizeAcrossLevels(files_that_can_be_compacted) : _no_files_can_be_compacted;
-// } 
+//   return files_that_can_be_compacted.size() > 0 ?
+//   HighestFilesSizeAcrossLevels(files_that_can_be_compacted) :
+//   _no_files_can_be_compacted;
+// }
 
 // /*
 //   * This function is used to get the files that are completely overlapping
-//   * with the files in other levels and has the maximum size across the selected levels
+//   * with the files in other levels and has the maximum size across the
+//   selected levels
 // */
-// std::vector<CompactionInputFiles> DBImpl::HighestFilesSizeAcrossLevels(std::vector<std::vector<CompactionInputFiles>> files_to_be_compacted) {
+// std::vector<CompactionInputFiles>
+// DBImpl::HighestFilesSizeAcrossLevels(std::vector<std::vector<CompactionInputFiles>>
+// files_to_be_compacted) {
 //   int index_having_largest_size = -1;
 //   auto max_size = 0;
 
@@ -6318,8 +6341,12 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 // /*
 //   * Filter files that are in the range of start_key and end_key
 // */
-// std::vector<CompactionInputFiles> DBImpl::FilterOnlyInRangeFiles(std::vector<CompactionInputFiles>& all_files, 
-//                                                         Slice& start_key, Slice& end_key, ColumnFamilyData* cfd_) {
+// std::vector<CompactionInputFiles>
+// DBImpl::FilterOnlyInRangeFiles(std::vector<CompactionInputFiles>& all_files,
+//                                                         Slice& start_key,
+//                                                         Slice& end_key,
+//                                                         ColumnFamilyData*
+//                                                         cfd_) {
 //   std::vector<CompactionInputFiles> filtered_files{};
 
 //   // iterate all files and check if the file is in the range
@@ -6329,9 +6356,13 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 //     bool flag = false;
 
 //     for (auto fmd : cfi.files) {
-//       if ((cfd_->internal_comparator().user_comparator()->Compare(fmd->smallest.user_key(), end_key) <= 0) && cfd_->internal_comparator().user_comparator()->Compare(fmd->largest.user_key(), start_key) >= 0){
+//       if
+//       ((cfd_->internal_comparator().user_comparator()->Compare(fmd->smallest.user_key(),
+//       end_key) <= 0) &&
+//       cfd_->internal_comparator().user_comparator()->Compare(fmd->largest.user_key(),
+//       start_key) >= 0){
 //         ncfi.files.push_back(fmd);
-//         flag = true;        
+//         flag = true;
 //       }
 //     }
 //     if (flag) {
@@ -6342,17 +6373,24 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 // }
 
 // /*
-//   * Filter the files that are in the range of start_key and end_key and can be compacted
-//   * This iterates over the queue and creates a new CompactionInputFiles object and adds to the vector
-//   * This vector contain the CompactionInputFiles object that can be compacted or we can say that
+//   * Filter the files that are in the range of start_key and end_key and can
+//   be compacted
+//   * This iterates over the queue and creates a new CompactionInputFiles
+//   object and adds to the vector
+//   * This vector contain the CompactionInputFiles object that can be compacted
+//   or we can say that
 //   * these are the possible compaction we can do across levels
 // */
-// std::vector<CompactionInputFiles> DBImpl::FilesToBeCompactedAcrossLevels(std::vector<CompactionInputFiles> all_files, 
-//                                                                 std::queue<TrackLevels>& track_levels) {
+// std::vector<CompactionInputFiles>
+// DBImpl::FilesToBeCompactedAcrossLevels(std::vector<CompactionInputFiles>
+// all_files,
+//                                                                 std::queue<TrackLevels>&
+//                                                                 track_levels)
+//                                                                 {
 //   std::vector<CompactionInputFiles> files_across_levels{};
 //   // create CompactionInputFiles object and add to files_across_level vector
-//   // be careful about the levels which are in track_levels_queue because it can be duplicate
-//   int current_level{-1};
+//   // be careful about the levels which are in track_levels_queue because it
+//   can be duplicate int current_level{-1};
 
 //   while (track_levels.size() > 0) {
 //     auto track = track_levels.front();
@@ -6365,7 +6403,8 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 //       new_compaction_input_files.level = track.level;
 
 //       for (auto fmd : cif.files) {
-//         if ((fmd->smallest.user_key().compare(start) >= 0) && fmd->largest.user_key().compare(end) <= 0) {
+//         if ((fmd->smallest.user_key().compare(start) >= 0) &&
+//         fmd->largest.user_key().compare(end) <= 0) {
 //           new_compaction_input_files.files.push_back(fmd);
 //         }
 //       }
@@ -6374,7 +6413,7 @@ void DBImpl::RecordSeqnoToTimeMapping() {
 //     current_level = track.level;
 //     track_levels.pop();
 //   }
-//   return files_across_levels;  
+//   return files_across_levels;
 // }
 
 }  // namespace ROCKSDB_NAMESPACE

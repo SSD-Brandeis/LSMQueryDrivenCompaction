@@ -486,14 +486,16 @@ void BlockBasedTableIterator::CheckOutOfBound() {
             /*b_has_ts=*/true) <= 0;
   }
 
+  // (shubham): range_query_partial_block_read is deprecated and no longer used
   if (read_options_.range_query_partial_block_read && Valid()) {
     if (is_seeked_for_range_query_once) {
       is_out_of_bound_ = false;
     } else {
       is_out_of_bound_ = false;
       is_seeked_for_range_query_once = true;
-      const Slice target{read_options_.range_end_key};
-      Seek(target);
+      InternalKey target(Slice(read_options_.range_end_key), 0, kValueTypeForSeek);
+      // const Slice target{read_options_.range_end_key};
+      Seek(target.Encode());
       bool still_in_range;
       while ((still_in_range = (user_comparator_.CompareWithoutTimestamp(
                                     Slice(read_options_.range_end_key),

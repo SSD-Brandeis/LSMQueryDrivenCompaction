@@ -130,29 +130,25 @@ bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 }
 
 void DBIter::Next() {
-  if (read_options_mutable_.enable_range_query_compaction &&
-      key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
-      key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                           Slice(key().data(), key().size()),
-                           Slice(value().data(), value().size()), nullptr);
-    
-    const MutableCFOptions mutable_cf_options = *cfd_->GetLatestMutableCFOptions();
-    uint64_t max_size = MaxFileSizeForLevel(
-            mutable_cf_options, db_impl_->decision_cell_.end_level_,
-            cfd_->ioptions()
-                ->compaction_style);
-    // uint64_t n87_percent_of_max_size = max_size * 7/8;
-
-    if (cfd_->mem_range()->get_data_size() >= max_size) {
-      MemTable* imm_range = cfd_->mem_range();
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, imm_range);
-    }
-  }
-
   assert(valid_);
   assert(status_.ok());
+
+  if (!db_impl_->range_reduce_seen_error_.load(std::memory_order_relaxed) &&
+      read_options_mutable_.enable_range_query_compaction && Valid() &&
+      key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
+      key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
+    std::shared_ptr<RangeReduceOutputs> rroutput;
+    Status s = db_impl_->GetRangeReduceOutputs(
+        db_impl_->range_query_last_level_, cfd_, rroutput);
+    if (s.ok()) {
+      std::shared_ptr<TableBuilder> tmp_memtable = rroutput->builder_;
+      ParsedInternalKey parsed_key;
+      assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
+      tmp_memtable->Add(iter_.key(), value());
+      rroutput->new_file_meta_->UpdateBoundaries(
+          iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+    }
+  }
 
   PERF_COUNTER_ADD(iter_next_count, 1);
   PERF_CPU_TIMER_GUARD(iter_next_cpu_nanos, clock_);
@@ -200,29 +196,26 @@ void DBIter::Next() {
     local_stats_.bytes_read_ += (key().size() + value().size());
   }
 
-  if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) >=
-          0 &&
-      read_options_mutable_.enable_range_query_compaction &&
+  if (!db_impl_->range_reduce_seen_error_.load(std::memory_order_relaxed) &&
+      read_options_mutable_.enable_range_query_compaction && Valid() &&
+      user_comparator_.Compare(
+          key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
       key().level_ >= db_impl_->decision_cell_.GetStartLevel() &&
       key().level_ <= db_impl_->decision_cell_.GetEndLevel()) {
-    if (user_comparator_.Compare(key(), Slice(read_options_mutable_.range_end_key)) ==
-        0) {
-      cfd_->mem_range()->Add(sequence_, ValueType::kTypeValue,
-                             Slice(key().data(), key().size()),
-                             Slice(value().data(), value().size()), nullptr);
+    std::shared_ptr<RangeReduceOutputs> rroutput;
+    Status s = db_impl_->GetRangeReduceOutputs(
+        db_impl_->range_query_last_level_, cfd_, rroutput);
+    if (s.ok()) {
+      std::shared_ptr<TableBuilder> tmp_memtable = rroutput->builder_;
+      if (user_comparator_.CompareWithoutTimestamp(
+              key(), Slice(read_options_mutable_.range_end_key)) == 0) {
+        ParsedInternalKey parsed_key;
+        assert(ParseInternalKey(iter_.key(), &parsed_key, true).ok());
+        tmp_memtable->Add(iter_.key(), value());
+        rroutput->new_file_meta_->UpdateBoundaries(
+            iter_.key(), value(), parsed_key.sequence, parsed_key.type);
+      }
     }
-    MemTable* imm_range = cfd_->mem_range();
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                imm_range);
-    db_impl_->added_last_table = true;
-  } else if (user_comparator_.Compare(
-                 key(), Slice(read_options_mutable_.range_end_key)) >= 0 &&
-             read_options_mutable_.enable_range_query_compaction &&
-             key().level_ == 0) {
-    MemTable* imm_range = cfd_->mem_range();
-    db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush, cfd_,
-                                                imm_range);
-    db_impl_->added_last_table = true;
   }
 }
 
@@ -387,7 +380,6 @@ bool DBIter::FindNextUserEntryInternal(bool skipping_saved_key,
           skipping_saved_key &&
           CompareKeyForSkip(ikey_.user_key, saved_key_.GetUserKey()) <= 0) {
         num_skipped++;  // skip this entry
-        db_impl_->num_entries_skipped++;
         PERF_COUNTER_ADD(internal_key_skipped_count, 1);
       } else {
         assert(!skipping_saved_key ||
@@ -484,7 +476,6 @@ bool DBIter::FindNextUserEntryInternal(bool skipping_saved_key,
           ikey_.user_key, saved_key_.GetUserKey());
       if (cmp == 0 || (skipping_saved_key && cmp < 0)) {
         num_skipped++;
-        db_impl_->num_entries_skipped++;
       } else {
         saved_key_.SetUserKey(
             ikey_.user_key,
@@ -989,7 +980,6 @@ bool DBIter::FindValueForCurrentKey() {
     PERF_COUNTER_ADD(internal_key_skipped_count, 1);
     iter_.Prev();
     ++num_skipped;
-    db_impl_->num_entries_skipped++;
 
     if (visible && timestamp_lb_ != nullptr) {
       // If timestamp_lb_ is not nullptr, we do not have to look further for
@@ -1399,7 +1389,6 @@ bool DBIter::FindUserKeyBeforeSavedKey() {
       }
     } else {
       ++num_skipped;
-      db_impl_->num_entries_skipped++;
     }
 
     iter_.Prev();

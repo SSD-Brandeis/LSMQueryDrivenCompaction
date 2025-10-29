@@ -206,6 +206,10 @@ class InternalIteratorBase : public Cleanable {
     return level_;
   }
 
+  // this is used for range queries
+  bool is_rq_running = false;
+  mutable std::atomic<long long> keys_read;
+
  protected:
   void SeekForPrevImpl(const Slice& target, const CompareInterface* cmp) {
     Seek(target);
@@ -217,7 +221,7 @@ class InternalIteratorBase : public Cleanable {
     }
   }
 
-  // this would be used for range queries
+  // this is used for range queries
   int level_;
 };
 

@@ -1,7 +1,10 @@
 #ifndef DB_ENV_H_
 #define DB_ENV_H_
 
+#include <memory>
 #include <mutex>
+
+#include "buffer.h"
 
 namespace Default {
 
@@ -17,12 +20,12 @@ const int MAX_WRITE_BUFFER_NUMBER = 2;
 const int LEVEL0_FILE_NUM_COMPACTION_TRIGGER = 1;
 
 // kMaxMultiTrivialMove, default is 4 for RocksDB
-const size_t MAX_MULTI_TRIVIAL_MOVE = 1; 
+const size_t MAX_MULTI_TRIVIAL_MOVE = 4;
 
-const int MAX_OPEN_FILES = 50;
-const int MAX_FILE_OPENING_THREADS = 80;
+const int MAX_OPEN_FILES = 1000;
+const int MAX_FILE_OPENING_THREADS = 1000;
 
-}  // namespace Default
+} // namespace Default
 
 /**
  * RocksDB is an emulator environment that let the user set bunch
@@ -31,22 +34,35 @@ const int MAX_FILE_OPENING_THREADS = 80;
  * For more information, look at options.h, advanced_options.h
  */
 class DBEnv {
- private:
+private:
   DBEnv() = default;
+  ~DBEnv() = default;
+  DBEnv(const DBEnv &) = default;
+  DBEnv &operator=(const DBEnv &) = delete;
 
-  static DBEnv* instance_;
+  friend struct std::default_delete<DBEnv>;
+
+  static std::unique_ptr<DBEnv> instance_;
   static std::mutex mutex_;
 
   // buffer size in bytes
   size_t buffer_size_ = 0;           // [M]
   bool enable_perf_iostat_ = false;  // [stat]
   bool destroy_database_ = true;     // [d]
+  bool show_progress_bar_ = false;   // [progress]
+  bool enable_sanity_check_ = false; // [sanity]
+  bool use_saved_db_ = false;        // [usedb]
+  unsigned long snapshot_till_ = 0;  // [snap]
 
- public:
-  static DBEnv* GetInstance() {
+public:
+  static std::string kDBPath;
+  static std::string kSavedDBPath;
+
+  static std::unique_ptr<DBEnv> GetInstance() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (instance_ == nullptr) instance_ = new DBEnv();
-    return instance_;
+    if (instance_ == nullptr)
+      instance_ = std::unique_ptr<DBEnv>(new DBEnv());
+    return std::move(instance_);
   }
 
   uint64_t GetBlockSize() const { return entries_per_page * entry_size; }
@@ -54,6 +70,10 @@ class DBEnv {
   void SetBufferSize(size_t buffer_size) { buffer_size_ = buffer_size; }
   void SetPerfIOStat(bool value) { enable_perf_iostat_ = value; }
   void SetDestroyDatabase(bool value) { destroy_database_ = value; }
+  void SetShowProgress(bool value) { show_progress_bar_ = value; }
+  void SetSanityCheck(bool value) { enable_sanity_check_ = value; }
+  void SetUseSavedDB(bool value) { use_saved_db_ = value; }
+  void SetSnapshotTill(unsigned long value) { snapshot_till_ = value; }
 
   size_t GetBufferSize() const {
     // usually buffer_size = P * B * E
@@ -63,6 +83,10 @@ class DBEnv {
   }
   bool IsPerfIOStatEnabled() const { return enable_perf_iostat_; }
   bool IsDestroyDatabaseEnabled() const { return destroy_database_; }
+  bool IsShowProgressEnabled() const { return show_progress_bar_; }
+  bool IsSanityCheckEnabled() const { return enable_sanity_check_; }
+  bool IsUseSavedDBEnabled() const { return use_saved_db_; }
+  unsigned long GetSnapshotTillOp() const { return snapshot_till_; }
 
   long GetTargetFileSizeBase() const { return GetBufferSize(); }
 
@@ -111,25 +135,28 @@ class DBEnv {
 
   /**
    * Verbosity of print statements
-   * 0 for NONE
+   * 0 for NO_PRINTS
    * 1 for LOW
    * 2 for MEDIUM
    * 3 for HIGH
    * 4 for EXTREME
    */
   int verbosity = 0;
+
+  // if true, trigger compaction in succinctKV way
+  bool succinct_kv_trigger = false; // [succinctkv]
 #pragma endregion
 
   // entry size including key and value size in bytes
-  unsigned int entry_size = Default::ENTRY_SIZE;  // [E]
+  unsigned int entry_size = Default::ENTRY_SIZE; // [E]
   // number of entries one page/block stores
-  unsigned int entries_per_page = Default::ENTRIES_PER_PAGE;  // [B]
+  unsigned int entries_per_page = Default::ENTRIES_PER_PAGE; // [B]
   // number of pages in one buffer
-  unsigned int buffer_size_in_pages = Default::BUFFER_SIZE_IN_PAGES;  // [P]
+  unsigned int buffer_size_in_pages = Default::BUFFER_SIZE_IN_PAGES; // [P]
 
-  double size_ratio = Default::SIZE_RATIO;  // [T]
+  double size_ratio = Default::SIZE_RATIO; // [T]
   unsigned int file_to_memtable_size_ratio =
-      Default::FILE_TO_MEMTABLE_SIZE_RATIO;  // [f]
+      Default::FILE_TO_MEMTABLE_SIZE_RATIO; // [f]
 
   // The maximum number of write buffers that are built up in memory.
   // The default and the minimum number is 2, so that when 1 write buffer
@@ -138,7 +165,7 @@ class DBEnv {
   int max_write_buffer_number = Default::MAX_WRITE_BUFFER_NUMBER;
 
   // bloom filter bits per key
-  double bits_per_key = 10;  // [b]
+  double bits_per_key = 10; // [b]
 
   /**
    * Compaction Priority
@@ -148,7 +175,7 @@ class DBEnv {
    * 4 for kOldestSmallestSeqFirst
    * 5 for kRoundRobin
    */
-  uint16_t compaction_pri = 1;  // [c] lower case
+  uint16_t compaction_pri = 1; // [c] lower case
 
   /**
    * Memtable Factory
@@ -157,10 +184,10 @@ class DBEnv {
    * 3 for hash skip list
    * 4 for hash linked list
    */
-  uint16_t memtable_factory = 1;  // [m]
+  uint16_t memtable_factory = 1; // [m]
 
   // if true, RocksDB will pick target size of each level dynamically
-  bool level_compaction_dynamic_level_bytes = false;
+  bool level_compaction_dynamic_level_bytes = false; // [lcd]
 
   /**
    * Compaction Style
@@ -170,7 +197,7 @@ class DBEnv {
    * 4 for kCompactionStyleNone
    * 5 for kCompactionStyleTiering
    */
-  uint64_t compaction_style = 1;  // [C] upper case
+  uint64_t compaction_style = 1; // [C] upper case
 
   // if true, RocksDB disables auto compactions.
   bool disable_auto_compactions = false;
@@ -182,7 +209,7 @@ class DBEnv {
       Default::LEVEL0_FILE_NUM_COMPACTION_TRIGGER;
 
   // number of levels for this database
-  int num_levels = 10;
+  int num_levels = 20;
 
   // by default target_file_size_multiplier is 1, which means
   // by default files in different levels will have similar size.
@@ -318,7 +345,7 @@ class DBEnv {
 
   // if true, the write will be flushed from the operating system buffer cache
   // before the write is considered complete. If true, write will be slower.
-  bool sync = false;  // FIXME: (shubham) Isn't this should be true.
+  bool sync = false; // FIXME: (shubham) Isn't this should be true.
 
   // if true, write will not first go to the write ahead log.
   bool disableWAL = true;
@@ -414,17 +441,21 @@ class DBEnv {
   size_t num_updates = 0;
   size_t num_range_queries = 0;
 
-  bool enable_range_query_compaction = false;
-  bool enable_level_renaming = false;
+  bool enable_range_query_compaction = false; // [re]
+  bool enable_level_renaming = false;         // [rq]
 
-  float lower_threshold = 0.0f;
-  float upper_threshold = std::numeric_limits<float>::max();
+  float lower_threshold = 0.0f;                              // [lb]
+  float upper_threshold = std::numeric_limits<float>::max(); // [ub]
 
-  // number of runs(tiers) in smaller levels
-  int num_runs_in_smaller_level = 1;
-  // number of runs(tiers) in larger levels
-  int num_runs_in_larger_level = 1;
+  long long min_entries_shld_be_read_per_lvl = 0; // [epl]
+#pragma endregion
+
+#pragma region[FluidLSM]
+  // * K *
+  int smaller_lvl_runs_count = 1;
+  // * Z *
+  int larger_lvl_runs_count = size_ratio;
 #pragma endregion
 };
 
-#endif  // DB_ENV_H_
+#endif // DB_ENV_H_

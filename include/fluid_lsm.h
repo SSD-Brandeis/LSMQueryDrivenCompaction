@@ -159,6 +159,7 @@ class FluidLSM : public EventListener {
   CompactionOptions compact_options_;
   int parallel_compactions_allowed_;
   int parallel_compactions_running_;
+  bool debug_mode_;
   Verbosity verbosity_;
 };
 }  // namespace ROCKSDB_NAMESPACE

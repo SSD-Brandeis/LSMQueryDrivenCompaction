@@ -757,6 +757,7 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       compaction_service(options.compaction_service),
       enforce_single_del_contracts(options.enforce_single_del_contracts),
       verbosity(options.verbosity),
+      succinct_kv_trigger(options.succinct_kv_trigger),
       enable_level_renaming(options.enable_level_renaming) {
   fs = env->GetFileSystem();
   clock = env->GetSystemClock().get();
@@ -927,6 +928,8 @@ void ImmutableDBOptions::Dump(Logger* log) const {
                    db_host_id.c_str());
   ROCKS_LOG_HEADER(log, "            Options.enforce_single_del_contracts: %s",
                    enforce_single_del_contracts ? "true" : "false");
+  ROCKS_LOG_HEADER(log, "                   Options.enable_level_renaming: %s",
+                   enable_level_renaming ? "true" : "false");
 }
 
 bool ImmutableDBOptions::IsWalDirSameAsDBPath() const {

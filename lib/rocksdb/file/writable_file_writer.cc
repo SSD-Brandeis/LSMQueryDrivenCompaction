@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include <iostream>
 
 #include "db/version_edit.h"
 #include "monitoring/histogram.h"
@@ -60,6 +61,8 @@ IOStatus WritableFileWriter::Append(const Slice& data, uint32_t crc32c_checksum,
 
   {
     IOOptions io_options;
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__ << " writable_file_: " << writable_file_.get() << std::endl
+    //       << std::flush;
     io_options.rate_limiter_priority =
         WritableFileWriter::DecideRateLimiterPriority(
             writable_file_->GetIOPriority(), op_rate_limiter_priority);

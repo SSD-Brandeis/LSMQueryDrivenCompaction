@@ -138,10 +138,11 @@ class BlockBasedTable : public TableReader {
   // Returns a new iterator over the index of table contents. If supported
   std::tuple<uint64_t, Slice> GetNumOfRangeOverlappingEntriesFromFile(
       const ReadOptions& read_options, Slice& target) override {
-    auto skip_count_with_key =
+    std::unique_ptr<InternalIteratorBase<IndexValue>> index_iter(
         NewIndexIterator(read_options, /*need_upper_bound_check=*/false,
                          /*input_iter=*/nullptr, /*get_context=*/nullptr,
-                         /*lookup_contex=*/nullptr)->SeekAndReturnSkipCount(target);
+                         /*lookup_context=*/nullptr));
+    auto skip_count_with_key = index_iter->SeekAndReturnSkipCount(target);
     return skip_count_with_key;
   }
 

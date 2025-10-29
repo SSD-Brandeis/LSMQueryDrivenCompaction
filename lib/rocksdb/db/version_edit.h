@@ -192,7 +192,7 @@ struct FileMetaData {
   uint64_t compensated_file_size = 0;
   // These values can mutate, but they can only be read or written from
   // single-threaded LogAndApply thread
-  uint64_t num_entries = 0;     // the number of entries.
+  uint64_t num_entries = 0;  // the number of entries.
   // The number of deletion entries, including range deletions.
   uint64_t num_deletions = 0;
   uint64_t raw_key_size = 0;    // total uncompressed key size.
@@ -479,6 +479,11 @@ class VersionEdit {
   }
 
   void AddFile(int level, const FileMetaData& f) {
+    // std::cout << __FILE__ << ":" << __LINE__ << ": " << __FUNCTION__
+    //           << " FileNumber: " << f.fd.GetNumber()
+    //           << " smallest_seq: " << f.fd.smallest_seqno
+    //           << " largest_seq: " << f.fd.largest_seqno << std::endl
+    //           << std::flush;
     assert(f.fd.smallest_seqno <= f.fd.largest_seqno);
     new_files_.emplace_back(level, f);
     if (!HasLastSequence() || f.fd.largest_seqno > GetLastSequence()) {

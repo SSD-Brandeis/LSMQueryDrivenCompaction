@@ -114,6 +114,26 @@ struct DecisionCell {
   }
 };
 
+struct RangeReduceOutputs {
+  RangeReduceOutputs(ColumnFamilyData* cfd,
+                     std::shared_ptr<WritableFileWriter> writable_file_writer,
+                     std::shared_ptr<TableBuilder> builder,
+                     FileMetaData* new_file_meta,
+                     FileMetaData* old_file_meta = nullptr)
+      : cfd_(cfd),
+        writable_file_writer_(writable_file_writer),
+        builder_(builder),
+        new_file_meta_(new_file_meta),
+        old_file_meta_(old_file_meta) {}
+
+  ColumnFamilyData* cfd_ = nullptr;
+  std::shared_ptr<WritableFileWriter> writable_file_writer_;
+  std::shared_ptr<TableBuilder> builder_;
+  FileMetaData* new_file_meta_ = nullptr;
+  FileMetaData* old_file_meta_ = nullptr;
+  std::atomic<bool> finished{false};
+};
+
 // Class to maintain directories for all database paths other than main one.
 class Directories {
  public:
@@ -470,30 +490,30 @@ class DBImpl : public DB {
   virtual Status UnlockWAL() override;
 
   // Flush partial sst file to the level
-  static void BGWorkPartialOrRangeFlush(void* args);
-  void BackgroundCallPartialOrRangeFlush(Env::Priority thread_pri);
-  Status BackgroundPartialOrRangeFlush(bool* made_progress,
-                                       JobContext* job_context,
-                                       LogBuffer* log_buffer,
-                                       FlushReason* reason,
-                                       Env::Priority thread_pri);
-  void SchedulePartialOrRangeFileFlush();
-  static void UnschedulePartialOrRangeFlushCallback(void* arg);
-  Status FlushPartialOrRangeFile(
-      ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options,
-      bool* made_progress, JobContext* job_context, FlushReason flush_reason,
-      SuperVersionContext* superversion_context,
-      std::vector<SequenceNumber>& snapshot_seqs,
-      SequenceNumber earliest_write_conflict_snapshot,
-      SnapshotChecker* snapshot_checker, LogBuffer* log_buffer,
-      Env::Priority thread_pri, MemTable* memtable, int level,
-      FileMetaData* meta_data);
-  void AddPartialOrRangeFileFlushRequest(FlushReason flush_reason,
-                                         ColumnFamilyData* cfd,
-                                         MemTable* mem_range = nullptr,
-                                         int level = -1,
-                                         bool just_delete = false,
-                                         FileMetaData* file_meta = nullptr);
+  static void BGWorkPartialFlush(void* args);
+  void BackgroundCallPartialFlush(Env::Priority thread_pri);
+  Status BackgroundPartialFlush(bool* made_progress, JobContext* job_context,
+                                LogBuffer* log_buffer, FlushReason* reason,
+                                Env::Priority thread_pri);
+  void ForegroundPartialFlush(ColumnFamilyData* cfd, FileMetaData* file_meta,
+                              int level);
+  void TryCleaningUpRangeReduce(ColumnFamilyData* cfd, JobContext *job_context);
+  void SchedulePartialFileFlush();
+  static void UnschedulePartialFlushCallback(void* arg);
+  Status FlushPartialFile(ColumnFamilyData* cfd,
+                          const MutableCFOptions& mutable_cf_options,
+                          bool* made_progress, JobContext* job_context,
+                          FlushReason flush_reason,
+                          SuperVersionContext* superversion_context,
+                          std::vector<SequenceNumber>& snapshot_seqs,
+                          SequenceNumber earliest_write_conflict_snapshot,
+                          SnapshotChecker* snapshot_checker,
+                          LogBuffer* log_buffer, Env::Priority thread_pri,
+                          std::shared_ptr<MemTable> memtable, int level,
+                          FileMetaData* meta_data);
+  void AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
+                                  FileMetaData* file_meta = nullptr,
+                                  int level = -1);
 
   long long GetRoughOverlappingEntries(const std::string given_start_key,
                                        const std::string given_end_key,
@@ -502,13 +522,24 @@ class DBImpl : public DB {
                                        Slice& useful_min_key,
                                        Slice& useful_max_key);
 
-  std::string GetLevelsState();
+  std::string GetLevelsState() override;
+  std::tuple<unsigned long long, std::string> GetTreeState() override;
+  void GetRangeReduceTableForLevel(int level, ColumnFamilyData* cfd,
+                                   FileMetaData* file_meta);
+  Status GetRangeReduceOutputs(int level, ColumnFamilyData* cfd,
+                               std::shared_ptr<RangeReduceOutputs>& rroutput,
+                               FileMetaData* file_meta = nullptr);
+  void TakecareOfLeftoverPart(ColumnFamilyData* cfd_);
 
-  std::tuple<unsigned long long, std::string> GetTreeState();
+  std::unordered_map<int, std::queue<std::shared_ptr<RangeReduceOutputs>>>
+      range_reduce_outputs_;
+  uint64_t smallest_epoch_number_for_rr = 0;
+  VersionEdit* only_deletes_ = new VersionEdit();
+  std::atomic<bool> rq_done{false};
 
-  int unscheduled_partial_or_range_flushes_ = 0;
-  int bg_partial_or_range_flush_scheduled_ = 0;
-  int bg_partial_or_range_flush_running_ = 0;
+  int unscheduled_partial_flushes_ = 0;
+  int bg_partial_flush_scheduled_ = 0;
+  int bg_partial_flush_running_ = 0;
   bool added_last_table = false;
   bool was_decision_true = false;
   DecisionCell decision_cell_;
@@ -516,12 +547,11 @@ class DBImpl : public DB {
   InstrumentedMutex range_queries_complete_mutex_;  // TODO: (Shubham) Why this
                                                     // lock is even required???
   InstrumentedCondVar range_queries_complete_cv_;
+  std::mutex range_reduce_outputs_mutex_;
 
   ReadOptions read_options_;
   int range_query_last_level_ = 0;
-  long long num_entries_compacted = 0;
-  long long num_entries_skipped = 0;
-  long long num_entries_read_to_compact = 0;
+  std::atomic<bool> range_reduce_seen_error_ = false;
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
@@ -1780,13 +1810,14 @@ class DBImpl : public DB {
 
     BGFlushArg(ColumnFamilyData* cfd, uint64_t max_memtable_id,
                SuperVersionContext* superversion_context,
-               FlushReason flush_reason, MemTable* memtable, int level,
+               FlushReason flush_reason,
+               std::shared_ptr<TableBuilder> piggyback_table, int level,
                bool just_delete, FileMetaData* meta_data)
         : cfd_(cfd),
           max_memtable_id_(max_memtable_id),
           superversion_context_(superversion_context),
           flush_reason_(flush_reason),
-          memtable_(memtable),
+          piggyback_table_(piggyback_table),
           level_(level),
           just_delete_(just_delete),
           meta_data_(meta_data) {}
@@ -1801,7 +1832,7 @@ class DBImpl : public DB {
     // requires a SuperVersionContext object (currently embedded in JobContext).
     SuperVersionContext* superversion_context_;
     FlushReason flush_reason_;
-    MemTable* memtable_ = nullptr;
+    std::shared_ptr<TableBuilder> piggyback_table_ = nullptr;
     int level_ = -1;
     bool just_delete_ = false;
     FileMetaData* meta_data_ = nullptr;
@@ -2169,10 +2200,24 @@ class DBImpl : public DB {
     // flush is considered complete.
     std::unordered_map<ColumnFamilyData*, uint64_t>
         cfd_to_max_mem_id_to_persist;
-    MemTable* mem_to_flush = nullptr;
+    std::shared_ptr<MemTable> mem_to_flush = nullptr;
     int level = -1;                     // For partial/range file flush
     bool just_delete = false;           // For partial/range file flush
     FileMetaData* meta_data = nullptr;  // For partial/range file flush
+  };
+
+  struct RangeReduceFlushRequest {
+    // A map from column family to flush to largest memtable id to persist for
+    // each column family. Once all the memtables whose IDs are smaller than or
+    // equal to this per-column-family specified value, this flush request is
+    // considered to have completed its work of flushing this column family.
+    // After completing the work for all column families in this request, this
+    // flush is considered complete.
+    std::unordered_map<ColumnFamilyData*, uint64_t>
+        cfd_to_max_mem_id_to_persist;
+    RQueryFileOverlap overlap_type;
+    FileMetaData* meta_data = nullptr;
+    int level = -1;
   };
 
   void GenerateFlushRequest(const autovector<ColumnFamilyData*>& cfds,
@@ -2180,7 +2225,8 @@ class DBImpl : public DB {
 
   void SchedulePendingFlush(const FlushRequest& req);
 
-  void SchedulePendingPartialRangeFlush(const FlushRequest& flush_req);
+  void SchedulePendingPartialRangeFlush(
+      const RangeReduceFlushRequest& flush_req);
 
   void SchedulePendingCompaction(ColumnFamilyData* cfd);
   void SchedulePendingPurge(std::string fname, std::string dir_to_sync,
@@ -2648,6 +2694,8 @@ class DBImpl : public DB {
   // invariant(column family present in compaction_queue_ <==>
   // ColumnFamilyData::pending_compaction_ == true)
   std::deque<ColumnFamilyData*> compaction_queue_;
+  // RangeReduce flush queue is used for piggybacking range query data
+  std::deque<RangeReduceFlushRequest> range_reduce_flush_queue_;
 
   // A map to store file numbers and filenames of the files to be purged
   std::unordered_map<uint64_t, PurgeFileInfo> purge_files_;

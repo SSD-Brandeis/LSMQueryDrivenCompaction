@@ -1303,8 +1303,8 @@ void LevelIterator::Seek(const Slice& target) {
   CheckMayBeOutOfLowerBound();
 
   /*
-    NOTE: how partial file flush works for level file
-    We can 6 scenario's
+    NOTE: how partial file flush works
+    We can have 6 scenario's
 
     1.  No overlapping  -- (No action)
 
@@ -1369,9 +1369,12 @@ void LevelIterator::Seek(const Slice& target) {
             0) {
       flevel_->files[file_index_].file_metadata->being_compacted = true;
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
-                                                  nullptr, nullptr, level_,
-                                                  true, file_meta);
+      ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                     "Partial flush request for kCompleteOverlap "
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                     file_meta->fd.GetNumber(), true, level_);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kCompleteOverlap,
+                                           file_meta, level_);
     }
     // 2 & 3. head or tail of a file overlap -- (Partial Flush)
     else if (  // 3. starts here
@@ -1386,7 +1389,24 @@ void LevelIterator::Seek(const Slice& target) {
          icomparator_.user_comparator()->Compare(
              Slice(read_options_.range_end_key),
              flevel_->files[file_index_].file_metadata->smallest.user_key()) >
-             0) ||  // OR
+             0) ||  // OR 2. starts here
+        (icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_start_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) <
+             0 &&
+         icomparator_.user_comparator()->Compare(
+             Slice(read_options_.range_end_key),
+             flevel_->files[file_index_].file_metadata->smallest.user_key()) ==
+             0)) {
+      flevel_->files[file_index_].file_metadata->being_compacted = true;
+      FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+      ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                     "Partial flush request for kHeadOverlap "
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                     file_meta->fd.GetNumber(), true, level_);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kHeadOverlap,
+                                           file_meta, level_);
+    } else if (  // 3. starts here
         (icomparator_.user_comparator()->Compare(
              Slice(read_options_.range_start_key),
              flevel_->files[file_index_].file_metadata->smallest.user_key()) >
@@ -1401,14 +1421,6 @@ void LevelIterator::Seek(const Slice& target) {
              0) ||  // OR 2. starts here
         (icomparator_.user_comparator()->Compare(
              Slice(read_options_.range_start_key),
-             flevel_->files[file_index_].file_metadata->smallest.user_key()) <
-             0 &&
-         icomparator_.user_comparator()->Compare(
-             Slice(read_options_.range_end_key),
-             flevel_->files[file_index_].file_metadata->smallest.user_key()) ==
-             0) ||  // OR
-        (icomparator_.user_comparator()->Compare(
-             Slice(read_options_.range_start_key),
              flevel_->files[file_index_].file_metadata->largest.user_key()) ==
              0 &&
          icomparator_.user_comparator()->Compare(
@@ -1416,12 +1428,13 @@ void LevelIterator::Seek(const Slice& target) {
              flevel_->files[file_index_].file_metadata->largest.user_key()) >
              0)) {
       flevel_->files[file_index_].file_metadata->being_compacted = true;
-      db_impl_->range_query_last_level_ =
-          std::max(level_, db_impl_->range_query_last_level_);
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
-                                                  nullptr, nullptr, level_,
-                                                  false, file_meta);
+      ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                     "Partial flush request for kTailOverlap "
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                     file_meta->fd.GetNumber(), true, level_);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kTailOverlap,
+                                           file_meta, level_);
     }
     // 6. Range fits inside file overlap -- (Partial Partial Flush)
     else if (icomparator_.user_comparator()->Compare(
@@ -1433,12 +1446,13 @@ void LevelIterator::Seek(const Slice& target) {
                  flevel_->files[file_index_]
                      .file_metadata->largest.user_key()) < 0) {
       flevel_->files[file_index_].file_metadata->being_compacted = true;
-      db_impl_->range_query_last_level_ =
-          std::max(level_, db_impl_->range_query_last_level_);
       FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kPartialFlush,
-                                                  nullptr, nullptr, level_,
-                                                  false, file_meta);
+      ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                     "Partial flush request for kContainedRQ "
+                     "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                     file_meta->fd.GetNumber(), true, level_);
+      db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kContainedRQ,
+                                           file_meta, level_);
     }
   }
 }
@@ -1626,9 +1640,12 @@ bool LevelIterator::SkipEmptyFileForward() {
                     .file_metadata->largest.user_key()) >= 0) {
           flevel_->files[file_index_].file_metadata->being_compacted = true;
           FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-          db_impl_->AddPartialOrRangeFileFlushRequest(
-              FlushReason::kPartialFlush, nullptr, nullptr, level_, true,
-              file_meta);
+          ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                         "Partial flush request for kCompleteOverlap "
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                         file_meta->fd.GetNumber(), true, level_);
+          db_impl_->AddPartialFileFlushRequest(
+              RQueryFileOverlap::kCompleteOverlap, file_meta, level_);
         }
         // 2 & 3. head or tail of a file overlap -- (Partial Flush)
         else if (  // 3. starts here
@@ -1643,7 +1660,25 @@ bool LevelIterator::SkipEmptyFileForward() {
              icomparator_.user_comparator()->Compare(
                  Slice(read_options_.range_end_key),
                  flevel_->files[file_index_]
-                     .file_metadata->smallest.user_key()) > 0) ||  // OR
+                     .file_metadata->smallest.user_key()) >
+                 0) ||  // OR 2. starts here
+            (icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_start_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) < 0 &&
+             icomparator_.user_comparator()->Compare(
+                 Slice(read_options_.range_end_key),
+                 flevel_->files[file_index_]
+                     .file_metadata->smallest.user_key()) == 0)) {
+          flevel_->files[file_index_].file_metadata->being_compacted = true;
+          FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
+          ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                         "Partial flush request for kHeadOverlap "
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                         file_meta->fd.GetNumber(), true, level_);
+          db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kHeadOverlap,
+                                               file_meta, level_);
+        } else if (  // 3. starts here
             (icomparator_.user_comparator()->Compare(
                  Slice(read_options_.range_start_key),
                  flevel_->files[file_index_]
@@ -1660,28 +1695,20 @@ bool LevelIterator::SkipEmptyFileForward() {
             (icomparator_.user_comparator()->Compare(
                  Slice(read_options_.range_start_key),
                  flevel_->files[file_index_]
-                     .file_metadata->smallest.user_key()) < 0 &&
-             icomparator_.user_comparator()->Compare(
-                 Slice(read_options_.range_end_key),
-                 flevel_->files[file_index_]
-                     .file_metadata->smallest.user_key()) == 0) ||  // OR
-            (icomparator_.user_comparator()->Compare(
-                 Slice(read_options_.range_start_key),
-                 flevel_->files[file_index_]
                      .file_metadata->largest.user_key()) == 0 &&
              icomparator_.user_comparator()->Compare(
                  Slice(read_options_.range_end_key),
                  flevel_->files[file_index_]
                      .file_metadata->largest.user_key()) > 0)) {
           flevel_->files[file_index_].file_metadata->being_compacted = true;
-          db_impl_->range_query_last_level_ =
-              std::max(level_, db_impl_->range_query_last_level_);
           FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-          db_impl_->AddPartialOrRangeFileFlushRequest(
-              FlushReason::kPartialFlush, nullptr, nullptr, level_, false,
-              file_meta);
-        }
-        // 6. Range fits inside file overlap -- (Partial Partial Flush)
+          ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                         "Partial flush request for kTailOverlap "
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                         file_meta->fd.GetNumber(), true, level_);
+          db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kTailOverlap,
+                                               file_meta, level_);
+        }  // 6. Range fits inside file overlap -- (Partial Partial Flush)
         else if (icomparator_.user_comparator()->Compare(
                      Slice(read_options_.range_start_key),
                      flevel_->files[file_index_]
@@ -1694,9 +1721,12 @@ bool LevelIterator::SkipEmptyFileForward() {
           db_impl_->range_query_last_level_ =
               std::max(level_, db_impl_->range_query_last_level_);
           FileMetaData* file_meta = flevel_->files[file_index_].file_metadata;
-          db_impl_->AddPartialOrRangeFileFlushRequest(
-              FlushReason::kPartialFlush, nullptr, nullptr, level_, false,
-              file_meta);
+          ROCKS_LOG_INFO(db_impl_->GetOptions().info_log,
+                         "Partial flush request for kContainedRQ "
+                         "File: %" PRIu64 " JustDelete: %d Level: %d \n",
+                         file_meta->fd.GetNumber(), true, level_);
+          db_impl_->AddPartialFileFlushRequest(RQueryFileOverlap::kContainedRQ,
+                                               file_meta, level_);
         }
       }
     }
@@ -2207,7 +2237,8 @@ void Version::AddIterators(const ReadOptions& read_options,
                            bool allow_unprepared_value, DBImpl* db_impl) {
   assert(storage_info_.finalized_);
 
-  for (int level = 0; level < storage_info_.num_non_empty_levels(); level++) {
+  for (int level = storage_info_.num_non_empty_levels() - 1; level >= 0;
+       level--) {
     AddIteratorsForLevel(read_options, soptions, merge_iter_builder, level,
                          allow_unprepared_value, db_impl);
   }

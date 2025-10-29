@@ -9,9 +9,7 @@
 
 #include "db/arena_wrapped_db_iter.h"
 
-// #include <iomanip>
 #include <chrono>
-#include <iostream>
 
 #include "logging/logging.h"
 #include "memory/arena.h"
@@ -70,19 +68,8 @@ long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
                                               useful_min_key, useful_max_key);
 }
 
-// long long ArenaWrappedDBIter::GuessTheNumberOfKeysBWStartAndEnd(
-//     const std::string given_start_key, const std::string given_end_key,
-//     int level, FileMetaData* file_meta, Slice& useful_min_key,
-//     Slice& useful_max_key) {
-//   // Let's guess the lexicographic difference between two strings
-//   return db_impl_->GetRoughOverlappingEntries(given_start_key, given_end_key,
-//                                               level, file_meta, cfd_,
-//                                               useful_min_key,
-//                                               useful_max_key);
-// }
-
 bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
-    uint64_t& entries_count) {
+    uint64_t& entries_count, long long min_entries_shld_be_read_per_lvl) {
   auto storage_info = cfd_->current()->storage_info();
 
   if (storage_info->num_non_empty_levels() <= 2) {
@@ -92,6 +79,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   auto user_comparator_ = cfd_->internal_comparator().user_comparator();
   int num_levels_are_overlapping = 0;
   std::vector<float> decision_matrix_meta_data;
+  std::vector<int> succinct_kv_lvls;
 
   for (int lvl = 1; lvl < storage_info->num_non_empty_levels(); lvl++) {
     int num_files_are_overlapping = 0;
@@ -101,8 +89,13 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     Slice useful_min_key = "";
     Slice useful_max_key = "";
 
+    SequenceNumber seq = db_impl_->GetLatestSequenceNumber();
+    InternalKey internal_start_key(Slice(read_options_.range_start_key), seq,
+                                   kValueTypeForSeek);
+    InternalKey internal_end_key(Slice(read_options_.range_end_key), seq,
+                                 kValueTypeForSeek);
     size_t file_index_ = FindFile(cfd_->internal_comparator(), level_files,
-                                  Slice(read_options_.range_start_key));
+                                  internal_start_key.Encode());
 
     for (; file_index_ < num_files; file_index_++) {
       auto& fd = level_files.files[file_index_];
@@ -111,11 +104,11 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
       long long num_entries = fd.file_metadata->num_entries;
 
       bool start_key_in_range =
-          user_comparator_->Compare(Slice(read_options_.range_start_key),
-                                    smallest_key) <= 0;
+          user_comparator_->CompareWithoutTimestamp(
+              Slice(read_options_.range_start_key), smallest_key) <= 0;
       bool end_key_in_range =
-          user_comparator_->Compare(Slice(read_options_.range_end_key),
-                                    largest_key) >= 0;
+          user_comparator_->CompareWithoutTimestamp(
+              Slice(read_options_.range_end_key), largest_key) >= 0;
 
       if (start_key_in_range && end_key_in_range) {
         num_files_are_overlapping++;
@@ -158,8 +151,16 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     entries_count += E_useful_entries_in_level;
     decision_matrix_meta_data.push_back(E_useful_entries_in_level);
 
-    if (num_files_are_overlapping > 0) {
+    if (num_files_are_overlapping > 0 &&
+        (min_entries_shld_be_read_per_lvl == 0 ||
+         E_useful_entries_in_level > min_entries_shld_be_read_per_lvl)) {
       num_levels_are_overlapping++;
+    }
+    if (db_impl_->immutable_db_options().succinct_kv_trigger) {
+      if (storage_info->CompactionScoreLevel(lvl) >= 0.9 &&
+          E_useful_entries_in_level > (2 * min_entries_shld_be_read_per_lvl)) {
+        succinct_kv_lvls.push_back(lvl);
+      }
     }
   }
 
@@ -169,20 +170,68 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     return false;
   }
 
-  // if (db_impl_->immutable_db_options().verbosity > 1) {
-  //   std::cout << "\nDecision Matrix Meta: " << std::endl;
-  //   for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
-  //     std::cout << "Level: " << i + 1 << " --> Total in-range entries: "
-  //               << decision_matrix_meta_data[i] << std::endl;
-  //   }
-  // }
+  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                 "Decision Matrix Meta:");
+  for (size_t i = 0; i < decision_matrix_meta_data.size(); i++) {
+    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                   "Level: %zu --> Total in-range entries: %" PRIu64, i + 1,
+                   static_cast<uint64_t>(decision_matrix_meta_data[i]));
+  }
+
+  if (db_impl_->immutable_db_options().succinct_kv_trigger) {
+    // find the consecutive levels to compact
+    // and set DecisionCell to with start_level_
+    // and end_level_
+    if (succinct_kv_lvls.size() <= 1) {
+      db_impl_->decision_cell_ = DecisionCell{};
+      return false;
+    }
+
+    int last = succinct_kv_lvls.back();
+    int first = last;
+
+    for (int i = static_cast<int>(succinct_kv_lvls.size()) - 2; i >= 0; --i) {
+      if (succinct_kv_lvls[i] == first - 1) {
+        first = succinct_kv_lvls[i];
+      } else {
+        if (last > first) {
+          DecisionCell dc;
+          dc.start_level_ = first;
+          dc.end_level_ = last;
+          db_impl_->decision_cell_ = dc;
+          db_impl_->range_query_last_level_ = last;
+          ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                         "[Verbosity]: SuccinctKV Best decision cell: (%d, %d)",
+                         first, last);
+          return true;
+        }
+
+        last = first = succinct_kv_lvls[i];
+      }
+    }
+
+    if (last > first) {
+      DecisionCell dc;
+      dc.start_level_ = first;
+      dc.end_level_ = last;
+      db_impl_->decision_cell_ = dc;
+      db_impl_->range_query_last_level_ = last;
+      ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                     "[Verbosity]: SuccinctKV Best decision cell: (%d, %d)",
+                     first, last);
+      return true;
+    }
+
+    db_impl_->decision_cell_ = DecisionCell{};
+    return false;
+  }
 
   std::vector<std::vector<DecisionCell>> decision_matrix(
       decision_matrix_meta_data.size(),
       std::vector<DecisionCell>(decision_matrix_meta_data.size()));
 
-  for (size_t i = 0; i < decision_matrix.size(); i++) {
-    for (size_t j = i; j < decision_matrix.size(); j++) {
+  for (int i = 0; i < static_cast<int>(decision_matrix.size()); i++) {
+    for (int j = i; j < static_cast<int>(decision_matrix.size()); j++) {
       if (i == j) {
         decision_matrix[i][j] = DecisionCell(
             i + 1, j + 1,
@@ -201,32 +250,6 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     }
   }
 
-  // if (db_impl_->immutable_db_options().verbosity > 1) {
-  //   std::cout << "\nDecision Matrix Flat: " << std::endl;
-  //   for (size_t i = 0; i < decision_matrix.size(); i++) {
-  //     for (size_t j = i; j < decision_matrix.size(); j++) {
-  //       std::cout << "StartLevel: " << decision_matrix[i][j].GetStartLevel()
-  //       << " EndLevel: " << decision_matrix[i][j].GetEndLevel() << "
-  //       OverlappingRatios: "; for (float val :
-  //       decision_matrix[i][j].overlapping_entries_ratio_) {
-  //         std::cout << val << ", ";
-  //       }
-  //       std::cout << std::endl;
-  //     }
-  //   }
-
-  //   std::cout << "\nDecision Matrix: " << std::endl;
-  //   for (size_t i = 0; i < decision_matrix.size(); i++) {
-  //     for (size_t j = 0; j < decision_matrix.size(); j++) {
-  //       for (float val : decision_matrix[i][j].overlapping_entries_ratio_) {
-  //         std::cout << val << ", ";
-  //       }
-  //       std::cout << " | ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-  // }
-
   DecisionCell best_decision_cell;
 
   for (size_t col = decision_matrix.size() - 1; col > 0; col--) {
@@ -238,12 +261,11 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
     }
     if (best_decision_cell.GetStartLevel() != 0) {
       db_impl_->decision_cell_ = best_decision_cell;
-      // if (db_impl_->immutable_db_options().verbosity > 0) {
-      //   std::cout << "\n[Verbosity]: Best decision cell: ("
-      //             << best_decision_cell.GetStartLevel() << ", "
-      //             << best_decision_cell.GetEndLevel() << ")\n\n"
-      //             << std::endl;
-      // }
+      db_impl_->range_query_last_level_ = best_decision_cell.GetEndLevel();
+      ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log,
+                     "[Verbosity]: Best decision cell: (%d, %d)",
+                     best_decision_cell.GetStartLevel(),
+                     best_decision_cell.GetEndLevel());
       break;
     }
   }
@@ -251,157 +273,40 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
   return best_decision_cell.GetStartLevel() != 0;
 }
 
-Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
-                                   const std::string& end_key,
-                                   uint64_t& entries_count, bool rqdc_enabled) {
-  read_options_.range_query_options->is_range_query_running = true;
-  if (!rqdc_enabled) {
-    // db_impl_->PauseBackgroundWork();
-    return Refresh();
-  }
-
-  db_impl_->num_entries_skipped = 0;
-  db_impl_->num_entries_compacted = 0;
-
-  // Assign read options once to avoid multiple assignments
-  read_options_.range_end_key = end_key;
-  read_options_.range_start_key = start_key;
-  read_options_.enable_range_query_compaction = rqdc_enabled;
+void ArenaWrappedDBIter::ResumeBackgroundWork() {
+  read_options_.enable_range_query_compaction = false;
+  read_options_.range_start_key.clear();
+  read_options_.range_end_key.clear();
   db_impl_->read_options_ = read_options_;
-
-// #ifdef TIMEBREAK
-//   auto tp1 = std::chrono::high_resolution_clock::now();
-// #endif
-
-  db_impl_->PauseBackgroundWork();
-
-// #ifdef TIMEBREAK
-//   auto tp2 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "pauseTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-//       << std::endl
-//       << std::flush;
-// #endif
-
-  if (!CanPerformRangeQueryCompaction(entries_count)) {
-    db_impl_->ContinueBackgroundWork();
-    read_options_.enable_range_query_compaction = false;
-    read_options_.range_start_key.clear();
-    read_options_.range_end_key.clear();
-    db_impl_->read_options_ = read_options_;
-  } else {
-    db_impl_->was_decision_true = true;
-    db_impl_->added_last_table = false;
-  }
-
-// #ifdef TIMEBREAK
-//   auto tp3 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "decisionMakingTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp3 - tp2).count()
-//       << std::endl
-//       << std::flush;
-// #endif
-
-  return Refresh();
+  db_impl_->ContinueBackgroundWork();
 }
 
-Status ArenaWrappedDBIter::Reset(uint64_t& entries_skipped,
-                                 uint64_t& entries_to_compact) {
-  // Check if the last table is added to the queue
+Status ArenaWrappedDBIter::Reset(uint64_t& total_keys_read, bool& did_run_RR) {
+  total_keys_read = db_iter_->GetKeysReadCount();
+  did_run_RR = db_impl_->was_decision_true;
 
   if (!read_options_.enable_range_query_compaction) {
-    read_options_.range_query_options->is_range_query_running = false;
-    read_options_.range_query_options->reset();
-    // db_impl_->ContinueBackgroundWork();
     return Status::OK();
   }
-// #ifdef TIMEBREAK
-//   auto tp1 = std::chrono::high_resolution_clock::now();
-// #endif  // TIMEBREAK
+
   if (db_impl_->read_options_.enable_range_query_compaction) {
-    if (!db_impl_->added_last_table && cfd_->mem_range() != nullptr &&
-        cfd_->mem_range()->num_entries() > 0) {
-      MemTable* imm_range = cfd_->mem_range();
-      db_impl_->AddPartialOrRangeFileFlushRequest(FlushReason::kRangeFlush,
-                                                  cfd_, imm_range);
-      db_impl_->added_last_table = true;
-    }
-    while (db_impl_->bg_partial_or_range_flush_scheduled_ > 0 ||
-           db_impl_->unscheduled_partial_or_range_flushes_ > 0 ||
-           db_impl_->bg_partial_or_range_flush_running_ > 0) {
-      db_impl_->SchedulePartialOrRangeFileFlush();
+    db_impl_->rq_done.store(true);
+    while (db_impl_->bg_partial_flush_scheduled_ > 0 ||
+           db_impl_->unscheduled_partial_flushes_ > 0 ||
+           db_impl_->bg_partial_flush_running_ > 0) {
       db_impl_->range_queries_complete_cv_.Wait();
     }
+    db_impl_->TakecareOfLeftoverPart(cfd_);
   }
 
-// #ifdef TIMEBREAK
-//   auto tp2 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "waitForFinishingCompactionTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-//       << std::endl
-//       << std::flush;
-// #endif  // TIMEBREAK
-
-  // std::ofstream compacted_vs_skipped;
-  // compacted_vs_skipped.open("rqc_on_compacted_vs_skipped.csv",
-  // std::ios_base::app); compacted_vs_skipped <<
-  // db_impl_->num_entries_compacted << ","
-  //                      << db_impl_->num_entries_skipped;
-  // compacted_vs_skipped.close();
-
-  entries_skipped = db_impl_->num_entries_skipped;
-  entries_to_compact = db_impl_->num_entries_read_to_compact;
-  std::string levels_state_before =
-      "Range Query Complete: Compacted << " +
-      std::to_string(db_impl_->num_entries_compacted) +
-      " Skipped: " + std::to_string(db_impl_->num_entries_skipped) +
-      " Read to Compact: " +
-      std::to_string(db_impl_->num_entries_read_to_compact);
-  auto storage_info_before = cfd_->current()->storage_info();
-  for (int l = 0; l < storage_info_before->num_non_empty_levels(); l++) {
-    uint64_t total_entries = 0;
-    levels_state_before += "\n\tLevel-" + std::to_string(l) + ": ";
-    auto num_files = storage_info_before->LevelFilesBrief(l).num_files;
-    for (size_t file_index = 0; file_index < num_files; file_index++) {
-      auto fd = storage_info_before->LevelFilesBrief(l).files[file_index];
-      levels_state_before +=
-          "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-          fd.file_metadata->smallest.user_key().ToString() + ", " +
-          fd.file_metadata->largest.user_key().ToString() + ")" +
-          std::to_string(fd.file_metadata->num_entries) + "] ";
-      total_entries += fd.file_metadata->num_entries;
-    }
-    levels_state_before += " = " + std::to_string(total_entries);
-  }
-  ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                 levels_state_before.c_str());
-
-  read_options_.range_query_options->is_range_query_running = false;
-  read_options_.range_query_options->reset();
-  // check if range query compaction was enabled, set to true
-  // otherwise background compaction is already running
-  if (db_impl_->read_options_.enable_range_query_compaction) {
-    // db_impl_->RenameLevels();
-    read_options_.range_end_key = "";
-    read_options_.range_start_key = "";
-    read_options_.enable_range_query_compaction = false;
-    db_impl_->read_options_ = read_options_;
-  }
+  db_impl_->range_reduce_seen_error_.store(false, std::memory_order_relaxed);
   db_impl_->was_decision_true = false;
-  db_impl_->num_entries_skipped = 0;
-  db_impl_->num_entries_compacted = 0;
-  db_impl_->num_entries_read_to_compact = 0;
-  db_impl_->ContinueBackgroundWork();
+  db_impl_->rq_done.store(false);
+  ResumeBackgroundWork();
   return Status::OK();
 }
 
 Status ArenaWrappedDBIter::Refresh() {
-// #ifdef TIMEBREAK
-//   auto tp1 = std::chrono::high_resolution_clock::now();
-// #endif  // TIMEBREAK
   if (cfd_ == nullptr || db_impl_ == nullptr || !allow_refresh_) {
     return Status::NotSupported("Creating renew iterator is not allowed.");
   }
@@ -432,36 +337,18 @@ Status ArenaWrappedDBIter::Refresh() {
     InternalIterator* internal_iter = db_impl_->NewInternalIterator(
         read_options_, cfd_, sv, &arena_, latest_seq,
         /* allow_unprepared_value */ true, /* db_iter */ this);
+    internal_iter->is_rq_running = true;
+    internal_iter->keys_read.store(0);
     SetIterUnderDBIter(internal_iter);
-
-    std::string levels_state = "Range Query Started:";
-    auto storage_info = cfd_->current()->storage_info();
-    for (int l = 0; l < storage_info->num_non_empty_levels(); l++) {
-      uint64_t total_entries = 0;
-      levels_state += "\n\tLevel-" + std::to_string(l) + ": ";
-      auto num_files = storage_info->LevelFilesBrief(l).num_files;
-      for (size_t file_index = 0; file_index < num_files; file_index++) {
-        auto fd = storage_info->LevelFilesBrief(l).files[file_index];
-        levels_state += "[" + std::to_string(fd.fd.GetNumber()) + "(" +
-                        fd.file_metadata->smallest.user_key().ToString() +
-                        ", " + fd.file_metadata->largest.user_key().ToString() +
-                        ")" + std::to_string(fd.file_metadata->num_entries) +
-                        "] ";
-        total_entries += fd.file_metadata->num_entries;
-      }
-      levels_state += " = " + std::to_string(total_entries);
-    }
-
-    ROCKS_LOG_INFO(db_impl_->immutable_db_options().info_log, "%s \n",
-                   levels_state.c_str());
   };
   while (true) {
     if (sv_number_ != cur_sv_number) {
       reinit_internal_iter();
       break;
     } else {
-      db_iter_->JustResetDbImpl(db_impl_);
-      db_iter_->JustResetReadOptions(read_options_);
+      db_iter_->ResetKeysRead();
+      db_iter_->ResetDbImpl(db_impl_);
+      db_iter_->ResetReadOptions(read_options_);
       SequenceNumber latest_seq = db_impl_->GetLatestSequenceNumber();
       // Refresh range-tombstones in MemTable
       if (!read_options_.ignore_range_deletions) {
@@ -513,15 +400,34 @@ Status ArenaWrappedDBIter::Refresh() {
     }
   }
 
-// #ifdef TIMEBREAK
-//   auto tp2 = std::chrono::high_resolution_clock::now();
-//   std::cout
-//       << "refreshingIteratorTime: "
-//       << std::chrono::duration_cast<std::chrono::nanoseconds>(tp2 - tp1).count()
-//       << std::endl
-//       << std::flush;
-// #endif  // TIMER
   return Status::OK();
+}
+
+Status ArenaWrappedDBIter::Refresh(const std::string& start_key,
+                                   const std::string& end_key,
+                                   uint64_t& entries_count, bool rqdc_enabled,
+                                   long long min_entries_shld_be_read_per_lvl) {
+  if (!rqdc_enabled) {
+    return Refresh();
+  }
+
+  read_options_.enable_range_query_compaction = rqdc_enabled;
+  read_options_.range_start_key = start_key;
+  read_options_.range_end_key = end_key;
+  // read_options_.seq = db_impl_->GetLatestSequenceNumber();
+  db_impl_->read_options_ = read_options_;
+
+  auto pause_status = db_impl_->PauseBackgroundWork();
+  if (!pause_status.ok() ||
+      !CanPerformRangeQueryCompaction(entries_count,
+                                      min_entries_shld_be_read_per_lvl)) {
+    ResumeBackgroundWork();
+  } else {
+    db_impl_->was_decision_true = true;
+    db_impl_->added_last_table = false;
+  }
+
+  return Refresh();
 }
 
 ArenaWrappedDBIter* NewArenaWrappedDbIterator(

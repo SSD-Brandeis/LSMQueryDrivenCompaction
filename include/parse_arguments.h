@@ -3,7 +3,7 @@
 #include "args.hxx"
 #include "db_env.h"
 
-int parse_arguments(int argc, char *argv[], DBEnv *env) {
+int parse_arguments(int argc, char *argv[], std::unique_ptr<DBEnv> &env) {
   args::ArgumentParser parser("RocksDB_parser.", "");
   args::Group group1(parser, "This group is all exclusive:",
                      args::Group::Validators::DontCare);
@@ -45,6 +45,9 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
   args::ValueFlag<int> verbosity_cmd(
       group1, "verbosity", "The verbosity level of execution [0,1,2; def: 0]",
       {'V', "verbosity"});
+  args::ValueFlag<int> succinct_kv_trigger_cmd(
+      group1, "succinct_kv_trigger",
+      "Trigger RQ-based compaction in SuccinctKV way", {"succinctkv"});
   args::ValueFlag<int> compaction_pri_cmd(
       group1, "compaction_pri",
       "[Compaction priority: 1 for kMinOverlappingRatio, 2 for "
@@ -66,6 +69,19 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
   args::ValueFlag<int> enable_perf_iostat_cmd(
       group1, "enable_perf_iostat",
       "Enable RocksDB's internal Perf and IOstat [def: 0]", {"stat"});
+  args::ValueFlag<int> show_progress_cmd(
+      group1, "show_progress_bar", "Shows progress bar [def: 0]", {"progress"});
+  args::ValueFlag<int> enable_sanity_check_cmd(
+      group1, "enable_sanity_check",
+      "Enable Sanity check to verify Database after experiment [def: 0]",
+      {"sanity"});
+  args::ValueFlag<int> use_saved_db_cmd(
+      group1, "use_saved_db",
+      "Enable Using Saved DB from last execution (if available) [def: 0]",
+      {"usedb"});
+  args::ValueFlag<long> snapshot_till_cmd(
+      group1, "snapshot_till",
+      "Snapshot satabase till this operation, 0 indexing [def: -1]", {"snap"});
 
   // Range Query Driven Compaction Options
   args::ValueFlag<long> num_inserts_cmd(
@@ -80,12 +96,20 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
       group1, "range_queries",
       "The number of unique range queries to issue in the experiment [def: 0]",
       {'S', "range_queries"});
+  args::ValueFlag<bool> level_compaction_dynamic_level_bytes_cmd(
+      group1, "level_compaction_dynamic_level_bytes",
+      "If true, levels will be formed bottom up",
+      {"lcd", "level_compaction_dynamic"});
 
   args::ValueFlag<int> enable_range_query_compaction_cmd(
       group1, "enable_range_query_compaction",
       "Enable range query comapaction [def: 0]",
       {"rq", "range_query_compaction"});
 
+  args::ValueFlag<int> max_multi_trivial_move_cmd(
+      group1, "max_multi_trivial_move",
+      "Maximum file it can move trivially [def: 4]",
+      {"tmv", "multi_trivial_move"});
   args::ValueFlag<int> level_renaming_enabled_cmd(
       group1, "enable_level_renaming",
       "Enable level renaming when to add new level", {"re", "renaming_level"});
@@ -99,6 +123,11 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
       group1, "lower_bound",
       "Lower threshold between adjacent levels to perform compaction [def: 0]",
       {"lb", "lower_threshold"});
+  args::ValueFlag<long> min_entries_shld_be_read_per_lvl_cmd(
+      group1, "min_entries_shld_be_read_per_lvl",
+      "Minimum entries that must be read from a level to qualify for "
+      "RangeReduce compaction [def: (P x B) / 2]",
+      {"epl", "min_entries_read_per_level"});
   args::ValueFlag<float> range_query_selectivity_cmd(
       group1, "Y", "Range query selectivity [def: 0]",
       {'Y', "range_query_selectivity"});
@@ -145,6 +174,9 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
           ? args::get(file_to_memtable_size_ratio_cmd)
           : env->file_to_memtable_size_ratio;
   env->verbosity = verbosity_cmd ? args::get(verbosity_cmd) : env->verbosity;
+  env->succinct_kv_trigger = succinct_kv_trigger_cmd
+                                 ? args::get(succinct_kv_trigger_cmd)
+                                 : env->succinct_kv_trigger;
   env->compaction_pri =
       compaction_pri_cmd ? args::get(compaction_pri_cmd) : env->compaction_pri;
   env->compaction_style = compaction_style_cmd ? args::get(compaction_style_cmd)
@@ -155,6 +187,15 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
       block_cache_cmd ? args::get(block_cache_cmd) : env->block_cache;
   env->SetPerfIOStat(enable_perf_iostat_cmd ? args::get(enable_perf_iostat_cmd)
                                             : env->IsPerfIOStatEnabled());
+  env->SetShowProgress(show_progress_cmd ? args::get(show_progress_cmd)
+                                         : env->IsShowProgressEnabled());
+  env->SetSanityCheck(enable_sanity_check_cmd
+                          ? args::get(enable_sanity_check_cmd)
+                          : env->IsSanityCheckEnabled());
+  env->SetUseSavedDB(use_saved_db_cmd ? args::get(use_saved_db_cmd)
+                                      : env->IsUseSavedDBEnabled());
+  env->SetSnapshotTill(snapshot_till_cmd ? args::get(snapshot_till_cmd)
+                                         : env->GetSnapshotTillOp());
 
   // Range Query Driven Compaction Options
   env->num_inserts =
@@ -176,14 +217,25 @@ int parse_arguments(int argc, char *argv[], DBEnv *env) {
                                              : env->lower_threshold;
   env->upper_threshold = upper_threshold_cmd ? args::get(upper_threshold_cmd)
                                              : env->upper_threshold;
+  env->min_entries_shld_be_read_per_lvl =
+      min_entries_shld_be_read_per_lvl_cmd
+          ? args::get(min_entries_shld_be_read_per_lvl_cmd)
+          : (env->entries_per_page * env->buffer_size_in_pages) / 2;
+  env->max_multi_trivial_move = max_multi_trivial_move_cmd
+                                    ? args::get(max_multi_trivial_move_cmd)
+                                    : env->max_multi_trivial_move;
+  env->level_compaction_dynamic_level_bytes =
+      level_compaction_dynamic_level_bytes_cmd
+          ? args::get(level_compaction_dynamic_level_bytes_cmd)
+          : env->level_compaction_dynamic_level_bytes;
 
   // Fluid LSM parameters
-  env->num_runs_in_smaller_level = smaller_lvl_runs_count_cmd
-                                       ? args::get(smaller_lvl_runs_count_cmd)
-                                       : env->num_runs_in_smaller_level;
-  env->num_runs_in_larger_level = larger_lvl_runs_count_cmd
-                                      ? args::get(larger_lvl_runs_count_cmd)
-                                      : env->num_runs_in_larger_level;
+  env->smaller_lvl_runs_count = smaller_lvl_runs_count_cmd
+                                    ? args::get(smaller_lvl_runs_count_cmd)
+                                    : env->smaller_lvl_runs_count;
+  env->larger_lvl_runs_count = larger_lvl_runs_count_cmd
+                                   ? args::get(larger_lvl_runs_count_cmd)
+                                   : env->larger_lvl_runs_count;
 
   return 0;
 }

@@ -538,7 +538,7 @@ ColumnFamilyData::ColumnFamilyData(
       imm_(ioptions_.min_write_buffer_number_to_merge,
            ioptions_.max_write_buffer_number_to_maintain,
            ioptions_.max_write_buffer_size_to_maintain),
-      mem_range_(nullptr),
+      // piggyback_table_map_(nullptr),
       super_version_(nullptr),
       super_version_number_(0),
       local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)),
@@ -681,9 +681,6 @@ ColumnFamilyData::~ColumnFamilyData() {
 
   if (mem_ != nullptr) {
     delete mem_->Unref();
-  }
-  if (mem_range_ != nullptr) {
-    delete mem_range_->Unref();
   }
   autovector<MemTable*> to_delete;
   imm_.current()->Unref(&to_delete);
@@ -1101,6 +1098,15 @@ MemTable* ColumnFamilyData::ConstructNewMemtable(
                       write_buffer_manager_, earliest_seq, id_);
 }
 
+MemTable* ColumnFamilyData::ConstructNewVectorMemtable(
+    const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq) {
+  ImmutableOptions original(ioptions_);
+  ImmutableOptions ioptions_copy_ = original;
+  ioptions_copy_.memtable_factory.reset(new VectorRepFactory);
+  return new MemTable(internal_comparator_, ioptions_copy_, mutable_cf_options,
+                      write_buffer_manager_, earliest_seq, id_);
+}
+
 void ColumnFamilyData::CreateNewMemtable(
     const MutableCFOptions& mutable_cf_options, SequenceNumber earliest_seq) {
   if (mem_ != nullptr) {
@@ -1108,12 +1114,7 @@ void ColumnFamilyData::CreateNewMemtable(
   }
   SetMemtable(ConstructNewMemtable(mutable_cf_options, earliest_seq));
   mem_->Ref();
-
-  if (mem_range_ != nullptr) {
-    delete mem_range_->Unref();
-  }
-  SetMemtableRange(ConstructNewMemtable(mutable_cf_options, earliest_seq));
-  mem_range_->Ref();
+  // SetMemtableRange(std::shared_ptr<MemTable>(ConstructNewVectorMemtable(mutable_cf_options, earliest_seq)));
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {
@@ -1681,10 +1682,10 @@ MemTable* ColumnFamilyMemTablesImpl::GetMemTable() const {
   return current_->mem();
 }
 
-MemTable* ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
-  assert(current_ != nullptr);
-  return current_->mem_range();
-}
+// std::shared_ptr<TableBuilder> ColumnFamilyMemTablesImpl::GetRangeMemTable() const {
+//   assert(current_ != nullptr);
+//   return current_->piggyback_table_map();
+// }
 
 ColumnFamilyHandle* ColumnFamilyMemTablesImpl::GetColumnFamilyHandle() {
   assert(current_ != nullptr);

@@ -335,8 +335,11 @@ void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
 #pragma region[RangeReduce]
   read_options->enable_range_query_compaction =
       env->enable_range_query_compaction;
+
   read_options->lower_threshold = env->lower_threshold;
   read_options->upper_threshold = env->upper_threshold;
+  read_options->range_query_options->initiate();
+
   options->enable_level_renaming = env->enable_level_renaming;
 
 #pragma endregion // [RangeReduce]

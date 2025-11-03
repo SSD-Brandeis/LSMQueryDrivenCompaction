@@ -2,10 +2,11 @@
 set -e
 
 bash ./scripts/rebuild.sh
+ROOT_DIR=~/LSMQueryDrivenCompaction
 
-TAG=scalability
+TAG=skewed-updates
 ENTRY_SIZES=(128)
-LAMBDA=0.25
+LAMBDA=0.125
 ENTRIES_PER_PAGE=(32)
 PAGES_PER_FILE=1024
 SIZE_RATIO=6
@@ -21,10 +22,10 @@ USE_DB=0
 SNAP=0
 
 # Scaling factors for total data size
-SCALE_FACTORS=(1 10 20 30 40 50)
+SCALE_FACTORS=(1 )
 
 echo "=============================="
-echo " Starting scalability experiments"
+echo " Starting Skewed-Updates experiments"
 echo " TAG=${TAG}"
 echo " Scales: ${SCALE_FACTORS[@]}"
 echo "=============================="
@@ -53,60 +54,62 @@ for SCALE in "${SCALE_FACTORS[@]}"; do
         mkdir -p "$EXP_DIR"
         cd "$EXP_DIR" || exit
 
-        mkdir -p RocksDB RangeReduce[lb=0] RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1]
+        # mkdir -p RocksDB RangeReduce[lb=0] RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1]
 
         # --------------------------------------------------------
         # Workload Generation
         # --------------------------------------------------------
-        echo "Generating workload..."
+        # echo "Generating workload..."
         cd RocksDB || exit
 
-        echo "../../../bin/load_gen -I ${inserts} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${entry_size} -L ${LAMBDA}"
-        ../../../bin/load_gen \
-            -I ${inserts} \
-            -U "${UPDATES}" \
-            -S "${RANGE_QUERIES}" \
-            -Y ${SELECTIVITY} \
-            -E ${entry_size} \
-            -L ${LAMBDA}
+        # echo "${ROOT_DIR}/bin/load_gen -I ${inserts} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${entry_size} -L ${LAMBDA}"
+        # ${ROOT_DIR}/bin/load_gen \
+        #     -I ${inserts} \
+        #     -U "${UPDATES}" \
+        #     -S "${RANGE_QUERIES}" \
+        #     -Y ${SELECTIVITY} \
+        #     -E ${entry_size} \
+        #     -L ${LAMBDA} \
+        #     --UD 3 \
+        #     --UD_ZALPHA 1.2
 
         # --------------------------------------------------------
         # Copy workload to all experiment variants
-        # --------------------------------------------------------
-        for target in "../RangeReduce[lb=0]" "../RangeReduce[lb=T^-1]" "../RangeReduce[lb=T^-1ANDre=1]"; do
-            if [ -f "workload.txt" ]; then
-                cp workload.txt "${target}/workload.txt"
-                echo "Copied workload.txt to ${target}"
-            else
-                echo "Error: workload.txt not found in RocksDB"
-                exit 1
-            fi
-        done
+        # # --------------------------------------------------------
+        # for target in "../RangeReduce[lb=0]" "../RangeReduce[lb=T^-1]" "../RangeReduce[lb=T^-1ANDre=1]"; do
+        #     if [ -f "workload.txt" ]; then
+        #         cp workload.txt "${target}/workload.txt"
+        #         echo "Copied workload.txt to ${target}"
+        #     else
+        #         echo "Error: workload.txt not found in RocksDB"
+        #         exit 1
+        #     fi
+        # done
 
         # --------------------------------------------------------
         # Run each workload configuration
         # --------------------------------------------------------
-        echo "Running RocksDB workload..."
-        cd ../RocksDB
-        ../../../bin/working_version \
-            -I ${inserts} \
-            -U "${UPDATES}" \
-            -S "${RANGE_QUERIES}" \
-            -Y ${SELECTIVITY} \
-            -E ${entry_size} \
-            -B ${entries_per_page} \
-            -P ${PAGES_PER_FILE} \
-            -T "${SIZE_RATIO}" \
-            --rq 0 --lb 0 --re 0 \
-            --progress ${SHOW_PROGRESS} \
-            -V ${VERSION} --sanity ${SANITY_CHECK} \
-            --usedb ${USE_DB} --snap ${SNAP} \
-            --succinctkv 0
-        mv db/LOG LOG; rm -rf db workload.txt
+        # echo "Running RocksDB workload..."
+        # cd ../RocksDB
+        # ${ROOT_DIR}/bin/working_version \
+        #     -I ${inserts} \
+        #     -U "${UPDATES}" \
+        #     -S "${RANGE_QUERIES}" \
+        #     -Y ${SELECTIVITY} \
+        #     -E ${entry_size} \
+        #     -B ${entries_per_page} \
+        #     -P ${PAGES_PER_FILE} \
+        #     -T "${SIZE_RATIO}" \
+        #     --rq 0 --lb 0 --re 0 \
+        #     --progress ${SHOW_PROGRESS} \
+        #     -V ${VERSION} --sanity ${SANITY_CHECK} \
+        #     --usedb ${USE_DB} --snap ${SNAP} \
+        #     --succinctkv 0
+        # mv db/LOG LOG; rm -rf db workload.txt
 
         echo "Running RangeReduce[lb=0] workload..."
         cd ../RangeReduce[lb=0]
-        ../../../bin/working_version \
+        ${ROOT_DIR}/bin/working_version \
             -I ${inserts} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
             -Y ${SELECTIVITY} -E ${entry_size} -B ${entries_per_page} \
             -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
@@ -118,7 +121,7 @@ for SCALE in "${SCALE_FACTORS[@]}"; do
 
         echo "Running RangeReduce[lb=T^-1] workload..."
         cd ../RangeReduce[lb=T^-1]
-        ../../../bin/working_version \
+        ${ROOT_DIR}/bin/working_version \
             -I ${inserts} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
             -Y ${SELECTIVITY} -E ${entry_size} -B ${entries_per_page} \
             -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
@@ -130,7 +133,7 @@ for SCALE in "${SCALE_FACTORS[@]}"; do
 
         echo "Running RangeReduce[lb=T^-1ANDre=1] workload..."
         cd ../RangeReduce[lb=T^-1ANDre=1]
-        ../../../bin/working_version \
+        ${ROOT_DIR}/bin/working_version \
             -I ${inserts} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
             -Y ${SELECTIVITY} -E ${entry_size} -B ${entries_per_page} \
             -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
@@ -151,9 +154,9 @@ source .env
 
 SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
 HOSTNAME=$(hostname)
-MESSAGE="SuccinctKV Scalability Experiments Completed on ${HOSTNAME} (TAG=${TAG})"
+MESSAGE="SuccinctKV Skewed-Updates Experiments Completed on ${HOSTNAME} (TAG=${TAG})"
 PAYLOAD="{\"text\": \"${MESSAGE}\"}"
 
 curl -X POST -H 'Content-type: application/json' --data "${PAYLOAD}" ${SLACK_WEBHOOK_URL}
 
-echo "All scalability experiments complete."
+echo "All skewed experiments complete."

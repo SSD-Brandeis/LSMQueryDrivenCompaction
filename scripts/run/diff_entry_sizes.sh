@@ -2,6 +2,7 @@
 set -e
 
 bash ./scripts/rebuild.sh
+ROOT_DIR=~/LSMQueryDrivenCompaction
 
 TAG=different-entry-sizes
 ENTRY_SIZES=(1024 512 256 128 64 32)
@@ -51,8 +52,8 @@ for i in "${!ENTRY_SIZES[@]}"; do
     cd RocksDB || exit
     # ../../../bin/tectonic-cli generate -w ../workload.specs.json
 
-    echo "../../../bin/load_gen -I ${inserts} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${entry_size} -L ${LAMBDA}" # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
-    ../../../bin/load_gen \
+    echo "${ROOT_DIR}/bin/load_gen -I ${inserts} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${entry_size} -L ${LAMBDA}" # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+    ${ROOT_DIR}/bin/load_gen \
             -I ${inserts} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -94,7 +95,7 @@ for i in "${!ENTRY_SIZES[@]}"; do
 
     echo "Running RocksDB workload..."
     cd ../RocksDB
-    ../../../bin/working_version \
+    ${ROOT_DIR}/bin/working_version \
             -I ${inserts} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -118,7 +119,7 @@ for i in "${!ENTRY_SIZES[@]}"; do
 
     echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
     cd ../RangeReduce[lb=0]
-    ../../../bin/working_version \
+    ${ROOT_DIR}/bin/working_version \
             -I ${inserts} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -142,7 +143,7 @@ for i in "${!ENTRY_SIZES[@]}"; do
 
     echo "Running RangeReduce[lb=T^-1] workload [with lb=T^-1 && re=0]..."
     cd ../RangeReduce[lb=T^-1]
-    ../../../bin/working_version \
+    ${ROOT_DIR}/bin/working_version \
             -I ${inserts} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -166,7 +167,7 @@ for i in "${!ENTRY_SIZES[@]}"; do
 
     echo "Running RangeReduce[lb=T^-1ANDre=1] workload [with lb=T^-1 && re=1]..."
     cd ../RangeReduce[lb=T^-1ANDre=1]
-    ../../../bin/working_version \
+    ${ROOT_DIR}/bin/working_version \
             -I ${inserts} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \

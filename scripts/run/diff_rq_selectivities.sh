@@ -1,5 +1,9 @@
 #!/bin/bash
 
+bash ./scripts/rebuild.sh
+
+ROOT_DIR=~/LSMQueryDrivenCompaction
+
 TAG=updates+deletes
 ENTRY_SIZE=128
 LAMBDA=0.125
@@ -41,15 +45,15 @@ do
 
 
     echo "Generating specs for Tectonic..."
-    python3 ../../generate_specs.py -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+    python3 ${ROOT_DIR}/scripts/generate_specs.py -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
     echo "Specs generated for -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
 
     echo "Generating workload..."
     cd RocksDB || exit
-    ../../../bin/tectonic-cli generate -w ../workload.specs.json
+    ${ROOT_DIR}/bin/tectonic-cli generate -w ../workload.specs.json
 
-    # echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
-    # ../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}
+    # echo "${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
+    # ${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}
 
     # echo "Copying workload to RocksDBTuned..."
     # cd ../RocksDBTuned
@@ -93,27 +97,27 @@ do
 
     echo "Running RocksDB workload..."
     cd ../RocksDB
-    ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb 0 --snap ${SNAP} --tmv ${MAX_TRIVIAL_MOVE}
+    ${ROOT_DIR}/bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb 0 --snap ${SNAP} --tmv ${MAX_TRIVIAL_MOVE}
     rm -rf db
 
     # # echo "Running RocksDBTuned workload..."
     # # cd ../RocksDBTuned
-    # # ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
+    # # ${ROOT_DIR}/bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
     # # rm -rf db
 
     echo "Running RangeReduce[lb=T^-1] workload [with lb=${LOWER_BOUND}]..."
     cd ../RangeReduce[lb=T^-1]
-    ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
+    ${ROOT_DIR}/bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
     rm -rf db
 
     echo "Running RangeReduce[lb=T^-1ANDre=1] workload [with lb=${LOWER_BOUND} && re=1]..."
     cd ../RangeReduce[lb=T^-1ANDre=1]
-    ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 1 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb 0 --snap ${SNAP}
+    ${ROOT_DIR}/bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb ${LOWER_BOUND} --re 1 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb 0 --snap ${SNAP}
     rm -rf db
 
     # echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
     # cd ../RangeReduce[lb=0]
-    # ../../../bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb 0 --re 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
+    # ${ROOT_DIR}/bin/working_version -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} -P ${PAGES_PER_FILE} -T ${SIZE_RATIO} --rq 1 --lb 0 --re 0 --progress ${SHOW_PROGRESS} -V ${VERSION} --sanity ${SANITY_CHECK} --usedb ${USE_DB} --snap ${SNAP}
     # rm -rf db
 
     cd ../../..

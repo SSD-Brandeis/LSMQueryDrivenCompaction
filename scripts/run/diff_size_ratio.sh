@@ -3,15 +3,18 @@ set -e
 
 bash ./scripts/rebuild.sh
 
-TAG=succinctKV-overlapping100
+ROOT_DIR=~/LSMQueryDrivenCompaction
+
+TAG=figure9-overlapping-rq
 ENTRY_SIZE=128
 LAMBDA=0.125
 ENTRIES_PER_PAGE=32
 PAGES_PER_FILE=1024
-SIZE_RATIO=6
+SIZE_RATIO=(2 4)
 
 INSERTS=8388608
-RANGE_QUERY_PERCENT=(0.0009765625 ) # 0.00390625 0.015625) # 0.0625 0.25)
+UPDATES=8388608
+RANGE_QUERIES=9000
 SELECTIVITY=0.1
 RANGE_QUERY_OVERLAPPING_COUNT=100
 RANGE_QUERY_OVERLAPPING_PERCENT=1
@@ -24,13 +27,10 @@ SNAP=0
 
 echo "Starting experiments with TAG=${TAG}, ENTRY_SIZE=${ENTRY_SIZE}"
 
-for RQ_PERCENT in "${RANGE_QUERY_PERCENT[@]}"
+for size_ratio in "${SIZE_RATIO[@]}"
 do
-    RANGE_QUERIES=$(echo "(${INSERTS} * ${RQ_PERCENT}) + 0.5" | bc | awk '{printf "%d\n", $0}')
-    UPDATES=$(echo "${INSERTS} - ${RANGE_QUERIES}" | bc)
-
     echo "Debug: INSERTS=${INSERTS}, UPDATES=${UPDATES}, RANGE_QUERIES=${RANGE_QUERIES}"
-    EXP_DIR="experiments-${TAG}-U${UPDATES}-E${ENTRY_SIZE}-B${ENTRIES_PER_PAGE}-S${RANGE_QUERIES}-Y${SELECTIVITY}-T${SIZE_RATIO}"
+    EXP_DIR="experiments-${TAG}-U${UPDATES}-E${ENTRY_SIZE}-B${ENTRIES_PER_PAGE}-S${RANGE_QUERIES}-Y${SELECTIVITY}-T${size_ratio}"
     echo "Debug: EXP_DIR=${EXP_DIR}"
 
     mkdir -p .vstats
@@ -46,10 +46,10 @@ do
 
     echo "Generating workload..."
     cd RocksDB || exit
-    # ../../../bin/tectonic-cli generate -w ../workload.specs.json
+    # ${ROOT_DIR}/bin/tectonic-cli generate -w ../workload.specs.json
 
-    echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
-    ../../../bin/load_gen \
+    echo "${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+    ${ROOT_DIR}/bin/load_gen \
             -I ${INSERTS} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -71,7 +71,7 @@ do
 
     echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
     cd ../RangeReduce[lb=0]
-    ../../../bin/working_version \
+    ${ROOT_DIR}/bin/working_version \
             -I ${INSERTS} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -79,7 +79,7 @@ do
             -E ${ENTRY_SIZE} \
             -B ${ENTRIES_PER_PAGE} \
             -P ${PAGES_PER_FILE} \
-            -T ${SIZE_RATIO} \
+            -T "${size_ratio}" \
             --rq 1 \
             --lb 0 \
             --re 0 \
@@ -101,11 +101,7 @@ source .env
 SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
 HOSTNAME=$(hostname)
 
-MESSAGE="SuccinctKV Experiments Completed on ${HOSTNAME}:
-- ENTRY_SIZE=${ENTRY_SIZE}
-- INSERTS=${INSERTS}
-- RANGE_QUERY_PERCENT=${RANGE_QUERY_PERCENT[*]}
-- SELECTIVITY=${SELECTIVITY}"
+MESSAGE="SuccinctKV Experiments Completed on ${HOSTNAME} TAG: ${TAG}"
 PAYLOAD="{
     \"text\": \"${MESSAGE}\"
 }"

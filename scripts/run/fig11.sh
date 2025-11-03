@@ -2,6 +2,7 @@
 set -e
 
 bash ./scripts/rebuild.sh
+ROOT_DIR=~/LSMQueryDrivenCompaction
 
 TAG=epoch-based-exp
 ENTRY_SIZE=128
@@ -42,10 +43,10 @@ mkdir -p RocksDB RangeReduce[lb=0] RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre
 
 echo "Generating workload..."
 cd RocksDB || exit
-# ../../../bin/tectonic-cli generate -w ../workload.specs.json
+# ${ROOT_DIR}/bin/tectonic-cli generate -w ../workload.specs.json
 
-echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
-../../../bin/load_gen \
+echo "${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
+${ROOT_DIR}/bin/load_gen \
         -I ${INSERTS} \
         -U "${UPDATES}" \
         -S "${RANGE_QUERIES}" \
@@ -85,7 +86,7 @@ fi
 
 echo "Running RocksDB workload..."
 cd ../RocksDB
-../../../bin/working_version \
+${ROOT_DIR}/bin/working_version \
         -I ${INSERTS} \
         -U "${UPDATES}" \
         -S "${RANGE_QUERIES}" \
@@ -109,7 +110,7 @@ rm workload.txt
 
 echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
 cd ../RangeReduce[lb=0]
-../../../bin/working_version \
+${ROOT_DIR}/bin/working_version \
         -I ${INSERTS} \
         -U "${UPDATES}" \
         -S "${RANGE_QUERIES}" \
@@ -133,7 +134,7 @@ rm workload.txt
 
 echo "Running RangeReduce[lb=T^-1] workload [with lb=T^-1 && re=0]..."
 cd ../RangeReduce[lb=T^-1]
-../../../bin/working_version \
+${ROOT_DIR}/bin/working_version \
         -I ${INSERTS} \
         -U "${UPDATES}" \
         -S "${RANGE_QUERIES}" \
@@ -157,7 +158,7 @@ rm workload.txt
 
 echo "Running RangeReduce[lb=T^-1ANDre=1] workload [with lb=T^-1 && re=1]..."
 cd ../RangeReduce[lb=T^-1ANDre=1]
-../../../bin/working_version \
+${ROOT_DIR}/bin/working_version \
         -I ${INSERTS} \
         -U "${UPDATES}" \
         -S "${RANGE_QUERIES}" \

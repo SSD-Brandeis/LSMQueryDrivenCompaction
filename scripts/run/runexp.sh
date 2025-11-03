@@ -1,5 +1,9 @@
 #!/bin/bash
 
+bash ./scripts/rebuild.sh
+
+ROOT_DIR=~/LSMQueryDrivenCompaction
+
 TAG=YCSB-E
 ENTRY_SIZE=128
 LAMBDA=0.125
@@ -37,23 +41,24 @@ echo "Debug: INSERTS=${INSERTS}, UPDATES=${UPDATES}, RANGE_QUERIES=${RANGE_QUERI
     EXP_DIR="experiments-${TAG}-U${UPDATES}-Q${POINT_QUERIES}-D${POINT_DELETES}-S${RANGE_QUERIES}-Y${SELECTIVITY}-R${RANGE_DELETES}-y${RANGE_DELETES_SEL}-E${ENTRY_SIZE}-B${ENTRIES_PER_PAGE}-P${PAGES_PER_FILE}-T${SIZE_RATIO}"
     echo "Debug: EXP_DIR=${EXP_DIR}"
 
+    mkdir -p .vstats
     cd .vstats || exit
-    mkdir -p $EXP_DIR
-    cd $EXP_DIR || exit
+    mkdir -p "$EXP_DIR"
+    cd "$EXP_DIR" || exit
 
     mkdir -p RocksDB RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1] # RangeReduce[lb=0] RangeReduce[lb=0ANDsmlck=0] RocksDBTuned 
 
 # for EPSILON in "${EPSILONS[@]}"; do
 #     mkdir -p "RangeReduce[lb=T^-1]${EPSILON}"
 # done
-    # echo "Generating specs for Tectonic..."
-    # python3 ../../generate_specs.py -I ${INSERTS} -U ${UPDATES} -Q ${POINT_QUERIES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -R ${RANGE_DELETES} -y ${RANGE_DELETES_SEL} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
-    # echo "Specs generated for -I ${INSERTS} -U ${UPDATES} -Q ${POINT_QUERIES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -R ${RANGE_DELETES} -y ${RANGE_DELETES_SEL} -E ${ENTRY_SIZE} -L ${LAMBDA}"
+    echo "Generating specs for Tectonic..."
+    python3 ${ROOT_DIR}/scripts/generate_specs.py -I ${INSERTS} -U ${UPDATES} -Q ${POINT_QUERIES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -R ${RANGE_DELETES} -y ${RANGE_DELETES_SEL} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+    echo "Specs generated for -I ${INSERTS} -U ${UPDATES} -Q ${POINT_QUERIES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -R ${RANGE_DELETES} -y ${RANGE_DELETES_SEL} -E ${ENTRY_SIZE} -L ${LAMBDA}"
 
     echo "Generating workload..."
     cd RocksDB || exit
-    echo "../../../bin/tectonic-cli generate -w ../../../lib/tectonic/specs/ycsb/e.spec.json"
-    # ../../../bin/tectonic-cli generate -w ../../../lib/tectonic/specs/ycsb/e.spec.json
+    echo "${ROOT_DIR}/bin/tectonic-cli generate -w ${ROOT_DIR}/.vstats/${EXP_DIR}/workload.specs.json"
+    ${ROOT_DIR}/bin/tectonic-cli generate -w ${ROOT_DIR}/.vstats/${EXP_DIR}/workload.specs.json
 
 # # for EPSILON in "${EPSILONS[@]}"; do
     echo "Copying workload to RangeReduce[lb=T^-1]..."

@@ -2,6 +2,7 @@
 set -e
 
 bash ./scripts/rebuild.sh
+ROOT_DIR=~/LSMQueryDrivenCompaction
 
 TAG=figure12-diff-selectivity
 ENTRY_SIZE=128
@@ -44,10 +45,10 @@ do
 
     echo "Generating workload..."
     cd RocksDB || exit
-    # ../../../bin/tectonic-cli generate -w ../workload.specs.json
+    # ${ROOT_DIR}/bin/tectonic-cli generate -w ../workload.specs.json
 
-    echo "../../../bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${sel} -E ${ENTRY_SIZE} -L ${LAMBDA}" # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
-    ../../../bin/load_gen \
+    echo "${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${sel} -E ${ENTRY_SIZE} -L ${LAMBDA}" # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+    ${ROOT_DIR}/bin/load_gen \
             -I ${INSERTS} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \
@@ -69,7 +70,7 @@ do
 
     echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
     cd ../RangeReduce[lb=0]
-    ../../../bin/working_version \
+    ${ROOT_DIR}/bin/working_version \
             -I ${INSERTS} \
             -U "${UPDATES}" \
             -S "${RANGE_QUERIES}" \

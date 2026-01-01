@@ -338,7 +338,7 @@ void configOptions(std::unique_ptr<DBEnv> &env, Options *options,
 
   read_options->lower_threshold = env->lower_threshold;
   read_options->upper_threshold = env->upper_threshold;
-  read_options->range_query_options->initiate();
+  // read_options->range_query_options->initiate();
 
   options->enable_level_renaming = env->enable_level_renaming;
 

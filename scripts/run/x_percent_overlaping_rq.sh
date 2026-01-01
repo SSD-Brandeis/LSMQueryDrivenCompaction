@@ -35,14 +35,16 @@ do
     UPDATES=$(echo "${INSERTS} - ${RANGE_QUERIES}" | bc)
     RANGE_QUERY_OVERLAPPING_COUNT=${RANGE_QUERIES}
 
+    LOWER_BOUND=$(echo "scale=9; 1/(${SIZE_RATIO})" | bc)
+
     echo "Debug: INSERTS=${INSERTS}, UPDATES=${UPDATES}, RANGE_QUERIES=${RANGE_QUERIES}"
     EXP_DIR="experiments-${TAG}-U${UPDATES}-E${ENTRY_SIZE}-B${ENTRIES_PER_PAGE}-S${RANGE_QUERIES}-Y${SELECTIVITY}-T${SIZE_RATIO}"
     echo "Debug: EXP_DIR=${EXP_DIR}"
 
     mkdir -p .vstats
-    cd .vstats || exit
+    cd .vstats
     mkdir -p "$EXP_DIR"
-    cd "$EXP_DIR" || exit
+    cd "$EXP_DIR"
 
     mkdir -p RocksDB RangeReduce[lb=0] RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1]
 
@@ -51,7 +53,7 @@ do
     # echo "Specs generated for -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
 
     echo "Generating workload..."
-    cd RocksDB || exit
+    cd RocksDB
     # ${ROOT_DIR}/bin/tectonic-cli generate -w ../workload.specs.json
 
     echo "${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
@@ -85,12 +87,12 @@ do
     echo "Running RocksDB workload..."
     cd ../RocksDB
     ${ROOT_DIR}/bin/working_version \
-        -I ${inserts} \
+        -I ${INSERTS} \
         -U "${UPDATES}" \
         -S "${RANGE_QUERIES}" \
         -Y ${SELECTIVITY} \
-        -E ${entry_size} \
-        -B ${entries_per_page} \
+        -E ${ENTRY_SIZE} \
+        -B ${ENTRIES_PER_PAGE} \
         -P ${PAGES_PER_FILE} \
         -T "${SIZE_RATIO}" \
         --rq 0 --lb 0 --re 0 \
@@ -103,8 +105,8 @@ do
     echo "Running RangeReduce[lb=0] workload..."
     cd ../RangeReduce[lb=0]
     ${ROOT_DIR}/bin/working_version \
-        -I ${inserts} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
-        -Y ${SELECTIVITY} -E ${entry_size} -B ${entries_per_page} \
+        -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+        -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
         -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
         --rq 1 --lb 0 --re 0 \
         --progress ${SHOW_PROGRESS} \
@@ -115,8 +117,8 @@ do
     echo "Running RangeReduce[lb=T^-1] workload..."
     cd ../RangeReduce[lb=T^-1]
     ${ROOT_DIR}/bin/working_version \
-        -I ${inserts} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
-        -Y ${SELECTIVITY} -E ${entry_size} -B ${entries_per_page} \
+        -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+        -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
         -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
         --rq 1 --lb ${LOWER_BOUND} --re 0 \
         --progress ${SHOW_PROGRESS} \
@@ -127,8 +129,8 @@ do
     echo "Running RangeReduce[lb=T^-1ANDre=1] workload..."
     cd ../RangeReduce[lb=T^-1ANDre=1]
     ${ROOT_DIR}/bin/working_version \
-        -I ${inserts} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
-        -Y ${SELECTIVITY} -E ${entry_size} -B ${entries_per_page} \
+        -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+        -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
         -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
         --rq 1 --lb ${LOWER_BOUND} --re 1 \
         --progress ${SHOW_PROGRESS} \
@@ -153,5 +155,10 @@ PAYLOAD="{
     \"text\": \"${MESSAGE}\"
 }"
 
-curl -X POST -H 'Content-type: application/json' --data "${PAYLOAD}" ${SLACK_WEBHOOK_URL}
+set +e
+curl -X POST -H 'Content-type: application/json' \
+     --data "${PAYLOAD}" \
+     "${SLACK_WEBHOOK_URL}"
+set -e
+
 # ------------- End Slack Notification -------------

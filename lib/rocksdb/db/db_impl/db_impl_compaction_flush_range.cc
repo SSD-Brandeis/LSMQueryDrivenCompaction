@@ -940,6 +940,12 @@ void DBImpl::ForegroundPartialFlush(ColumnFamilyData* cfd,
 
 void DBImpl::AddPartialFileFlushRequest(RQueryFileOverlap overlap_type,
                                         FileMetaData* file_meta, int level) {
+
+  if (file_meta->being_compacted) {
+    return;
+  }
+  file_meta->being_compacted = true;
+
   if (level != -1 && (level < decision_cell_.start_level_ ||
                       level > decision_cell_.end_level_)) {
     file_meta->being_compacted = false;

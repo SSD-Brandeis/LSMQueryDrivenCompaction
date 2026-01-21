@@ -14,8 +14,8 @@ SIZE_RATIO=6
 INSERTS=8388608
 RANGE_QUERY_PERCENT=(0.00390625)
 SELECTIVITY=0.1
-RANGE_QUERY_OVERLAPPING_COUNT=1      # we update this later based on number of range queries
-RANGE_QUERY_OVERLAPPING_PERCENT=1    # 100% overlapping
+RANGE_QUERY_OVERLAPPING_COUNT=1         # we update this later based on number of range queries
+RANGE_QUERY_OVERLAPPING_PERCENT=0.75    # 100% overlapping
 
 SHOW_PROGRESS=1
 VERSION=0

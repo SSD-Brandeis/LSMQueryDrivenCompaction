@@ -157,7 +157,7 @@ bool ArenaWrappedDBIter::CanPerformRangeQueryCompaction(
       num_levels_are_overlapping++;
     }
     if (db_impl_->immutable_db_options().succinct_kv_trigger) {
-      if (storage_info->CompactionScoreLevel(lvl) >= 0.9 &&
+      if (storage_info->CompactionScoreLevel(lvl) >= 1 &&
           E_useful_entries_in_level > (2 * min_entries_shld_be_read_per_lvl)) {
         succinct_kv_lvls.push_back(lvl);
       }

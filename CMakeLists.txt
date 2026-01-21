@@ -28,14 +28,14 @@ option(WITH_TRACE_TOOLS "Build with trace tools" OFF)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/rocksdb/include)
 
-# add_custom_target(tectonic-cli ALL
-#     COMMAND RUSTUP_TOOLCHAIN=nightly cargo build --release
-#     COMMAND ${CMAKE_COMMAND} -E copy
-#             ${CMAKE_CURRENT_SOURCE_DIR}/lib/tectonic/target/release/tectonic-cli
-#             ${CMAKE_CURRENT_SOURCE_DIR}/bin/tectonic-cli
-#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/tectonic
-#     COMMENT "Building tectonic in release mode with nightly"
-# )
+add_custom_target(tectonic-cli ALL
+    COMMAND RUSTUP_TOOLCHAIN=nightly cargo build --release
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/lib/tectonic/target/release/tectonic-cli
+            ${CMAKE_CURRENT_SOURCE_DIR}/bin/tectonic-cli
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/tectonic
+    COMMENT "Building tectonic in release mode with nightly"
+)
 
 #! Deprecated
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/KV-WorkloadGenerator/include)

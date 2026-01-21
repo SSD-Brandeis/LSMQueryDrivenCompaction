@@ -1,20 +1,21 @@
 #!/bin/bash
 set -e
 
-bash ./scripts/rebuild.sh
+# bash ./scripts/rebuild.sh
 ROOT_DIR=~/LSMQueryDrivenCompaction
 
-TAG=ycsb-succinctkv
-ENTRY_SIZE=128
+TAG=ycsbe
+ENTRY_SIZE=1024
 LAMBDA=0.125
-ENTRIES_PER_PAGE=32
-PAGES_PER_FILE=1024
+ENTRIES_PER_PAGE=4
+PAGES_PER_FILE=4
 SIZE_RATIO=6
 
-INSERTS=8388608
-UPDATES=8388608
-RANGE_QUERIES=9000
-SELECTIVITY=0.3
+INSERTS=1000000 # 250000
+UPDATES=50000 # 250000 I + 500000 U
+
+RANGE_QUERIES=950000 # 95000 S + 5000 U
+SELECTIVITY=0.0001
 
 SHOW_PROGRESS=1
 VERSION=0
@@ -33,59 +34,92 @@ cd .vstats || exit
 mkdir -p "$EXP_DIR"
 cd "$EXP_DIR" || exit
 
-mkdir -p RocksDB RangeReduce[lb=0]
+mkdir -p RocksDB RangeReduce[lb=0] RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1]
+
+# --------------------------------------------------------
+# Workload Generation
+# --------------------------------------------------------
 
 # echo "Generating specs for Tectonic..."
-# python3 ../../generate_specs.py -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
+# python3 ../../../scripts/generate_specs.py -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
 # echo "Specs generated for -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA}"
 
-echo "Generating workload..."
+# echo "Generating workload..."
 cd RocksDB || exit
-# ${ROOT_DIR}/bin/tectonic-cli generate -w ../workload.specs.json
+# ../../../bin/tectonic-cli generate -w workload.specs.json
 
-echo "${ROOT_DIR}/bin/load_gen -I ${INSERTS} -U ${UPDATES} -S ${RANGE_QUERIES} -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -L ${LAMBDA} --YCSB 1" # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
-${ROOT_DIR}/bin/load_gen \
-        -I ${INSERTS} \
-        -U "${UPDATES}" \
-        -S "${RANGE_QUERIES}" \
-        -Y ${SELECTIVITY} \
-        -E ${ENTRY_SIZE} \
-        -L ${LAMBDA} \
-        --YCSB 1
+# --------------------------------------------------------
+# Copy workload to all experiment variants
+# --------------------------------------------------------
+# for target in "../RangeReduce[lb=0]" "../RangeReduce[lb=T^-1]" "../RangeReduce[lb=T^-1ANDre=1]"; do
+#     if [ -f "workload.txt" ]; then
+#         cp workload.txt "${target}/workload.txt"
+#         echo "Copied workload.txt to ${target}"
+#     else
+#         echo "Error: workload.txt not found in RocksDB"
+#         exit 1
+#     fi
+# done
 
-echo "Copying workload to RangeReduce[lb=0]..."
-cd ../RangeReduce[lb=0]
-if [ -f "../RocksDB/workload.txt" ]; then
-    cp ../RocksDB/workload.txt ./workload.txt
-    echo "workload.txt copied successfully"
-else
-    echo "Error: workload.txt not found in RocksDB"
-    exit 1
-fi
+LOWER_BOUND=$(echo "scale=9; 1/(${SIZE_RATIO})" | bc)
 
-echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
-cd ../RangeReduce[lb=0]
+# --------------------------------------------------------
+# Run each workload configuration
+# --------------------------------------------------------
+echo "Running RocksDB workload..."
+cd ../RocksDB
+# ${ROOT_DIR}/bin/working_version \
+#     -I ${INSERTS} \
+#     -U "${UPDATES}" \
+#     -S "${RANGE_QUERIES}" \
+#     -Y ${SELECTIVITY} \
+#     -E ${ENTRY_SIZE} \
+#     -B ${ENTRIES_PER_PAGE} \
+#     -P ${PAGES_PER_FILE} \
+#     -T "${SIZE_RATIO}" \
+#     --rq 0 --lb 0 --re 0 \
+#     --progress ${SHOW_PROGRESS} \
+#     -V ${VERSION} --sanity ${SANITY_CHECK} \
+#     --usedb ${USE_DB} --snap ${SNAP} \
+#     --succinctkv 0
+# mv db/LOG LOG; rm -rf db workload.txt
+
+# echo "Running RangeReduce[lb=0] workload..."
+# cd ../RangeReduce[lb=0]
+# ${ROOT_DIR}/bin/working_version \
+#     -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+#     -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
+#     -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
+#     --rq 1 --lb 0 --re 0 \
+#     --progress ${SHOW_PROGRESS} \
+#     -V ${VERSION} --sanity ${SANITY_CHECK} \
+#     --usedb ${USE_DB} --snap ${SNAP} --succinctkv 1
+# mv db/LOG LOG; rm -rf db workload.txt
+
+echo "Running RangeReduce[lb=T^-1] workload..."
+cd ../RangeReduce[lb=T^-1]
 ${ROOT_DIR}/bin/working_version \
-        -I ${INSERTS} \
-        -U "${UPDATES}" \
-        -S "${RANGE_QUERIES}" \
-        -Y ${SELECTIVITY} \
-        -E ${ENTRY_SIZE} \
-        -B ${ENTRIES_PER_PAGE} \
-        -P ${PAGES_PER_FILE} \
-        -T "${SIZE_RATIO}" \
-        --rq 1 \
-        --lb 0 \
-        --re 0 \
-        --progress ${SHOW_PROGRESS} \
-        -V ${VERSION} \
-        --sanity ${SANITY_CHECK} \
-        --usedb ${USE_DB} \
-        --snap ${SNAP} \
-        --succinctkv 1
-mv db/LOG LOG
-rm -rf db
-rm workload.txt
+    -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+    -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
+    -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
+    --rq 1 --lb ${LOWER_BOUND} --re 0 \
+    --progress ${SHOW_PROGRESS} \
+    -V ${VERSION} --sanity ${SANITY_CHECK} \
+    --usedb ${USE_DB} --snap ${SNAP} --succinctkv 0
+mv db/LOG LOG; rm -rf db workload.txt
+
+echo "Running RangeReduce[lb=T^-1ANDre=1] workload..."
+cd ../RangeReduce[lb=T^-1ANDre=1]
+${ROOT_DIR}/bin/working_version \
+    -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+    -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
+    -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
+    --rq 1 --lb ${LOWER_BOUND} --re 1 \
+    --progress ${SHOW_PROGRESS} \
+    -V ${VERSION} --sanity ${SANITY_CHECK} \
+    --usedb ${USE_DB} --snap ${SNAP} --succinctkv 0
+mv db/LOG LOG; rm -rf db workload.txt
+
 cd ../../..
 
 source .env

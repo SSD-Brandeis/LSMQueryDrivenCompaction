@@ -331,9 +331,9 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
     UpdateProgressBar(env, ith_op, total_operations,
                       (int)total_operations * 0.02);
 #ifdef PROFILE
-    if (ith_op == env->num_inserts) {
+    if (ith_op == 8388607) {
       (*buffer) << "=====================" << std::endl;
-      (*buffer) << "Inserts are completed ..." << std::endl;
+      (*buffer) << "ith_op ..." << ith_op << std::endl;
       LogTreeState(db, buffer);
       LogRocksDBStatistics(db, options, buffer);
 #ifdef TIMER
@@ -346,23 +346,24 @@ int runWorkload(std::unique_ptr<DBEnv> &env) {
       (*buffer) << "RangeDelete Execution Time: " << rdelete_exec_time
                 << std::endl;
 #endif // TIMER
-    } else if (op_done_in_epoch == op_in_epoch && ith_op > env->num_inserts) {
-      (*buffer) << "=====================" << std::endl;
-      (*buffer) << "One Epoch done ... " << ith_op << " operation" << std::endl;
-      LogTreeState(db, buffer);
-      LogRocksDBStatistics(db, options, buffer);
-      op_done_in_epoch = 0;
-#ifdef TIMER
-      (*buffer) << "Inserts Execution Time: " << inserts_exec_time << std::endl;
-      (*buffer) << "Updates Execution Time: " << updates_exec_time << std::endl;
-      (*buffer) << "PointQuery Execution Time: " << pq_exec_time << std::endl;
-      (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time
-                << std::endl;
-      (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
-      (*buffer) << "RangeDelete Execution Time: " << rdelete_exec_time
-                << std::endl;
-#endif // TIMER
-    }
+    } 
+//     else if (op_done_in_epoch == op_in_epoch && ith_op > env->num_inserts) {
+//       (*buffer) << "=====================" << std::endl;
+//       (*buffer) << "One Epoch done ... " << ith_op << " operation" << std::endl;
+//       LogTreeState(db, buffer);
+//       LogRocksDBStatistics(db, options, buffer);
+//       op_done_in_epoch = 0;
+// #ifdef TIMER
+//       (*buffer) << "Inserts Execution Time: " << inserts_exec_time << std::endl;
+//       (*buffer) << "Updates Execution Time: " << updates_exec_time << std::endl;
+//       (*buffer) << "PointQuery Execution Time: " << pq_exec_time << std::endl;
+//       (*buffer) << "PointDelete Execution Time: " << pdelete_exec_time
+//                 << std::endl;
+//       (*buffer) << "RangeQuery Execution Time: " << rq_exec_time << std::endl;
+//       (*buffer) << "RangeDelete Execution Time: " << rdelete_exec_time
+//                 << std::endl;
+// #endif // TIMER
+//     }
 #endif // PROFILE
 
     if (is_last_line)

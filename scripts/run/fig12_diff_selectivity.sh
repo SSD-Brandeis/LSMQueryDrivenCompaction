@@ -14,7 +14,7 @@ SIZE_RATIO=6
 INSERTS=8388608
 UPDATES=8388608
 RANGE_QUERIES=9000
-SELECTIVITY=(0.003 0.03 0.3)
+SELECTIVITY=(0.0003 0.001) # (0.003 0.03 0.3)
 # RANGE_QUERY_OVERLAPPING_COUNT=100
 # RANGE_QUERY_OVERLAPPING_PERCENT=1
 
@@ -37,7 +37,7 @@ do
     mkdir -p "$EXP_DIR"
     cd "$EXP_DIR" || exit
 
-    mkdir -p RocksDB RangeReduce[lb=0]
+    mkdir -p RangeReduce[lb=T^-1] RangeReduce[lb=T^-1ANDre=1] RocksDB RangeReduce[lb=0] 
 
     # echo "Generating specs for Tectonic..."
     # python3 ../../generate_specs.py -I ${INSERTS} -U ${UPDATES} -D ${POINT_DELETES} -S ${RANGE_QUERIES} -Y ${sel} -E ${ENTRY_SIZE} -L ${LAMBDA} # -O ${RANGE_QUERY_OVERLAPPING_COUNT} --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}"
@@ -58,15 +58,41 @@ do
             # -O ${RANGE_QUERY_OVERLAPPING_COUNT} \
             # --PO ${RANGE_QUERY_OVERLAPPING_PERCENT}
 
-    echo "Copying workload to RangeReduce[lb=0]..."
-    cd ../RangeReduce[lb=0]
-    if [ -f "../RocksDB/workload.txt" ]; then
-        cp ../RocksDB/workload.txt ./workload.txt
-        echo "workload.txt copied successfully"
-    else
-        echo "Error: workload.txt not found in RocksDB"
-        exit 1
-    fi
+    # --------------------------------------------------------
+    # Copy workload to all experiment variants
+    # --------------------------------------------------------
+    for target in "../RangeReduce[lb=0]" "../RangeReduce[lb=T^-1]" "../RangeReduce[lb=T^-1ANDre=1]"; do
+        if [ -f "workload.txt" ]; then
+            cp workload.txt "${target}/workload.txt"
+            echo "Copied workload.txt to ${target}"
+        else
+            echo "Error: workload.txt not found in RocksDB"
+            exit 1
+        fi
+    done
+
+    LOWER_BOUND=$(echo "scale=9; 1/(${SIZE_RATIO})" | bc)
+
+    # --------------------------------------------------------
+    # Run each workload configuration
+    # --------------------------------------------------------
+    echo "Running RocksDB workload..."
+    cd ../RocksDB
+    ${ROOT_DIR}/bin/working_version \
+        -I ${INSERTS} \
+        -U "${UPDATES}" \
+        -S "${RANGE_QUERIES}" \
+        -Y ${SELECTIVITY} \
+        -E ${ENTRY_SIZE} \
+        -B ${ENTRIES_PER_PAGE} \
+        -P ${PAGES_PER_FILE} \
+        -T "${SIZE_RATIO}" \
+        --rq 0 --lb 0 --re 0 \
+        --progress ${SHOW_PROGRESS} \
+        -V ${VERSION} --sanity ${SANITY_CHECK} \
+        --usedb ${USE_DB} --snap ${SNAP} \
+        --succinctkv 0
+    mv db/LOG LOG; rm -rf db workload.txt
 
     echo "Running RangeReduce[lb=0] workload [with lb=0 && re=0]..."
     cd ../RangeReduce[lb=0]
@@ -91,6 +117,31 @@ do
     mv db/LOG LOG
     rm -rf db
     rm workload.txt
+
+    echo "Running RangeReduce[lb=T^-1] workload..."
+    cd ../RangeReduce[lb=T^-1]
+    ${ROOT_DIR}/bin/working_version \
+        -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+        -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
+        -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
+        --rq 1 --lb ${LOWER_BOUND} --re 0 \
+        --progress ${SHOW_PROGRESS} \
+        -V ${VERSION} --sanity ${SANITY_CHECK} \
+        --usedb ${USE_DB} --snap ${SNAP} --succinctkv 0
+    mv db/LOG LOG; rm -rf db workload.txt
+
+    echo "Running RangeReduce[lb=T^-1ANDre=1] workload..."
+    cd ../RangeReduce[lb=T^-1ANDre=1]
+    ${ROOT_DIR}/bin/working_version \
+        -I ${INSERTS} -U "${UPDATES}" -S "${RANGE_QUERIES}" \
+        -Y ${SELECTIVITY} -E ${ENTRY_SIZE} -B ${ENTRIES_PER_PAGE} \
+        -P ${PAGES_PER_FILE} -T "${SIZE_RATIO}" \
+        --rq 1 --lb ${LOWER_BOUND} --re 1 \
+        --progress ${SHOW_PROGRESS} \
+        -V ${VERSION} --sanity ${SANITY_CHECK} \
+        --usedb ${USE_DB} --snap ${SNAP} --succinctkv 0
+    mv db/LOG LOG; rm -rf db workload.txt
+
     cd ../../..
 done
 

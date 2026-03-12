@@ -55,7 +55,7 @@ class MergingIterator : public InternalIterator {
  public:
   MergingIterator(const InternalKeyComparator* comparator,
                   InternalIterator** children, int n, bool is_arena_mode,
-                  bool prefix_seek_mode, DBImpl* db_impl = nullptr,
+                  bool prefix_seek_mode,
                   const Slice* iterate_upper_bound = nullptr)
       : is_arena_mode_(is_arena_mode),
         prefix_seek_mode_(prefix_seek_mode),
@@ -64,7 +64,6 @@ class MergingIterator : public InternalIterator {
         current_(nullptr),
         minHeap_(MinHeapItemComparator(comparator_)),
         pinned_iters_mgr_(nullptr),
-        db_impl_(db_impl),
         iterate_upper_bound_(iterate_upper_bound) {
     children_.resize(n);
     for (int i = 0; i < n; i++) {
@@ -645,8 +644,6 @@ class MergingIterator : public InternalIterator {
   // forward. Lazily initialize it to save memory.
   std::unique_ptr<MergerMaxIterHeap> maxHeap_;
   PinnedIteratorsManager* pinned_iters_mgr_;
-
-  DBImpl* db_impl_;
 
   // Used to bound range tombstones. For point keys, DBIter and SSTable iterator
   // take care of boundary checking.
@@ -1628,7 +1625,7 @@ inline void MergingIterator::FindPrevVisibleKey() {
 
 InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
                                      InternalIterator** list, int n,
-                                     Arena* arena, bool prefix_seek_mode, DBImpl* db_impl) {
+                                     Arena* arena, bool prefix_seek_mode) {
   assert(n >= 0);
   if (n == 0) {
     return NewEmptyInternalIterator<Slice>(arena);
@@ -1636,21 +1633,21 @@ InternalIterator* NewMergingIterator(const InternalKeyComparator* cmp,
     return list[0];
   } else {
     if (arena == nullptr) {
-      return new MergingIterator(cmp, list, n, false, prefix_seek_mode, db_impl);
+      return new MergingIterator(cmp, list, n, false, prefix_seek_mode);
     } else {
       auto mem = arena->AllocateAligned(sizeof(MergingIterator));
-      return new (mem) MergingIterator(cmp, list, n, true, prefix_seek_mode, db_impl);
+      return new (mem) MergingIterator(cmp, list, n, true, prefix_seek_mode);
     }
   }
 }
 
 MergeIteratorBuilder::MergeIteratorBuilder(
     const InternalKeyComparator* comparator, Arena* a, bool prefix_seek_mode,
-    const Slice* iterate_upper_bound, DBImpl* db_impl)
+    const Slice* iterate_upper_bound)
     : first_iter(nullptr), use_merging_iter(false), arena(a) {
   auto mem = arena->AllocateAligned(sizeof(MergingIterator));
   merge_iter = new (mem) MergingIterator(comparator, nullptr, 0, true,
-                                         prefix_seek_mode, db_impl, iterate_upper_bound);
+                                         prefix_seek_mode, iterate_upper_bound);
 }
 
 MergeIteratorBuilder::~MergeIteratorBuilder() {

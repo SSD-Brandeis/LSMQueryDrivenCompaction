@@ -34,7 +34,7 @@ using InternalIterator = InternalIteratorBase<Slice>;
 // REQUIRES: n >= 0
 extern InternalIterator* NewMergingIterator(
     const InternalKeyComparator* comparator, InternalIterator** children, int n,
-    Arena* arena = nullptr, bool prefix_seek_mode = false, DBImpl* db_impl = nullptr);
+    Arena* arena = nullptr, bool prefix_seek_mode = false);
 
 // The iterator returned by NewMergingIterator() and
 // MergeIteratorBuilder::Finish(). MergingIterator handles the merging of data
@@ -51,7 +51,7 @@ class MergeIteratorBuilder {
   // arena: where the merging iterator needs to be allocated from.
   explicit MergeIteratorBuilder(const InternalKeyComparator* comparator,
                                 Arena* arena, bool prefix_seek_mode = false,
-                                const Slice* iterate_upper_bound = nullptr, DBImpl* db_impl = nullptr);
+                                const Slice* iterate_upper_bound = nullptr);
   ~MergeIteratorBuilder();
 
   // Add point key iterator `iter` to the merging iterator.

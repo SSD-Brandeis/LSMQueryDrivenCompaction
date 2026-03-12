@@ -416,7 +416,7 @@ Status FlushJob::MemPurge() {
 
   ScopedArenaIterator iter(NewMergingIterator(
       &(cfd_->internal_comparator()), memtables.data(),
-      static_cast<int>(memtables.size()), &arena, false, db_impl_));
+      static_cast<int>(memtables.size()), &arena, false));
 
   auto* ioptions = cfd_->ioptions();
 
@@ -889,7 +889,7 @@ Status FlushJob::WriteLevel0Table() {
     {
       ScopedArenaIterator iter(NewMergingIterator(
           &cfd_->internal_comparator(), memtables.data(),
-          static_cast<int>(memtables.size()), &arena, false, db_impl_));
+          static_cast<int>(memtables.size()), &arena, false));
       ROCKS_LOG_INFO(db_options_.info_log,
                      "[%s] [JOB %d] Level-0 flush table #%" PRIu64 ": started",
                      cfd_->GetName().c_str(), job_context_->job_id,

@@ -1,3 +1,45 @@
+import os
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as font_manager
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+from plotter.epochstats import EpochStats
+# from plotter.plotepochstats import (
+#     PlotRangeQueryStats,
+#     PlotEpochStats,
+#     plot_total_data_movement,
+#     PlotOperationLatencyStats,
+# )
+from plotter.plotstyles import line_styles_no_marker, point_styles
+
+prop = font_manager.FontProperties(fname="./plotter/LinLibertine_Mah.ttf")
+plt.rcParams["font.family"] = prop.get_name()
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.size"] = 20
+
+# --------------------------------------------------------------------
+#           Global constants
+# --------------------------------------------------------------------
+tag = "phase-wise-new"
+
+inserts = 2500000
+updates = 2480000
+range_queries = 1401
+
+size_ratio = 6
+
+entry_size = 536 + 10
+num_page_per_file = 1024
+entries_per_page = 32
+
+# -------------------------------------------------------------------
+#             Class and function definitions
+# -------------------------------------------------------------------
 from copy import deepcopy
 from typing import List, Dict, Tuple
 
@@ -7,14 +49,14 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 from plotter import *
-from .plotstyles import (
+from plotter.plotstyles import (
     bar_styles,
     line_styles_no_marker_with_abbr,
     line_styles_no_marker,
     point_styles,
     line_styles,
 )
-from .dataclass import (
+from plotter.dataclass import (
     AdditionalStats,
     PlottingStats,
     RQColumn,
@@ -24,7 +66,7 @@ from .dataclass import (
 class PlotEpochStats:
     bar_width = 0.55
     fig_size = (1.2, 2.5)
-    epoch_fig_size = (4, 2.5)
+    epoch_fig_size = (3, 2.5)
 
     def __init__(
         self,
@@ -83,7 +125,7 @@ class PlotEpochStats:
                         rotation=90,
                     )
 
-        plt.savefig(f"{TAG}-total-rq-writes.pdf", bbox_inches="tight", pad_inches=0.06)
+        plt.savefig(f"{tag}/total-rq-writes.pdf", bbox_inches="tight", pad_inches=0.06)
 
     def plot_total_bytes_written(self):
         convert_to_ = 1024**3
@@ -135,13 +177,13 @@ class PlotEpochStats:
                         rotation=90,
                     )
 
-        plt.savefig(f"{TAG}-total-writes.pdf", bbox_inches="tight", pad_inches=0.06)
+        plt.savefig(f"{tag}/total-writes.pdf", bbox_inches="tight", pad_inches=0.06)
 
     def plot_compaction_debt_over_epochs(self):
         convert_to_ = 1024**3
         ylabel = "compaction debt (GB)"
         desired_yticks = [0, 5, 10]
-        desired_xticks = [0, 4, 9]
+        desired_xticks = [0, 2, 4, 6, 8]
         xlabel = "epoch"
 
         fig, ax = plt.subplots(figsize=self.epoch_fig_size)
@@ -149,13 +191,11 @@ class PlotEpochStats:
         for approach in self.approaches_.keys():
             data = self.approaches_[approach]
 
-            compaction_debt = [
-                stat.CompactionDebt / convert_to_ for stat in data
-            ]
+            compaction_debt = [stat.CompactionDebt / convert_to_ for stat in data]
 
             ax.plot(
-                range(len(compaction_debt)),
-                compaction_debt,
+                range(len(compaction_debt) - 1),
+                compaction_debt[:-1],
                 **line_styles[approach],
             )
 
@@ -167,15 +207,51 @@ class PlotEpochStats:
 
         ax.set_xlabel(xlabel)
         ax.set_xticks(desired_xticks)
-        ax.set_xticklabels([str(x+1) for x in desired_xticks])
+        ax.set_xticklabels([str(x + 1) for x in desired_xticks])
+        ax.set_xlim(left=-0.8)
 
         plt.savefig(
-            f"{TAG}-compaction-debt-over-epochs.pdf",
+            f"{tag}/compaction-debt-over-epochs.pdf",
             bbox_inches="tight",
             pad_inches=0.06,
         )
         plt.close(fig)
 
+    def plot_space_amp_over_epochs(self):
+        desired_yticks = [0, 0.5, 1, 1.5]
+        adjust_ytop_by = 0
+        xlabel = "epoch"
+        desired_xticks = [0, 2, 4, 6, 8]
+
+        fig, ax = plt.subplots(figsize=self.epoch_fig_size)
+
+        for approach in self.approaches_.keys():
+            data = self.approaches_[approach]
+
+            space_amp = [stat.DBSize / (inserts * entry_size) for stat in data]
+
+            ax.plot(
+                range(len(space_amp)-1),
+                space_amp[:-1],
+                **line_styles[approach],
+            )
+
+        ax.set_ylabel("space amplification", labelpad=-1)
+        ax.set_yticks(desired_yticks)
+        ax.set_yticklabels([f"{tick}" for tick in desired_yticks])
+        ax.set_ylim(bottom=0, top=desired_yticks[-1] + adjust_ytop_by)
+        # ax.yaxis.set_label_coords(-0.46, 0.34)
+
+        ax.set_xlabel(xlabel)
+        ax.set_xticks(desired_xticks)
+        ax.set_xticklabels([str(x + 1) for x in desired_xticks])
+
+        plt.savefig(
+            f"{tag}/space-amp-over-epochs.pdf",
+            bbox_inches="tight",
+            pad_inches=0.06,
+        )
+        plt.close(fig)
 
     def plot_compaction_debt(self):
         convert_to_ = 1024**3
@@ -201,6 +277,9 @@ class PlotEpochStats:
             )
             bar_containers.append(bars)
 
+            # print(approach)
+            # print(data[self.epoch_to_plot])
+
         ax.set_ylabel(ylabel)
         ax.set_yticks(desired_yticks)
         ax.set_yticklabels([f"{byte}" for byte in desired_yticks])
@@ -225,7 +304,7 @@ class PlotEpochStats:
                         rotation=90,
                     )
 
-        plt.savefig(f"{TAG}-compaction-debt.pdf", bbox_inches="tight", pad_inches=0.06)
+        plt.savefig(f"{tag}/compaction-debt.pdf", bbox_inches="tight", pad_inches=0.06)
 
         handles, labels = ax.get_legend_handles_labels()
         legend_fig = plt.figure(figsize=(8, 2))
@@ -245,7 +324,7 @@ class PlotEpochStats:
         )
 
         legend_fig.savefig(
-            f"{TAG}-bounded-metric-legend.pdf", bbox_inches="tight", pad_inches=0.015
+            f"{tag}/bounded-metric-legend.pdf", bbox_inches="tight", pad_inches=0.015
         )
 
     def plot_space_amplification(self):
@@ -255,8 +334,9 @@ class PlotEpochStats:
         approach_data: Dict[str, List[PlottingStats]] = dict()
         for approach, data in self.approaches_.items():
             approach_data[approach] = [
-                data[self.epoch_to_plot].DBSize / (INSERTS * ENTRY_SIZE)
+                data[self.epoch_to_plot].DBSize / (inserts * (entry_size))
             ]
+            print(approach, data[self.epoch_to_plot].DBSize, inserts * (entry_size), inserts, entry_size)
 
         _, ax = plt.subplots(figsize=self.fig_size)
 
@@ -269,6 +349,8 @@ class PlotEpochStats:
                 **bar_styles[approach],
             )
             bar_containers.append(bars)
+
+            print(approach, f"{data}")
 
         ax.set_ylabel("space amplification")
         ax.set_yticks(desired_yticks)
@@ -283,7 +365,7 @@ class PlotEpochStats:
             for bar in bars:
                 height = bar.get_height()
 
-                if height < 1.1:
+                if height < 1:
                     ax.text(
                         bar.get_x() + bar.get_width() / 2,
                         height,
@@ -295,7 +377,7 @@ class PlotEpochStats:
                     )
 
         plt.savefig(
-            f"{TAG}-space-amplification.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{tag}/space-amplification.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
     def plot_insert_throughput_for_phases(self, phases: List[Tuple[int]] = [(1, -1)]):
@@ -310,10 +392,10 @@ class PlotEpochStats:
         for approach, data in self.approaches_.items():
             throughput[approach] = list()
             for phase, time in enumerate(data, 1):
-                print(approach, "---", time.InsertsExecutionTime)
+                print(approach, "---", time.insertsExecutionTime)
                 if phase in phase_idxs.keys():
                     throughput[approach].append(
-                        phase_idxs[phase] / time.InsertsExecutionTime / convert_to_
+                        phase_idxs[phase] / time.insertsExecutionTime / convert_to_
                     )
 
         fig, ax = plt.subplots(figsize=self.fig_size)
@@ -349,7 +431,7 @@ class PlotEpochStats:
         # ax.set_xticklabels([str(x) for x in desired_xticks])
 
         plt.savefig(
-            f"{TAG}-inserts-throughput.pdf", bbox_inches="tight", pad_inches=0.04
+            f"{tag}/inserts-throughput.pdf", bbox_inches="tight", pad_inches=0.04
         )
         plt.close(fig)
 
@@ -387,7 +469,7 @@ class PlotEpochStats:
         ax.set_xticklabels([per for per in self.approach_abr_order], rotation=90)
 
         plt.savefig(
-            f"{TAG}-wkl-execution-time.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{tag}/wkl-execution-time.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
 
@@ -395,7 +477,7 @@ class PlotRangeQueryStats:
     fig_size_for_bar = (2, 3)
     width_for_bar = 0.55
     # fig_size = (1.7, 0.75)
-    fig_size = (3, 2.5)
+    fig_size = (4, 2.5)
 
     def __init__(
         self, approaches: Dict[str, pd.DataFrame], approaches_order: List[str]
@@ -466,16 +548,15 @@ class PlotRangeQueryStats:
         ax.set_xticklabels([per for per in approach_abbr], rotation=90)
 
         plt.savefig(
-            f"{TAG}-did-optimization-trigger.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{tag}/did-optimization-trigger.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
-
     def bytes_read_for_each_range_query_rolling(self, window=200):
-        convert_to_ = 1024**2
-        ylabel = "bytes read (MB)"
-        desired_mb_ticks = [1e0, 1e1, 1e2]
+        convert_to_ = 1024**1
+        ylabel = "bytes read (KB)"
+        desired_mb_ticks = [1e0, 1e2, 1e4, 1e6]
         adjust_ytop_by = 0
-        desired_xticks = [1, 500, RANGE_QUERIES-1]
+        desired_xticks = [1, 700, range_queries - 1]
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -484,13 +565,13 @@ class PlotRangeQueryStats:
                 self.approaches_[approach][str(RQColumn.TOTAL_ENTRIES_READ)].astype(
                     float
                 )
-                * ENTRY_SIZE
+                * entry_size
                 / convert_to_
             )
 
             s = pd.Series(data)
 
-            median = s.rolling(window, min_periods=1).median()
+            mean = s.rolling(window, min_periods=1).mean()
             q05 = s.rolling(window, min_periods=1).quantile(0.05)
             q95 = s.rolling(window, min_periods=1).quantile(0.95)
 
@@ -498,34 +579,34 @@ class PlotRangeQueryStats:
             style["linewidth"] = 2
 
             ax.plot(
-                median.values,
+                mean.values,
                 **style,
             )
 
             ax.fill_between(
-                range(len(median)),
+                range(len(mean)),
                 q05,
                 q95,
                 color=line_styles_no_marker[approach]["color"],
                 alpha=0.25,
                 linewidth=0,
-                edgecolor="none"
+                edgecolor="none",
             )
 
         ax.text(
-            0.07,
-            0.1,
-            f"rolling window: {window} pts\nline: median\nband: p5–p95",
+            0.17,
+            0.65,
+            f"rolling window: {window} pts\nline: mean\nband: p5–p95",
             transform=ax.transAxes,
             fontsize=17,
         )
 
         ax.set_ylabel(ylabel)
-        ax.set_yscale('log')
+        ax.set_yscale("log")
         ax.set_yticks(desired_mb_ticks)
         # ax.set_yticklabels([str(mb) for mb in desired_mb_ticks])
-        ax.yaxis.set_label_coords(-0.18, 0.45)
-        ax.set_ylim(bottom=desired_mb_ticks[0]) # , top=desired_mb_ticks[-1] + adjust_ytop_by)
+        ax.yaxis.set_label_coords(-0.14, 0.45)
+        ax.set_ylim(bottom=desired_mb_ticks[0], top=desired_mb_ticks[-1])
 
         ax.set_xlabel("range query number")
         ax.set_xticks(desired_xticks)
@@ -533,7 +614,7 @@ class PlotRangeQueryStats:
         # ax.set_xlim(left=-200)
 
         plt.savefig(
-            f"{TAG}-range-query-bytes-read-rolling.pdf",
+            f"{tag}/range-query-bytes-read-rolling.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -544,7 +625,7 @@ class PlotRangeQueryStats:
         ylabel = "bytes read (KB)"
         desired_mb_ticks = [1e0, 1e2, 1e4, 1e6]
         adjust_ytop_by = 0
-        desired_xticks = [1, 700, RANGE_QUERIES-1]
+        desired_xticks = [1, 700, range_queries - 1]
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -553,11 +634,15 @@ class PlotRangeQueryStats:
                 self.approaches_[approach][str(RQColumn.TOTAL_ENTRIES_READ)].astype(
                     float
                 )
-                * ENTRY_SIZE
+                * entry_size
                 / convert_to_
             )
 
             s = pd.Series(data)
+            # print(approach)
+            # print(s[0])
+            # print(s[1:1000].mean())
+            # print(s[1000: ].mean())
 
             style = line_styles_no_marker[approach]
             style["linewidth"] = 2
@@ -570,7 +655,7 @@ class PlotRangeQueryStats:
             )
 
         ax.set_ylabel(ylabel)
-        ax.set_yscale('log')
+        ax.set_yscale("log")
         ax.set_yticks(desired_mb_ticks)
         # ax.set_yticklabels([str(mb) for mb in desired_mb_ticks])
         ax.yaxis.set_label_coords(-0.14, 0.45)
@@ -582,7 +667,7 @@ class PlotRangeQueryStats:
         # ax.set_xlim(left=-200)
 
         plt.savefig(
-            f"{TAG}-range-query-bytes-read-scatter.pdf",
+            f"{tag}/range-query-bytes-read-scatter.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -590,7 +675,7 @@ class PlotRangeQueryStats:
 
     def bytes_read_cdf(self):
         convert_to_ = 1024**3
-        xlabel = "" # "read GBs"
+        xlabel = ""  # "read GBs"
         desired_yticks = [0, 0.5, 1]
         desired_xticks = [0, 0.2]
 
@@ -601,7 +686,7 @@ class PlotRangeQueryStats:
                 self.approaches_[approach][str(RQColumn.TOTAL_ENTRIES_READ)].astype(
                     float
                 )
-                * ENTRY_SIZE
+                * entry_size
             ) / convert_to_
 
             sorted_data = np.sort(data)
@@ -613,20 +698,20 @@ class PlotRangeQueryStats:
                 **line_styles_no_marker_with_abbr[approach],
             )
 
-        ax.set_ylabel("") # "cdf"
+        ax.set_ylabel("")  # "cdf"
         ax.yaxis.set_major_locator(ticker.FixedLocator(ax.get_yticks()))
         ax.set_yticks(desired_yticks)
-        ax.set_yticklabels(["" for tick in desired_yticks]) # str(tick)
+        ax.set_yticklabels(["" for tick in desired_yticks])  # str(tick)
         ax.set_ylim(0, 1)
 
-        ax.set_xlabel(xlabel) # , fontsize=18.7
+        ax.set_xlabel(xlabel)  # , fontsize=18.7
         ax.xaxis.set_major_locator(ticker.FixedLocator(ax.get_xticks()))
         ax.set_xticks(desired_xticks)
-        ax.set_xticklabels(["" for tick in desired_xticks]) # str(tick)
+        ax.set_xticklabels(["" for tick in desired_xticks])  # str(tick)
         ax.set_xlim(left=0, right=desired_xticks[-1] + 0.03)
 
         plt.savefig(
-            f"{TAG}-range-query-bytes-read-cdf.pdf",
+            f"{tag}/range-query-bytes-read-cdf.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -642,7 +727,7 @@ class PlotRangeQueryStats:
         for approach, data in self.approaches_.items():
             approach_data[approach] = (
                 data[[str(RQColumn.TOTAL_ENTRIES_READ)]]
-                .apply(lambda x: (x * ENTRY_SIZE) / convert_to_)[
+                .apply(lambda x: (x * entry_size) / convert_to_)[
                     str(RQColumn.TOTAL_ENTRIES_READ)
                 ]
                 .to_list()
@@ -684,15 +769,15 @@ class PlotRangeQueryStats:
         # ax.set_xticklabels([str(x) for x in desired_xticks])
 
         plt.savefig(
-            f"{TAG}-range-query-bytes-read.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{tag}/range-query-bytes-read.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
     def latency_for_each_range_query_rolling(self, window=200):
         convert_to_ = 10**3
         ylabel = "latency ($\\mu$s)"
-        desired_yticks = [1e0, 1e2, 1e4, 1e6]
+        desired_yticks = [1e0, 1e2, 1e4, 1e6, 1e8]
         adjust_ytop_by = 0.25
-        desired_xticks = [1, 500, RANGE_QUERIES-1]
+        desired_xticks = [1, 700, range_queries - 1]
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -706,7 +791,7 @@ class PlotRangeQueryStats:
 
             # print(approach, s.mean())
 
-            median = s.rolling(window, min_periods=1).median()
+            mean = s.rolling(window, min_periods=1).mean()
             q05 = s.rolling(window, min_periods=1).quantile(0.05)
             q95 = s.rolling(window, min_periods=1).quantile(0.95)
 
@@ -714,18 +799,18 @@ class PlotRangeQueryStats:
             style["linewidth"] = 2
 
             ax.plot(
-                median.values,
+                mean.values,
                 **style,
             )
 
             ax.fill_between(
-                range(len(median)),
+                range(len(mean)),
                 q05,
                 q95,
                 color=line_styles_no_marker[approach]["color"],
                 alpha=0.25,
                 linewidth=0,
-                edgecolor="none"
+                edgecolor="none",
             )
 
             # # Optional: tail behavior
@@ -733,26 +818,26 @@ class PlotRangeQueryStats:
             # ax.plot(p95, linestyle="--", alpha=0.6)
 
         ax.text(
-            0.07,
-            0.1,
-            f"rolling window: {window} pts\nline: median\nband: p5–p95",
+            0.17,
+            0.65,
+            f"rolling window: {window} pts\nline: mean\nband: p5–p95",
             transform=ax.transAxes,
             fontsize=17,
         )
 
         ax.set_ylabel(ylabel)
-        ax.set_yscale('log')
+        ax.set_yscale("log")
         ax.set_yticks(desired_yticks)
         # ax.set_yticklabels([str(tick) for tick in desired_yticks])
-        ax.yaxis.set_label_coords(-0.18, 0.45)
-        ax.set_ylim(bottom=desired_yticks[0]) # , top=desired_yticks[-1])
+        ax.yaxis.set_label_coords(-0.14, 0.45)
+        ax.set_ylim(bottom=desired_yticks[0], top=desired_yticks[-1])
 
         ax.set_xlabel("range query number")
         ax.set_xticks(desired_xticks)
         ax.set_xticklabels([str(tick) for tick in desired_xticks])
 
         plt.savefig(
-            f"{TAG}-range-query-latency-rolling.pdf",
+            f"{tag}/range-query-latency-rolling.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -763,7 +848,7 @@ class PlotRangeQueryStats:
         ylabel = "latency ($\\mu$s)"
         desired_yticks = [1e0, 1e2, 1e4, 1e6, 1e8]
         adjust_ytop_by = 0.25
-        desired_xticks = [1, 700, RANGE_QUERIES-1]
+        desired_xticks = [1, 700, range_queries - 1]
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -774,6 +859,10 @@ class PlotRangeQueryStats:
             )
 
             s = pd.Series(data)
+            print(approach)
+            print(s[0])
+            print(s[1:1000].mean())
+            print(s[1000: ].mean())
 
             style = line_styles_no_marker[approach]
             style["linewidth"] = 2
@@ -786,7 +875,7 @@ class PlotRangeQueryStats:
             )
 
         ax.set_ylabel(ylabel)
-        ax.set_yscale('log')
+        ax.set_yscale("log")
         ax.set_yticks(desired_yticks)
         ax.yaxis.set_label_coords(-0.14, 0.45)
         ax.set_ylim(bottom=desired_yticks[0], top=desired_yticks[-1])
@@ -796,7 +885,7 @@ class PlotRangeQueryStats:
         ax.set_xticklabels([str(tick) for tick in desired_xticks])
 
         plt.savefig(
-            f"{TAG}-range-query-latency-scatter.pdf",
+            f"{tag}/range-query-latency-scatter.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -830,14 +919,14 @@ class PlotRangeQueryStats:
         ax.set_yticklabels([str(tick) for tick in desired_yticks])
         ax.set_ylim(0, 1)
 
-        ax.set_xlabel("") # "latency (s)"
+        ax.set_xlabel("")  # "latency (s)"
         ax.xaxis.set_major_locator(ticker.FixedLocator(ax.get_xticks()))
         ax.set_xticks(desired_xticks)
-        ax.set_xticklabels(["" for tick in desired_xticks]) # str(tick)
+        ax.set_xticklabels(["" for tick in desired_xticks])  # str(tick)
         ax.set_xlim(left=0, right=desired_xticks[-1] + 0.5)
 
         plt.savefig(
-            f"{TAG}-range-query-latency-cdf.pdf",
+            f"{tag}/range-query-latency-cdf.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -892,7 +981,7 @@ class PlotRangeQueryStats:
         # ax.set_xticklabels([str(x) for x in desired_xticks])
 
         plt.savefig(
-            f"{TAG}-range-query-latency.pdf", bbox_inches="tight", pad_inches=0.04
+            f"{tag}/range-query-latency.pdf", bbox_inches="tight", pad_inches=0.04
         )
         plt.close(fig)
 
@@ -901,20 +990,20 @@ class PlotRangeQueryStats:
         # Add your custom text above the legend
         # legend_text = r"E=128\hspace{1cm}I=8388608\hspace{1cm}U=8388608\hspace{1cm}S=900\hspace{1cm}T=6\hspace{1cm}B=32\hspace{1cm}P=1024"
         legend_text = (
-            f"M={round((ENTRY_SIZE*ENTRIES_PER_PAGE*NUM_PAGE_PER_FILE)/(1024*1024))}MB\\hspace{{1cm}}"
-            f"E={ENTRY_SIZE}B\\hspace{{1cm}}"
-            f"T={SIZE_RATIO}\\hspace{{1cm}}"
-            f"I={round(INSERTS/1000000, 1)}M\\hspace{{1cm}}"
-            f"U={round(UPDATES/1000000, 1)}M\\hspace{{1cm}}"
-            f"S={round(RANGE_QUERIES/1000)}K\\hspace{{1cm}}"
+            f"M={round((entry_size*entries_per_page*num_page_per_file)/(1024*1024))}MB\\hspace{{1cm}}"
+            f"E={entry_size}B\\hspace{{1cm}}"
+            f"T={size_ratio}\\hspace{{1cm}}"
+            f"I={round(inserts/1000000, 1)}M\\hspace{{1cm}}"
+            f"U={round(updates/1000000, 1)}M\\hspace{{1cm}}"
+            f"S={round(range_queries/1000)}K\\hspace{{1cm}}"
             f"s={SELECTIVITY}\\hspace{{1cm}}"
-            # f"B={ENTRIES_PER_PAGE}\\hspace{{1cm}}"
-            # f"P={NUM_PAGE_PER_FILE}"
+            # f"B={entries_per_page}\\hspace{{1cm}}"
+            # f"P={num_page_per_file}"
         )
         legend_fig.text(0.5, 0.85, legend_text, ha="center", va="center")
 
         legend_fig.savefig(
-            f"{TAG}-bounded-legend-config.pdf", bbox_inches="tight", pad_inches=0.015
+            f"{tag}/bounded-legend-config.pdf", bbox_inches="tight", pad_inches=0.015
         )
         plt.close(legend_fig)
 
@@ -941,7 +1030,7 @@ class PlotRangeQueryStats:
 
         # Save the legend figure separately; bbox_inches='tight' helps crop extra whitespace.
         legend_fig.savefig(
-            f"{TAG}-bounded-legend.pdf", bbox_inches="tight", pad_inches=0.015
+            f"{tag}/bounded-legend.pdf", bbox_inches="tight", pad_inches=0.015
         )
         plt.close(legend_fig)
 
@@ -953,8 +1042,8 @@ def plot_total_data_movement(
     epoch_to_plot: int = -1,
 ):
     bar_width = 0.55
-    convert_to_ = 1024**4
-    ylabel = "data movement (TB)"
+    convert_to_ = 1024**3
+    ylabel = "data movement (GB)"
     desired_yticks = [0, 50, 100]
     adjust_ytop_by = 0
     fig_size = (1.2, 2.5)
@@ -965,7 +1054,7 @@ def plot_total_data_movement(
     approach_data: Dict[str, int] = dict()
     for approach, data in rq_stats.items():
         approach_data[approach] = (
-            data[str(RQColumn.TOTAL_ENTRIES_READ)].sum() * ENTRY_SIZE
+            data[str(RQColumn.TOTAL_ENTRIES_READ)].sum() * entry_size
         )
 
     for approach, data in plotting_stats.items():
@@ -987,6 +1076,8 @@ def plot_total_data_movement(
             **bar_styles[approach],
         )
         bar_containers.append(bars)
+
+        print(approach, f"{data:.2f} GB")
 
     ax.set_ylabel(ylabel)
     ax.set_yticks(desired_yticks)
@@ -1013,8 +1104,80 @@ def plot_total_data_movement(
                 )
 
     plt.savefig(
-        f"{TAG}-overall-data-movement.pdf", bbox_inches="tight", pad_inches=0.06
+        f"{tag}/overall-data-movement.pdf", bbox_inches="tight", pad_inches=0.06
     )
+
+def plot_data_movement_over_epoch(
+    approaches_plotting_stats: Dict[str, List[PlottingStats]],
+    approaches_rq_stats: Dict[str, pd.DataFrame],
+    approach_order: List[str], # Use the full names as keys for dicts
+):
+    convert_to_ = 1024**3
+    ylabel = "data movement (GB)"
+    xlabel = "epoch"
+    desired_xticks = [0, 2, 4, 6, 8]
+    # Adjust y-ticks based on your expected data volume
+    desired_yticks = [0, 25, 50, 75] 
+
+    # Map your JSON workload counts to RQ dataframe slices
+    # These indices must be cumulative
+    rq_epoch_map = {
+        2: (0, 1),           # Group 2: 1 query
+        3: (1, 1001),        # Group 3: 1000 queries
+        4: (1001, 1201),     # Group 4: 200 queries
+        9: (1201, 1401)      # Group 9: 200 queries
+    }
+
+    fig, ax = plt.subplots(figsize=(3, 2.5)) # Adjusting size for time-series
+
+    for approach in approach_order:
+        stats_list = approaches_plotting_stats[ABBR_TO_NAME[approach]]
+        rq_df = approaches_rq_stats[ABBR_TO_NAME[approach]]
+        
+        movement_per_epoch = []
+        
+        # Iterate through every epoch available in the stats
+        for epoch_idx in range(len(stats_list)):
+            # 1. Sum RQ bytes if this epoch has range queries
+            rq_bytes = 0
+            if epoch_idx in rq_epoch_map:
+                start, end = rq_epoch_map[epoch_idx]
+                rq_bytes = rq_df.iloc[start:end][str(RQColumn.TOTAL_ENTRIES_READ)].sum() * entry_size
+            
+            # 2. Add internal movement (Compaction + RangeReduce)
+            internal_bytes = (
+                stats_list[epoch_idx].CompactionReadBytes + 
+                stats_list[epoch_idx].CompactionWrittenBytes + 
+                stats_list[epoch_idx].RangeReduceWrittenBytes
+            )
+            
+            total_gb = (rq_bytes + internal_bytes) / convert_to_
+            movement_per_epoch.append(total_gb)
+
+        # Plot as a line
+        ax.plot(
+            range(len(movement_per_epoch)-1),
+            movement_per_epoch[:-1],
+            **line_styles[ABBR_TO_NAME[approach]],
+        )
+
+    # Formatting
+    ax.set_ylabel(ylabel)
+    ax.set_yticks(desired_yticks)
+    ax.set_yticklabels([str(y) for y in desired_yticks])
+    ax.set_ylim(bottom=0, top=desired_yticks[-1])
+    ax.yaxis.set_label_coords(-0.15, 0.4)
+
+    ax.set_xlabel(xlabel)
+    ax.set_xticks(desired_xticks)
+    ax.set_xticklabels([str(x + 1) for x in desired_xticks])
+
+    plt.savefig(
+        f"{tag}/data-movement-over-epochs.pdf",
+        bbox_inches="tight",
+        pad_inches=0.06,
+    )
+    plt.close(fig)
 
 class PlotOperationLatencyStats:
     fig_size = (4, 2.5)
@@ -1035,7 +1198,7 @@ class PlotOperationLatencyStats:
         self,
         approach,
         operations=None,
-        convert_to=1e3,
+        convert_to=1,
     ):
         """
         Returns:
@@ -1046,7 +1209,7 @@ class PlotOperationLatencyStats:
 
         latencies = []
 
-        for (op, latency_ns) in data:
+        for op, latency_ns in data:
             if operations is None or op in operations:
                 latencies.append(latency_ns / convert_to)
 
@@ -1056,9 +1219,9 @@ class PlotOperationLatencyStats:
     # Scatter plot
     # -------------------------------
 
-    def plot_scatter(self, operations=None, tag="all"):
+    def plot_scatter(self, operations=None, tagg="all"):
         ylabel = r"latency ($\mu$s)"
-        xlabel = f"{tag}"
+        xlabel = f"{tagg}"
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -1067,13 +1230,15 @@ class PlotOperationLatencyStats:
 
             style = point_styles[approach].copy()
 
-            # scatter uses 's', not markersize
-            if "markersize" in style:
-                style["s"] = style.pop("markersize") ** 2
+            # print(approach)
+            # print(sum(latencies[0:5000])/5000)
+            # print(sum(latencies[5000:10000])/5000)
+            # print(sum(latencies[10000:])/(len(latencies)-10000))
 
             ax.scatter(
                 range(len(latencies)),
                 latencies,
+                s=10,
                 **style,
             )
 
@@ -1083,7 +1248,7 @@ class PlotOperationLatencyStats:
         ax.set_ylabel(ylabel)
 
         plt.savefig(
-            f"{TAG}-op-latency-scatter-{tag}.pdf",
+            f"{tag}/{tagg}-op-latency-scatter-{tagg}.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1093,9 +1258,9 @@ class PlotOperationLatencyStats:
     # Normal line plot
     # -------------------------------
 
-    def plot_line(self, operations=None, tag="all"):
+    def plot_line(self, operations=None, tagg="all"):
         ylabel = r"latency ($\mu$s)"
-        xlabel = f"{tag}"
+        xlabel = f"{tagg}"
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -1114,7 +1279,7 @@ class PlotOperationLatencyStats:
         ax.set_ylabel(ylabel)
 
         plt.savefig(
-            f"{TAG}-op-latency-line-{tag}.pdf",
+            f"{tag}/{tagg}-op-latency-line-{tagg}.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1129,10 +1294,10 @@ class PlotOperationLatencyStats:
         operations=None,
         window=200,
         statistic="median",
-        tag="all",
+        tagg="all",
     ):
         ylabel = r"latency ($\mu$s)"
-        xlabel = f"{tag}"
+        xlabel = f"{tagg}"
 
         fig, ax = plt.subplots(figsize=self.fig_size)
 
@@ -1149,22 +1314,29 @@ class PlotOperationLatencyStats:
             else:
                 rolled = s.rolling(window, min_periods=1).median()
 
+            x = range(len(rolled))
             ax.plot(
-                rolled.index,
+                x,
                 rolled.values,
                 **line_styles_no_marker[approach],
             )
 
             ax.fill_between(
-                range(len(rolled)),
+                x,
                 q05,
                 q95,
                 color=line_styles_no_marker[approach]["color"],
                 alpha=0.25,
                 linewidth=0,
-                edgecolor="none"
+                edgecolor="none",
             )
-
+        ax.text(
+            0.02,
+            0.65,
+            f"rolling window: {window} pts\nline: {statistic}\nband: p5–p95",
+            transform=ax.transAxes,
+            fontsize=17,
+        )
 
         ax.set_yscale("log")
         ax.set_ylim(bottom=1e0, top=1e4)
@@ -1172,8 +1344,300 @@ class PlotOperationLatencyStats:
         ax.set_ylabel(ylabel)
 
         plt.savefig(
-            f"{TAG}-op-latency-rolling-{statistic}-{tag}.pdf",
+            f"{tag}/{tagg}-op-latency-rolling-{statistic}-{tagg}.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
         plt.close(fig)
+
+    def plot_rolling_epoch(
+        self,
+        operations=None,
+        window=200,
+        statistic="median",
+        tagg="all",
+        epoch=-1,
+    ):
+        ylabel = r"latency ($\mu$s)"
+        xlabel = f"{tagg}"
+
+        fig, ax = plt.subplots(figsize=self.fig_size)
+
+        for approach in self.approaches_order:
+            latencies = self._collect_latencies(approach, operations)
+
+            latencies = latencies[4_000_000:4_240_000]
+
+            s = pd.Series(latencies)
+
+            print(approach)
+            print(s.mean())
+
+            q05 = s.rolling(window, min_periods=1).quantile(0.05)
+            q95 = s.rolling(window, min_periods=1).quantile(0.95)
+
+            if statistic == "mean":
+                rolled = s.rolling(window, min_periods=1).mean()
+            else:
+                rolled = s.rolling(window, min_periods=1).median()
+
+            x = range(len(rolled))
+            ax.plot(
+                x,
+                rolled.values,
+                **line_styles_no_marker[approach],
+            )
+            # ax.scatter(
+            #     x, 
+            #     s.values, 
+            #     s=5,          # Size of the points (make it small)
+            #     alpha=0.1,    # High transparency to see density
+            #     label=approach,
+            #     color=line_styles_no_marker[approach]["color"],
+            #     edgecolors='none'
+            # )
+
+            ax.fill_between(
+                x,
+                q05,
+                q95,
+                color=line_styles_no_marker[approach]["color"],
+                alpha=0.25,
+                linewidth=0,
+                edgecolor="none",
+            )
+        ax.text(
+            0.02,
+            0.65,
+            f"rolling window: {window} pts\nline: {statistic}\nband: p5–p95",
+            transform=ax.transAxes,
+            fontsize=17,
+        )
+
+        ax.set_yscale("log")
+        ax.set_ylim(bottom=1e0, top=1e4)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        plt.savefig(
+            f"{tag}/{tagg}-op-latency-rolling-{statistic}-{tagg}.pdf",
+            bbox_inches="tight",
+            pad_inches=0.04,
+        )
+        plt.close(fig)
+
+    def plot_epoch_summaries_normalized(self, baseline_approach="RocksDB", statistic="mean", tagg="epoch_summary_norm"):
+        phases = [
+            ("Inserts Only", 1_000_000), ("Inserts Updates", 3_000_000),
+            ("Large Range", 1), ("Normal Range", 1_000),
+            ("Uniform Range", 200), ("Empty Point", 5_000),
+            ("Point Queries", 5_000), ("Mixed Ins/Upd", 740_000),
+            ("Final Mixed", 242_200)
+        ]
+
+        # 1. Calculate the raw average latency per epoch
+        approach_epoch_stats = {}
+        for approach in self.approaches_order:
+            all_latencies = self._collect_latencies(approach)
+            means = []
+            current_idx = 0
+            for name, count in phases:
+                epoch_data = all_latencies[current_idx : current_idx + count]
+                # Filter out potential NaNs/Empty data for small epochs
+                val = np.mean(epoch_data) if len(epoch_data) > 0 else np.nan
+                means.append(val)
+                current_idx += count
+            approach_epoch_stats[approach] = np.array(means)
+
+        # 2. Extract baseline (RocksDB)
+        baseline_latency = approach_epoch_stats[baseline_approach]
+
+        fig, ax = plt.subplots(figsize=self.fig_size)
+        x_indices = range(len(phases))
+
+        for approach in self.approaches_order:
+            # IMPORTANT: Throughput is (Baseline / Approach) 
+            # If Approach is 2x faster, Latency is 0.5x, so Throughput is 1/0.5 = 2x
+            norm_throughput = baseline_latency / approach_epoch_stats[approach]
+
+            ax.plot(
+                x_indices, 
+                norm_throughput, 
+                # marker='o', # Marker ensures each epoch is seen as a distinct point
+                **line_styles[approach]
+            )
+
+        # 4. Formatting
+        ax.axhline(1.0, color='black', linestyle='--', linewidth=0.8, alpha=0.5)
+        # ax.set_yscale("log") 
+        ax.set_ylim(0)
+        ax.set_yticks([0, 1, 2])
+        ax.set_yticklabels([str(tick) for tick in [0, 1, 2]])
+        ax.set_xticks([0, 2, 4, 6, 8])
+        ax.set_xticklabels([str(tick+1) for tick in [0, 2, 4, 6, 8]])
+        ax.set_ylabel("norm. throughput") # Now it actually represents throughput
+        ax.set_xlabel("epoch")
+        # ax.set_xticks(x_indices)
+
+        plt.savefig(f"{tag}/{tagg}-normalized-throughput.pdf", bbox_inches="tight")
+        plt.close(fig)
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------------------
+# Experiment configuration
+# -------------------------------------------------------------------
+
+PROJECT_DIR = Path.cwd().parent.parent
+tag = "phase-wise-new"
+
+epoch_to_plot = -1
+ROLLING_WINDOW = 100
+
+# --- Which approaches to include in *this* experiment ---
+ACTIVE_APPROACHES = [
+    "RocksDB",
+    "SuccinctKV",
+    "RangeReduce[lb=T^-1 & re=1]",
+]
+APPROACH_ABBR = [
+    "RDB",
+    "SKV",
+    "RR",
+]
+
+ABBR_TO_NAME = {
+    "RDB": "RocksDB",
+    "SKV": "SuccinctKV",
+    "RR": "RangeReduce[lb=T^-1 & re=1]",
+}
+
+ALL_APPROACHES = {
+    "RocksDB": "RocksDB",
+    "RangeReduce[lb=T^-1 & re=1]": "RangeReduce[lb=T^-1ANDre=1]",
+    "SuccinctKV": "SuccinctKV",
+    # "RangeReduce[lb=0]": "RangeReduce[lb=0]",
+    # "RangeReduce[lb=T^-1]": "RangeReduce[lb=T^-1]",
+}
+
+EXPDIRNAME = f"{PROJECT_DIR}/.vstats_old/experiments-{tag}"
+
+filesize = entry_size * entries_per_page * num_page_per_file
+
+epoch_stats = {}
+max_lvl_mtx = []
+
+for name, dirname in ALL_APPROACHES.items():
+    dirpath = os.path.join(EXPDIRNAME, dirname)
+    stats = EpochStats(dirpath, filesize)
+    epoch_stats[name] = stats
+    max_lvl_mtx.append(stats.get_max_levels())
+
+max_length_epoch = max(len(col) for col in max_lvl_mtx)
+max_lvl_per_epoch = [0] * max_length_epoch
+
+for col in max_lvl_mtx:
+    for idx, lvl in enumerate(col):
+        max_lvl_per_epoch[idx] = max(max_lvl_per_epoch[idx], lvl)
+
+rq_stats = {name: epoch_stats[name].get_rangequerystats() for name in ACTIVE_APPROACHES}
+
+
+# -------------------------------------------------------------------
+# Plot Range Query Stats
+# -------------------------------------------------------------------
+
+# plot_rq = PlotRangeQueryStats(
+#     rq_stats,
+#     approaches_order=ACTIVE_APPROACHES,
+# )
+
+# # plot_rq.bytes_read_for_each_range_query()
+# plot_rq.bytes_read_for_each_range_query_rolling(window=ROLLING_WINDOW)
+# plot_rq.bytes_read_for_each_range_query_scatter()
+
+# # plot_rq.latency_for_each_range_query()
+# plot_rq.latency_for_each_range_query_rolling(window=ROLLING_WINDOW)
+# plot_rq.latency_for_each_range_query_scatter()
+
+# # plot_rq.bytes_read_cdf()
+# # plot_rq.latency_cdf()
+
+
+epoch_plot_stats = {
+    name: epoch_stats[name].get_plotstats(max_lvl_per_epoch)
+    for name in ACTIVE_APPROACHES
+}
+
+# op_latency_stats = {
+#     name: epoch_stats[name].get_op_latency() for name in ACTIVE_APPROACHES
+# }
+
+# plot_op = PlotOperationLatencyStats(
+#     op_latency_stats=op_latency_stats,
+#     approaches_order=ACTIVE_APPROACHES,
+# )
+
+# plot_op.plot_scatter()
+# plot_op.plot_scatter(operations=["Q"], tagg="point query")
+# plot_op.plot_scatter(operations=["I", "U"], tagg="insert + update")
+
+# plot_op.plot_line(operations=["I", "U"], tagg="insert + update")
+
+# this function is hard coded for this experiment
+# plot_op.plot_rolling_epoch(
+#     operations=["I", "U"],
+#     window=10000,
+#     statistic="mean",
+#     tagg="insert + update",
+#     epoch=-1
+# )
+
+# plot_op.plot_epoch_summaries_normalized()
+
+# plot_op.plot_rolling(
+#     operations=["Q"],
+#     window=100,
+#     statistic="mean",
+#     tagg="point query",
+# )
+
+# -------------------------------------------------------------------
+# Plot Epoch Metrics
+# -------------------------------------------------------------------
+
+metric_exp = PlotEpochStats(
+    epoch_plot_stats,
+    approach_abr_order=APPROACH_ABBR,
+    epoch_to_plot=epoch_to_plot,
+)
+
+# # # metric_exp.plot_total_bytes_written()
+# # # metric_exp.plot_compaction_debt()
+metric_exp.plot_compaction_debt_over_epochs()
+# # # metric_exp.plot_space_amplification()
+# metric_exp.plot_space_amp_over_epochs()
+# # # metric_exp.plot_workload_exec_time()
+
+# # # plot_total_data_movement(
+# # #     epoch_plot_stats,
+# # #     rq_stats,
+# # #     approach_abr_order=APPROACH_ABBR,
+# # #     epoch_to_plot=epoch_to_plot,
+# # # )
+# plot_data_movement_over_epoch(
+#     epoch_plot_stats,
+#     rq_stats,
+#     approach_order=APPROACH_ABBR
+# )
+
+plt.close("all")
+print("✅ All figures generated and saved successfully.")

@@ -27,6 +27,8 @@ PlottingStats = namedtuple(
         "PointQueriesExecutionTime",
         "RangeQueriesExecutionTime",
         "ithOp",
+        # "LevelsCount",
+        # "SortedCFD",
     ],
 )
 
@@ -101,6 +103,7 @@ class Approach(Enum):
     ROCKSDB_TUNED = ("RocksDBTuned",)
     RANGE_REDUCE_LB_0_AND_SMLCK_0 = ("RangeReduce[lb=0 & smlck=0]",)
     RANGE_REDUCE_LB_0 = ("RangeReduce[lb=0]",)
+    SUCCINCT_KV = ("SuccinctKV",)
     RANGE_REDUCE_LB_T_MINUS_1 = ("RangeReduce[lb=T^-1]",)
     RANGE_REDUCE_LB_T_MINUS_1_AND_RE_1 = ("RangeReduce[lb=T^-1 & re=1]",)
 
@@ -133,6 +136,7 @@ TABLE_DATA = {
     str(Approach.ROCKSDB_TUNED): {},
     str(Approach.RANGE_REDUCE_LB_0_AND_SMLCK_0): {},
     str(Approach.RANGE_REDUCE_LB_0): {},
+    str(Approach.SUCCINCT_KV): {},
     str(Approach.RANGE_REDUCE_LB_T_MINUS_1): {},
     str(Approach.RANGE_REDUCE_LB_T_MINUS_1_AND_RE_1): {},
 }

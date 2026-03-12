@@ -10,8 +10,8 @@ RangeReduce is a range query-aware LSM-engne that piggybacks on the reads perfor
 ## Getting Started
 1. Clone the repository:
     ```bash
-    git clone https://github.com/SSD-Brandeis/LSMQueryDrivenCompaction.git
-    cd LSMQueryDrivenCompaction
+    git clone https://github.com/SSD-Brandeis/RangeReduce.git
+    cd RangeReduce
     ```
 
 2. Setup and build the project:
@@ -25,8 +25,13 @@ RangeReduce is a range query-aware LSM-engne that piggybacks on the reads perfor
     bash ./scripts/run/<experiment to run>.sh
     ```
 
+4. Every experiments creates stats in .vstats directory with a tag given in bash script (e.g. .vstats/experiments-<TAG>-...). To generate plots:
+    ```bash
+    cd src/.notebooks
+    bash plot_*.py        # * is just the tag or figure number
+
 ## Workload Generator
-We use Tectonic to generate workloads for our experiments. To learn more about KV-WorkloadGenerator, visit the [KV-WorkloadGenerator GitHub repository](https://github.com/SSD-Brandeis/KV-WorkloadGenerator).
+We use Tectonic as well as KV Workload Generator to generate workloads for our experiments. To learn more about KV-WorkloadGenerator, visit the [KV-WorkloadGenerator GitHub repository](https://github.com/SSD-Brandeis/KV-WorkloadGenerator) and [Tectonic](https://github.com/SSD-Brandeis/Tectonic).
 
 
 

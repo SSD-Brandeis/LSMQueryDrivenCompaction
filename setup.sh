@@ -1,10 +1,9 @@
 #!/bin/bash
 set -e
 
-PROJECT_ROOT="../RangeReduce"
-cd "$PROJECT_ROOT"
-
 OS="$(uname)"
+
+echo "Installing system dependencies"
 
 if [[ "$OS" == "Linux" ]]; then
   sudo apt-get update -y
@@ -23,13 +22,22 @@ else
   exit 1
 fi
 
+echo "Installing Rust"
+if ! command -v rustup >/dev/null 2>&1; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+fi
+
+source "$HOME/.cargo/env"
+rustup default nightly
+
+echo "Updating git submodules"
 git submodule update --init --recursive
 
 mkdir -p build
+
+echo "Reloading CMake and building RangeReduce"
 cd build
 cmake ..
 make -j"$NPROC"
 
-clear
-
-echo "build complete!"
+echo "Setup complete"

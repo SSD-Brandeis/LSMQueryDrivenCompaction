@@ -17,6 +17,8 @@ from plotter.plotstyles import *
 
 PROJECT_DIR = Path.cwd().parent.parent
 tag = "scalability-exp"
+OUTPUT_DIR = f"Figures/Fig12"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 size_ratio = 6
 base_inserts = 8_388_608
@@ -69,7 +71,7 @@ for scale in scales:
     per_scale_updates[scale] = updates
 
     expdir = (
-        f"{PROJECT_DIR}/.vstats_old/experiments-{tag}-"
+        f"{PROJECT_DIR}/logs/experiments-{tag}-"
         f"{scale}x-U{updates}-E{entry_size}-B{entries_per_page}-"
         f"S{range_queries}-Y{selectivity}-T{size_ratio}"
     )
@@ -139,7 +141,7 @@ def plot_compaction_debt():
     from matplotlib.ticker import ScalarFormatter
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
-    plt.savefig(f"{tag}/compaction-debt.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/compaction-debt.pdf", bbox_inches="tight", pad_inches=0.06)
 
 
 def plot_space_amp():
@@ -173,7 +175,7 @@ def plot_space_amp():
     from matplotlib.ticker import ScalarFormatter
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
-    plt.savefig(f"{tag}/space-amp.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/space-amp.pdf", bbox_inches="tight", pad_inches=0.06)
 
 
 def plot_rq_bytes_read():
@@ -212,7 +214,7 @@ def plot_rq_bytes_read():
     from matplotlib.ticker import ScalarFormatter
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
-    plt.savefig(f"{tag}/rq-bytes.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/rq-bytes.pdf", bbox_inches="tight", pad_inches=0.06)
 
 
 def plot_rq_latency():
@@ -253,7 +255,7 @@ def plot_rq_latency():
     from matplotlib.ticker import ScalarFormatter
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
-    plt.savefig(f"{tag}/rq-latency.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/rq-latency.pdf", bbox_inches="tight", pad_inches=0.06)
 
 def plot_total_data_movement_normalized():
     convert_to = 1024**4
@@ -308,7 +310,7 @@ def plot_total_data_movement_normalized():
     ax.yaxis.set_label_coords(-0.3, 0.32)
 
     plt.savefig(
-        f"{tag}/overall-data-movement-normalized.pdf",
+        f"{OUTPUT_DIR}/overall-data-movement-normalized.pdf",
         bbox_inches="tight",
         pad_inches=0.06,
     )
@@ -350,7 +352,7 @@ def plot_total_data_movement():
     from matplotlib.ticker import ScalarFormatter
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
-    plt.savefig(f"{tag}/overall-data-movement.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/overall-data-movement.pdf", bbox_inches="tight", pad_inches=0.06)
 
 
 def plot_compaction_work():
@@ -388,7 +390,7 @@ def plot_compaction_work():
     from matplotlib.ticker import ScalarFormatter
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
-    plt.savefig(f"{tag}/compaction-work.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/compaction-work.pdf", bbox_inches="tight", pad_inches=0.06)
 
 
 # ------------------------------------------------------------------------------

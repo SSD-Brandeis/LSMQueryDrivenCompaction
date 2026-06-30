@@ -1,452 +1,309 @@
-import os
-import re
-from typing import List
-from pathlib import Path
+"""
+plot_figure_9.py — fully self-contained slide/paper plotter for figure 9
+(varying size ratio).
 
+All plot functions live here.  Changes to axes, ticks, colors, output paths,
+or which approaches appear are local to this file and never affect any other
+script or the shared plotter/ module.
+"""
+
+import os
+from pathlib import Path
+from typing import Dict
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.font_manager as font_manager
 import numpy as np
 import pandas as pd
-import matplotlib
-import matplotlib.patches as mpatches
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as font_manager
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from plotter import *
 from plotter.epochstats import EpochStats
-from plotter.dataclass import AdditionalStats, PlottingStats, RQColumn
-from plotter.utils import vanilla_dirname, rqdc_dirname
-from plotter.plotstyles import line_styles_with_abbr, bar_styles
-# from plotter.paperplots import PaperPlots
+from plotter.plotstyles import line_styles_with_abbr
+from plotter.dataclass import RQColumn, PlottingStats
+
+FONT_PROP = font_manager.FontProperties(fname="./plotter/LinLibertine_Mah.ttf")
+plt.rcParams.update(
+    {
+        "font.family": FONT_PROP.get_name(),
+        "text.usetex": True,
+        "font.weight": "bold",
+        "font.size": 22,
+    }
+)
+
+
+INSERTS = 8388608
+UPDATES = 8388608
+RANGE_QUERIES = 9000
+ENTRY_SIZE = 128
+NUM_PAGE_PER_FILE = 1024
+ENTRIES_PER_PAGE = 32
+SELECTIVITY = 0.1
+
+# ===================================================================
+# SLIDE CONFIG — comment out any approach, size ratio, or plot
+# ===================================================================
+
+# Each row: (line_styles/bar_styles key, directory name, bar label).
+# Comment out a row to drop that approach from every figure.
+APPROACHES = [
+    # (style key,                        dir name,                        abr  )
+    ("RocksDB",                          "RocksDB",                       "RDB"),
+    ("SuccinctKV",                       "SuccinctKV",                    "SKV"),
+    # ("RangeReduce[lb=T^-1]",           "RangeReduce[lb=T^-1]",          "BM" ),
+    ("RangeReduce[lb=T^-1 & re=1]",      "RangeReduce[lb=T^-1ANDre=1]",  "RR" ),
+]
+
+# Comment out any size ratio to hide that group from every figure.
+SIZE_RATIOS = [
+    2,
+    4,
+    6,
+    8,
+    10,
+]
+
+# Comment out any plot you don't want generated for this slide set.
+ACTIVE_PLOTS = [
+    "compaction",
+    "range_query",
+    "space_amplification",
+    "rq_latency",
+]
+
+# ===================================================================
+# Paths & constants
+# ===================================================================
 
 PROJECT_DIR = Path.cwd().parent.parent
+TAG         = "diff_size_ratio_exp-1x"
 
-prop = font_manager.FontProperties(fname="./plotter/LinLibertine_Mah.ttf")
-plt.rcParams['font.family'] = prop.get_name()
-plt.rcParams['text.usetex'] = True
-plt.rcParams['font.weight'] = 'bold'
-plt.rcParams['font.size'] = 22
+OUTPUT_DIR = f"Figures/Fig9"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-TAG = "diff_size_ratio"
+FILE_SIZE = ENTRY_SIZE * ENTRIES_PER_PAGE * NUM_PAGE_PER_FILE
 
-rocksdb_stats = dict()
-succinct_kv_stats = dict()
-bounded_merge_stats = dict()
-rangereduce_stats = dict()
-rocksdb_rq_stats = dict()
-succinct_kv_rq_stats = dict()
-bounded_merge_rq_stats = dict()
-rangereduce_rq_stats = dict()
+# ===================================================================
+# Build active sets (do not edit below)
+# ===================================================================
 
-if TAG == "overlapdiffsizeratio":
-    fig_size = (5, 3.8)
-else:
-    fig_size = (5, 3)
+APPROACH_KEYS = [key for key, _,   _   in APPROACHES]
+APPROACH_DIR  = {key: d   for key, d,   _ in APPROACHES}
+APPROACH_ABR  = {key: abr for key, _,   abr in APPROACHES}
+_n_approaches = len(APPROACH_KEYS)
 
-size_ratios = [2, 4, 6, 8, 10]
-bar_width = 0.25
-_op_count = INSERTS + UPDATES + RANGE_QUERIES
+SIZE_RATIOS = sorted(SIZE_RATIOS)
+_n_srs      = len(SIZE_RATIOS)
 
-for size_ratio in size_ratios:
-    EXPDIRNAME = f"{PROJECT_DIR}/.vstats_old/experiments-{TAG}-U{UPDATES}-E{ENTRY_SIZE}-B{ENTRIES_PER_PAGE}-S{RANGE_QUERIES}-Y{SELECTIVITY}-T{size_ratio}"
-    rocksdb_path = os.path.join(EXPDIRNAME, "RocksDB")
-    succinct_kv_path = os.path.join(EXPDIRNAME, "RangeReduce[lb=0]")
-    boudned_merge_path = os.path.join(EXPDIRNAME, "RangeReduce[lb=T^-1]")
-    rangereduce_path = os.path.join(EXPDIRNAME, "RangeReduce[lb=T^-1ANDre=1]")
+# Figure widths scale with number of active size ratios.
+# Reference: 5.0 in wide for 5 size ratios.
+_FIG_W_PER_SR = 5.0 / 5
+FIG_W         = _n_srs * _FIG_W_PER_SR
+FIG_SIZE_BAR  = (FIG_W, 3.0)
+FIG_SIZE_LINE = (FIG_W - 0.16, 3.0)
 
-    filesize = ENTRY_SIZE * ENTRIES_PER_PAGE * NUM_PAGE_PER_FILE
+BAR_WIDTH = 0.2
+# x-offsets for each approach bar, centred around each group tick
+_offsets = [(i - (_n_approaches - 1) / 2) * BAR_WIDTH
+            for i in range(_n_approaches)]
 
-    rocksdb = EpochStats(rocksdb_path, NUMEPOCHS, filesize)
-    succtint_kv = EpochStats(succinct_kv_path, 10, filesize)
-    boudned_merge = EpochStats(boudned_merge_path, NUMEPOCHS, filesize)
-    rangereduce = EpochStats(rangereduce_path, NUMEPOCHS, filesize)
+# ===================================================================
+# Data loading
+# ===================================================================
 
-    rocksdb_stats[size_ratio] = rocksdb.get_plotstats()[-1:] # only last epoch
-    succinct_kv_stats[size_ratio] = succtint_kv.get_plotstats()[-1:]
-    bounded_merge_stats[size_ratio] = boudned_merge.get_plotstats()[-1:]
-    rangereduce_stats[size_ratio] = rangereduce.get_plotstats()[-1:]
+# ps[size_ratio][approach_key]  = PlottingStats (last epoch)
+# rq[size_ratio][approach_key]  = pd.DataFrame
+ps: Dict[int, Dict[str, PlottingStats]] = {}
+rq: Dict[int, Dict[str, pd.DataFrame]]  = {}
 
-    rocksdb_rq_stats[size_ratio] = rocksdb.get_rangequerystats()
-    succinct_kv_rq_stats[size_ratio] = succtint_kv.get_rangequerystats()
-    bounded_merge_rq_stats[size_ratio] = boudned_merge.get_rangequerystats()
-    rangereduce_rq_stats[size_ratio] = rangereduce.get_rangequerystats()
+for sr in SIZE_RATIOS:
+    ps[sr] = {}
+    rq[sr] = {}
 
-
-def plot_compaction_only():
-    convert_to_ = 1024**4
-    fig, ax = plt.subplots(figsize=(fig_size[0], fig_size[1]))
-
-    rocksdb_comp_read = []
-    rocksdb_comp_write = []
-    succinct_kv_comp_read = []
-    succinct_kv_comp_write = []
-    bounded_merge_comp_read = []
-    bounded_merge_comp_write = []
-    rangereduce_comp_read = []
-    rangereduce_comp_write = []
-
-    for size_ratio in size_ratios:
-        # RocksDB
-        rocksdb_comp_read.append(sum(v.CompactionReadBytes for v in rocksdb_stats[size_ratio]))
-        rocksdb_comp_write.append(sum(v.CompactionWrittenBytes for v in rocksdb_stats[size_ratio]))
-        r_total = rocksdb_comp_read[-1] + rocksdb_comp_write[-1]
-
-        # SuccinctKV
-        succinct_kv_comp_read.append(sum(s.CompactionReadBytes for s in succinct_kv_stats[size_ratio]))
-        succinct_kv_comp_write.append(sum(s.CompactionWrittenBytes for s in succinct_kv_stats[size_ratio]))
-        skv_total = succinct_kv_comp_read[-1] + succinct_kv_comp_write[-1]
-
-        # BoundedMerge
-        bounded_merge_comp_read.append(sum(b.CompactionReadBytes for b in bounded_merge_stats[size_ratio]))
-        bounded_merge_comp_write.append(sum(b.CompactionWrittenBytes for b in bounded_merge_stats[size_ratio]))
-        b_total = bounded_merge_comp_read[-1] + bounded_merge_comp_write[-1]
-
-        # RQDC
-        rangereduce_comp_read.append(sum(r.CompactionReadBytes for r in rangereduce_stats[size_ratio]))
-        rangereduce_comp_write.append(sum(r.CompactionWrittenBytes for r in rangereduce_stats[size_ratio]))
-        rr_total = rangereduce_comp_read[-1] + rangereduce_comp_write[-1]
-
-        skv_improvement = ((r_total - skv_total) / r_total) * 100 if r_total != 0 else 0
-        bm_improvement = ((r_total - b_total) / r_total) * 100 if r_total != 0 else 0
-        rr_improvement = ((r_total - rr_total) / r_total) * 100 if r_total != 0 else 0
-
-        print(f"{str(size_ratio):<12}{r_total/convert_to_:.2f}    {skv_total/convert_to_:.2f}{skv_improvement:>10.2f}%    {b_total/convert_to_:.2f}{bm_improvement:>10.2f}%    {rr_total/convert_to_:.2f}{rr_improvement:>10.2f}%")
-
-    x_vals = list(range(len(size_ratios)))
-    bar_width = 0.2
-
-    # RocksDB
-    ax.bar(
-        [x - 1.5 * bar_width for x in x_vals], rocksdb_comp_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.5, hatch="\\\\\\", label="read"
-    )
-    ax.bar(
-        [x - 1.5 * bar_width for x in x_vals], rocksdb_comp_write, width=bar_width,
-        bottom=rocksdb_comp_read, color='None', edgecolor='tab:red', linewidth=0.5, hatch="///", label="write"
+    exp_dir = (
+        f"{PROJECT_DIR}/logs/experiments-{TAG}"
+        f"-U{UPDATES}-E{ENTRY_SIZE}-B{ENTRIES_PER_PAGE}"
+        f"-S{RANGE_QUERIES}-Y{SELECTIVITY}-T{sr}"
     )
 
-    # SuccinctKV
-    ax.bar(
-        [x - 0.5 * bar_width for x in x_vals], succinct_kv_comp_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.5, hatch="\\\\\\"
+    loaded: Dict[str, EpochStats] = {}
+    for key in APPROACH_KEYS:
+        path = os.path.join(exp_dir, APPROACH_DIR[key])
+        loaded[key] = EpochStats(path, FILE_SIZE)
+
+    # Shared max-level scaling across approaches for this size ratio.
+    max_lvls_per_db    = [s.get_max_levels() for s in loaded.values()]
+    max_epoch_len      = max(len(lvls) for lvls in max_lvls_per_db)
+    max_lvls_per_epoch = [0] * max_epoch_len
+    for lvls in max_lvls_per_db:
+        for i, lvl in enumerate(lvls):
+            max_lvls_per_epoch[i] = max(max_lvls_per_epoch[i], lvl)
+
+    for key, stats in loaded.items():
+        ps[sr][key] = stats.get_plotstats(max_lvls_per_epoch)[-1]
+        rq[sr][key] = stats.get_rangequerystats()
+
+# ===================================================================
+# Local helpers
+# ===================================================================
+
+def _save_close(fig, filename: str):
+    fig.savefig(
+        os.path.join(OUTPUT_DIR, filename),
+        bbox_inches="tight",
+        pad_inches=0.06,
     )
-    ax.bar(
-        [x - 0.5 * bar_width for x in x_vals], succinct_kv_comp_write, width=bar_width,
-        bottom=succinct_kv_comp_read, color='None', edgecolor='tab:red', linewidth=0.5, hatch="///"
-    )
-
-    # BoundedMerge
-    ax.bar(
-        [x + 0.5 * bar_width for x in x_vals], bounded_merge_comp_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.5, hatch="\\\\\\"
-    )
-    ax.bar(
-        [x + 0.5 * bar_width for x in x_vals], bounded_merge_comp_write, width=bar_width,
-        bottom=bounded_merge_comp_read, color='None', edgecolor='tab:red', linewidth=0.5, hatch="///"
-    )
-
-    # RangeReduce
-    ax.bar(
-        [x + 1.5 * bar_width for x in x_vals], rangereduce_comp_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.5, hatch="\\\\\\"
-    )
-    ax.bar(
-        [x + 1.5 * bar_width for x in x_vals], rangereduce_comp_write, width=bar_width,
-        bottom=rangereduce_comp_read, color='None', edgecolor='tab:red', linewidth=0.5, hatch="///"
-    )
+    plt.close(fig)
 
 
-    # Annotate tops of bars
-    for i, x in enumerate(x_vals):
-        # RocksDB
-        total_rdb = rocksdb_comp_read[i] + rocksdb_comp_write[i]
-        ax.text(x - 1.4 * bar_width, total_rdb * 1.015, "RDB", 
-                ha='center', va='bottom', fontsize=11.5, rotation=90)
+def _x_ticks():
+    xs     = np.arange(_n_srs)
+    labels = [str(sr) for sr in SIZE_RATIOS]
+    return xs, labels
 
-        # SuccinctKV
-        total_skv = succinct_kv_comp_read[i] + succinct_kv_comp_write[i]
-        ax.text(x - 0.4 * bar_width, total_skv * 1.015, "SKV", 
-                ha='center', va='bottom', fontsize=12, rotation=90)
+# ===================================================================
+# Plot functions
+# ===================================================================
 
-        # BoundedMerge
-        total_bm = bounded_merge_comp_read[i] + bounded_merge_comp_write[i]
-        ax.text(x + 0.6 * bar_width, total_bm * 1.015, "BM", 
-                ha='center', va='bottom', fontsize=12, rotation=90)
+def plot_compaction():
+    """Stacked bar: compaction read + write per approach, grouped by size ratio."""
+    convert = 1024 ** 4  # bytes → TB
+    fig, ax = plt.subplots(figsize=FIG_SIZE_BAR)
+    xs, xlabels = _x_ticks()
 
-        # RangeReduce
-        total_rr = rangereduce_comp_read[i] + rangereduce_comp_write[i]
-        ax.text(x + 1.6 * bar_width, total_rr * 1.015, "RR", 
-                ha='center', va='bottom', fontsize=12, rotation=90)
+    read_patch  = mpatches.Patch(facecolor="None", edgecolor="tab:blue",
+                                 hatch="\\\\\\", linewidth=0.5, label="read")
+    write_patch = mpatches.Patch(facecolor="None", edgecolor="tab:red",
+                                 hatch="///",     linewidth=0.5, label="write")
+
+    for i, key in enumerate(APPROACH_KEYS):
+        reads  = [ps[sr][key].CompactionReadBytes    for sr in SIZE_RATIOS]
+        writes = [ps[sr][key].CompactionWrittenBytes for sr in SIZE_RATIOS]
+        xpos   = [x + _offsets[i] for x in xs]
+
+        ax.bar(xpos, reads,  width=BAR_WIDTH,
+               color="None", edgecolor="tab:blue", linewidth=0.5, hatch="\\\\\\")
+        ax.bar(xpos, writes, width=BAR_WIDTH, bottom=reads,
+               color="None", edgecolor="tab:red",  linewidth=0.5, hatch="///")
+
+        for j, x in enumerate(xs):
+            total = reads[j] + writes[j]
+            ax.text(x + _offsets[i] + BAR_WIDTH * 0.1, total * 1.015,
+                    APPROACH_ABR[key],
+                    ha="center", va="bottom", fontsize=11.5, rotation=90)
 
     desired_yticks = [0, 0.05, 0.1, 0.15]
-    desired_tb_yticks = [x * convert_to_ for x in desired_yticks]
-    ax.set_yticks(desired_tb_yticks)
-    ax.set_yticklabels([0] + [f"{x:.2f}" for x in desired_yticks[1:]])
-
-    if TAG == "diffsizeratio":
-        fig.legend(
-            loc="upper center",
-            ncol=2,
-            bbox_to_anchor=(0.6, 0.92),
-            frameon=False,
-            columnspacing=0.5,
-        )
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['', '', '', '', ''])
-    else:
-        ax.set_xlabel("size ratio")
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['2', '4', '6', '8', '10'])
-
-    ax.tick_params(axis='y')
+    ax.set_yticks([v * convert for v in desired_yticks])
+    ax.set_yticklabels(["0"] + [f"{v:.2f}" for v in desired_yticks[1:]])
     ax.set_ylabel("comp. work (TB)")
     ax.set_ylim(bottom=0)
+    ax.set_xticks(xs)
+    ax.set_xticklabels(xlabels)
+    ax.set_xlabel("size ratio")
+    ax.legend(handles=[read_patch, write_patch], loc="upper right",
+              frameon=False, ncol=1, fontsize=16)
 
-    plt.tight_layout()
-    plt.savefig(f'{TAG}-compaction_data_movement.pdf', bbox_inches='tight', pad_inches=0.06)
-    # plt.show()
+    _save_close(fig, f"{TAG}-compaction_data_movement.pdf")
 
-def plot_range_query_only():
-    convert_to_ = 1024**4
-    fig, ax = plt.subplots(figsize=(fig_size[0], fig_size[1]))
 
-    rocksdb_range_query_read = []
-    succinct_kv_range_query_read = []
-    succinct_kv_range_query_write = []
-    bounded_merge_range_query_read = []
-    bounded_merge_range_query_write = []
-    rangereduce_range_query_read = []
-    rangereduce_range_query_write = []
+def plot_range_query():
+    """Stacked bar: RQ read + RQ write per approach, grouped by size ratio."""
+    convert = 1024 ** 4
+    fig, ax = plt.subplots(figsize=FIG_SIZE_BAR)
+    xs, xlabels = _x_ticks()
 
     ideal_val = INSERTS * ENTRY_SIZE * SELECTIVITY * RANGE_QUERIES
 
-    for size_ratio in size_ratios:
-        # RocksDB
-        rocksdb_range_query_read.append(
-            rocksdb_rq_stats[size_ratio][str(RQColumn.TOTAL_ENTRIES_READ)].sum() * ENTRY_SIZE
-        )
+    read_patch  = mpatches.Patch(facecolor="None", edgecolor="tab:blue",
+                                 hatch="\\\\\\", linewidth=0.3, label="read")
+    write_patch = mpatches.Patch(facecolor="None", edgecolor="tab:red",
+                                 hatch="///",     linewidth=0.3, label="write")
 
-        # SuccinctKV
-        succinct_kv_range_query_read.append(
-            succinct_kv_rq_stats[size_ratio][str(RQColumn.TOTAL_ENTRIES_READ)].sum() * ENTRY_SIZE
-        )
-        succinct_kv_range_query_write.append(
-            sum(s.RangeReduceWrittenBytes for s in succinct_kv_stats[size_ratio])
-        )
+    for i, key in enumerate(APPROACH_KEYS):
+        reads  = [rq[sr][key][str(RQColumn.TOTAL_ENTRIES_READ)].sum() * ENTRY_SIZE
+                  for sr in SIZE_RATIOS]
+        writes = [ps[sr][key].RangeReduceWrittenBytes for sr in SIZE_RATIOS]
+        xpos   = [x + _offsets[i] for x in xs]
 
-        # BoundedMerge
-        bounded_merge_range_query_read.append(
-            bounded_merge_rq_stats[size_ratio][str(RQColumn.TOTAL_ENTRIES_READ)].sum() * ENTRY_SIZE
-        )
-        bounded_merge_range_query_write.append(
-            sum(b.RangeReduceWrittenBytes for b in bounded_merge_stats[size_ratio])
-        )
+        ax.bar(xpos, reads,  width=BAR_WIDTH,
+               color="None", edgecolor="tab:blue", linewidth=0.3, hatch="\\\\\\")
+        ax.bar(xpos, writes, width=BAR_WIDTH, bottom=reads,
+               color="None", edgecolor="tab:red",  linewidth=0.3, hatch="///")
 
-        # RQDC
-        rangereduce_range_query_read.append(
-            rangereduce_rq_stats[size_ratio][str(RQColumn.TOTAL_ENTRIES_READ)].sum() * ENTRY_SIZE
-        )
-        rangereduce_range_query_write.append(
-            sum(r.RangeReduceWrittenBytes for r in rangereduce_stats[size_ratio])
-        )
+        for j, x in enumerate(xs):
+            total = reads[j] + writes[j]
+            ax.text(x + _offsets[i] + BAR_WIDTH * 0.05, total * 1.01,
+                    APPROACH_ABR[key],
+                    ha="center", va="bottom", fontsize=12, rotation=90)
 
-    x_vals = list(range(len(size_ratios)))
-    bar_width = 0.2
-
-    # RocksDB
-    ax.bar(
-        [x - 1.5 * bar_width for x in x_vals], rocksdb_range_query_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.3, hatch="\\\\\\"
-    )
-
-    # SuccinctKV
-    ax.bar(
-        [x - 0.5 * bar_width for x in x_vals], succinct_kv_range_query_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.3, hatch="\\\\\\"
-    )
-    ax.bar(
-        [x - 0.5 * bar_width for x in x_vals], succinct_kv_range_query_write, width=bar_width,
-        bottom=succinct_kv_range_query_read, color='None', edgecolor='tab:red', linewidth=0.3, hatch="///"
-    )
-
-    # BoundedMerge
-    ax.bar(
-        [x + 0.5 * bar_width for x in x_vals], bounded_merge_range_query_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.3, hatch="\\\\\\"
-    )
-    ax.bar(
-        [x + 0.5 * bar_width for x in x_vals], bounded_merge_range_query_write, width=bar_width,
-        bottom=bounded_merge_range_query_read, color='None', edgecolor='tab:red', linewidth=0.3, hatch="///"
-    )
-
-    # RangeReduce
-    ax.bar(
-        [x + 1.5 * bar_width for x in x_vals], rangereduce_range_query_read, width=bar_width,
-        color='None', edgecolor='tab:blue', linewidth=0.3, hatch="\\\\\\"
-    )
-    ax.bar(
-        [x + 1.5 * bar_width for x in x_vals], rangereduce_range_query_write, width=bar_width,
-        bottom=rangereduce_range_query_read, color='None', edgecolor='tab:red', linewidth=0.3, hatch="///"
-    )
-
-    ax.axhline(y=ideal_val, color='black', linestyle='-.', linewidth=1)
-    # ax.text(len(x_vals) - 0.3, ideal_val * 1.01, 'Ideal', color='black', ha='right', va='bottom')
-
-    # Annotate tops of bars
-    for i, x in enumerate(x_vals):
-        # RocksDB
-        total_rdb = rocksdb_range_query_read[i]
-        ax.text(x - 1.5 * bar_width, total_rdb * 1.01, "RDB",
-                ha='center', va='bottom', fontsize=12, rotation=90)
-
-        # SuccinctKV
-        total_skv = succinct_kv_range_query_read[i] + succinct_kv_range_query_write[i]
-        ax.text(x - 0.4 * bar_width, total_skv * 1.01, "SKV",
-                ha='center', va='bottom', fontsize=12, rotation=90)
-
-        # BoundedMerge
-        total_bm = bounded_merge_range_query_read[i] + bounded_merge_range_query_write[i]
-        ax.text(x + 0.55 * bar_width, total_bm * 1.01, "BM",
-                ha='center', va='bottom', fontsize=12, rotation=90)
-
-        # RangeReduce
-        total_rr = rangereduce_range_query_read[i] + rangereduce_range_query_write[i]
-        ax.text(x + 1.55 * bar_width, total_rr * 1.01, "RR",
-                ha='center', va='bottom', fontsize=12, rotation=90)
-
-
-    desired_yticks = [0, 0.5, 1, 1.5]
-    desired_tb_yticks = [x * convert_to_ for x in desired_yticks]
-    ax.set_yticks(desired_tb_yticks)
-    ax.set_yticklabels([0] + [f"{x:.1f}" for x in desired_yticks[1:]])
-
-    if TAG == "diffsizeratio":
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['', '', '', '', ''])
-    else:
-        ax.set_xlabel("size ratio")
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['2', '4', '6', '8', '10'])
-
-    ax.set_ylabel("RQ work (TB)")
-    ax.set_ylim(bottom=0)
-
-    plt.tight_layout()
-    plt.savefig(f'{TAG}-rangequery_data_movement.pdf', bbox_inches='tight', pad_inches=0.06)
-    # plt.show()
-
-def plot_space_amplification():
-    fig, ax = plt.subplots(figsize=(fig_size[0] - 0.16, fig_size[1]))
-
-    vanilla_y = []
-    succinct_y = []
-    bm_y = []
-    rqdc_y = []
-
-    for size_ratio in size_ratios:
-        vanilla_y.append(rocksdb_stats[size_ratio][0].DBSize / (INSERTS * ENTRY_SIZE))
-        succinct_y.append(succinct_kv_stats[size_ratio][0].DBSize / (INSERTS * ENTRY_SIZE))
-        bm_y.append(bounded_merge_stats[size_ratio][0].DBSize / (INSERTS * ENTRY_SIZE))
-        rqdc_y.append(rangereduce_stats[size_ratio][0].DBSize / (INSERTS * ENTRY_SIZE))
-
-    x_vals = list(range(len(size_ratios)))
-    ax.plot(x_vals, vanilla_y, **line_styles_with_abbr["RocksDB"])
-    ax.plot(x_vals, succinct_y, **line_styles_with_abbr["SuccinctKV"])
-    ax.plot(x_vals, bm_y, **line_styles_with_abbr["RangeReduce[lb=T^-1]"])
-    ax.plot(x_vals, rqdc_y, **line_styles_with_abbr["RangeReduce[lb=T^-1 & re=1]"])
-
-    ax.set_ylabel("space amplification")
-    # ax.set_xlabel("size ratio")
-    ax.set_ylim(bottom=0, top=2)
-    ax.tick_params(axis='y')
-
-    desired_yticks = [0, 0.5, 1, 1.5, 2]
-    ax.set_yticks(desired_yticks)
-    ax.set_yticklabels([0] + [f"{x:.1f}" for x in desired_yticks[1:]])
-    if TAG == "diffsizeratio":
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['', '', '', '', ''])
-    else:
-        ax.set_xlabel("size ratio")
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['2', '4', '6', '8', '10'])
-    # ax.set_xticks(x_vals)
-    # ax.set_xticklabels(['2', '4', '6', '8', '10'])
-
-    plt.tight_layout()
-    plt.savefig(f'{TAG}-size-ratio-space_amplification.pdf', bbox_inches='tight', pad_inches=0.06)
-    # plt.show()
-
-def plot_range_query_latency():
-    convert_to_ = 10**9
-    fig, ax = plt.subplots(figsize=(fig_size[0] - 0.16, fig_size[1]))
-
-    vanilla_y, succinct_y, bm_y, rqdc_y = [], [], [], []
-
-    for size_ratio in size_ratios:
-        vanilla_rq_time = rocksdb_rq_stats[size_ratio][str(RQColumn.RQ_TOTAL_TIME)]
-        succinct_rq_time = succinct_kv_rq_stats[size_ratio][str(RQColumn.RQ_TOTAL_TIME)]
-        bounded_rq_time = bounded_merge_rq_stats[size_ratio][str(RQColumn.RQ_TOTAL_TIME)]
-        rqdc_rq_time = rangereduce_rq_stats[size_ratio][str(RQColumn.RQ_TOTAL_TIME)]
-
-        # # find the % improvement between vanilla and bounded and vanilla and rqdc and print them
-        # print(f"size ratio: {size_ratio}")
-        # print(f"vanilla: {vanilla_rq_time.mean() / convert_to_}")
-        # print(f"succinct: {succinct_rq_time.mean() / convert_to_}")
-        # print(f"bounded: {bounded_rq_time.mean() / convert_to_}")
-        # print(f"rqdc: {rqdc_rq_time.mean() / convert_to_}")
-        # print(f"succinct improvement: {((vanilla_rq_time.mean() - succinct_rq_time.mean()) / vanilla_rq_time.mean()) * 100}%")
-        # print(f"bounded improvement: {((vanilla_rq_time.mean() - bounded_rq_time.mean()) / vanilla_rq_time.mean()) * 100}%")
-        # print(f"rqdc improvement: {((vanilla_rq_time.mean() - rqdc_rq_time.mean()) / vanilla_rq_time.mean()) * 100}%")
-
-        vanilla_y.append(vanilla_rq_time.mean())
-        succinct_y.append(succinct_rq_time.mean())
-        bm_y.append(bounded_rq_time.mean())
-        rqdc_y.append(rqdc_rq_time.mean())
-
-    x_vals = list(range(len(size_ratios)))
-    ax.plot(x_vals, vanilla_y, **line_styles_with_abbr["RocksDB"])
-    ax.plot(x_vals, succinct_y, **line_styles_with_abbr["SuccinctKV"])
-    ax.plot(x_vals, bm_y, **line_styles_with_abbr["RangeReduce[lb=T^-1]"])
-    ax.plot(x_vals, rqdc_y, **line_styles_with_abbr["RangeReduce[lb=T^-1 & re=1]"])
+    ax.axhline(y=ideal_val, color="black", linestyle="-.", linewidth=1)
 
     desired_yticks = [0, 0.5, 1.0, 1.5]
-    desired_sec_yticks = [x * convert_to_ for x in desired_yticks]
-    ax.set_yticks(desired_sec_yticks)
-    ax.set_yticklabels([0] + [f"{x}" for x in desired_yticks[1:]])
-
-    # ax.set_xticks(x_vals)
-    # ax.set_xticklabels(['2', '4', '6', '8', '10'])
-    ax.set_ylabel("avg. RQ latency (sec)")
-    # ax.set_xlabel("size ratio")
+    ax.set_yticks([v * convert for v in desired_yticks])
+    ax.set_yticklabels(["0"] + [f"{v:.1f}" for v in desired_yticks[1:]])
+    ax.set_ylabel("RQ work (TB)")
     ax.set_ylim(bottom=0)
-    ax.tick_params(axis='y')
-    if TAG == "diffsizeratio":
-        fig.legend(
-            loc="upper center",
-            ncol=1,
-            fontsize=20,
-            bbox_to_anchor=(0.57, 0.6),
-            frameon=False,
-            columnspacing=0.1,
-            handletextpad=0.2,
-            handlelength=1,
-            handleheight=1,
-            labelspacing=0.1,
-        )
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['', '', '', '', ''])
-    else:
-        ax.set_xlabel("size ratio")
-        ax.set_xticks(x_vals)
-        ax.set_xticklabels(['2', '4', '6', '8', '10'])
+    ax.set_xticks(xs)
+    ax.set_xticklabels(xlabels)
+    ax.set_xlabel("size ratio")
+    # ax.legend(handles=[read_patch, write_patch], loc="upper right",
+    #           frameon=False, ncol=1, fontsize=16)
 
-    plt.tight_layout()
-    plt.savefig(f'{TAG}-size-ratio-range_query_latency.pdf', bbox_inches='tight', pad_inches=0.06)
-    # plt.show()
+    _save_close(fig, f"{TAG}-rangequery_data_movement.pdf")
 
 
-plot_compaction_only()
-plot_range_query_only()
-plot_space_amplification()
-plot_range_query_latency()
+def plot_space_amplification():
+    fig, ax = plt.subplots(figsize=FIG_SIZE_LINE)
+    xs, xlabels = _x_ticks()
+
+    for key in APPROACH_KEYS:
+        y = [ps[sr][key].DBSize / (INSERTS * ENTRY_SIZE) for sr in SIZE_RATIOS]
+        ax.plot(xs, y, **line_styles_with_abbr[key])
+
+    ax.set_ylabel("space amplification")
+    ax.set_xlabel("size ratio")
+    ax.set_ylim(bottom=0, top=2)
+    ax.set_yticks([0, 0.5, 1.0, 1.5, 2.0])
+    ax.set_yticklabels(["0", "0.5", "1.0", "1.5", "2.0"])
+    ax.set_xticks(xs)
+    ax.set_xticklabels(xlabels)
+
+    _save_close(fig, f"{TAG}-size-ratio-space_amplification.pdf")
+
+
+def plot_rq_latency():
+    convert = 10 ** 9  # ns → s
+    fig, ax = plt.subplots(figsize=FIG_SIZE_LINE)
+    xs, xlabels = _x_ticks()
+
+    for key in APPROACH_KEYS:
+        y = [rq[sr][key][str(RQColumn.RQ_TOTAL_TIME)].astype(float).mean()
+             for sr in SIZE_RATIOS]
+        ax.plot(xs, y, **line_styles_with_abbr[key])
+
+    desired_yticks = [0, 0.5, 1.0, 1.5]
+    ax.set_yticks([v * convert for v in desired_yticks])
+    ax.set_yticklabels(["0"] + [str(v) for v in desired_yticks[1:]])
+    ax.set_ylabel("avg. RQ latency (s)")
+    ax.set_xlabel("size ratio")
+    ax.set_ylim(bottom=0)
+    ax.set_xticks(xs)
+    ax.set_xticklabels(xlabels)
+    ax.legend(loc="lower center", frameon=False, ncol=1,
+              fontsize=20, handlelength=1, handleheight=1,
+              handletextpad=0.2, labelspacing=0.1, columnspacing=0.1)
+
+    _save_close(fig, f"{TAG}-size-ratio-range_query_latency.pdf")
+
+# ===================================================================
+# Dispatch
+# ===================================================================
+
+active = set(ACTIVE_PLOTS)
+
+if "compaction"          in active: plot_compaction()
+if "range_query"         in active: plot_range_query()
+if "space_amplification" in active: plot_space_amplification()
+if "rq_latency"          in active: plot_rq_latency()

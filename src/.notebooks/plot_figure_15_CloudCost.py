@@ -1,3 +1,4 @@
+import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -10,6 +11,9 @@ prop = font_manager.FontProperties(fname="./plotter/LinLibertine_Mah.ttf")
 plt.rcParams["font.family"] = prop.get_name()
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.size"] = 20
+
+OUTPUT_DIR = f"Figures/Fig15"   # figures for THIS script go here — edit freely
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Rates & Parameters (10 TB Dataset)
 cloud_configs = {
@@ -83,4 +87,4 @@ pattern_legend_elements = [
     Patch(facecolor='none', edgecolor='black', hatch='////', label='compute')
 ]
 # plt.tight_layout()
-plt.savefig("cloudcost_grouped_stacked_bars.pdf", bbox_inches="tight", pad_inches=0.06)
+plt.savefig(f"{OUTPUT_DIR}/cloudcost_grouped_stacked_bars.pdf", bbox_inches="tight", pad_inches=0.06)

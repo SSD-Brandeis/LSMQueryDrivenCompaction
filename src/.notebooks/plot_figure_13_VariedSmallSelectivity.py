@@ -24,7 +24,9 @@ plt.rcParams["text.usetex"] = True
 plt.rcParams["font.weight"] = "bold"
 plt.rcParams["font.size"] = 22
 
-tag = "diff_selectivity-2026-01-23"
+tag = "diffselectivity"
+OUTPUT_DIR = f"Figures/Fig13"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 inserts = 8_388_608
 updates = 8_388_608
@@ -57,7 +59,7 @@ rangereduce_rq_stats = {}
 # ---------------------------
 for selectivity in selectivities:
     exp_dir = (
-        f"{PROJECT_DIR}/.vstats_old/experiments-{tag}"
+        f"{PROJECT_DIR}/logs/experiments-{tag}"
         f"-U{updates}-E{entry_size}-B{entries_per_page}"
         f"-S{range_queries}-Y{selectivity}-T{size_ratio}"
     )
@@ -124,7 +126,7 @@ def plot_compaction_debt():
     ax.set_xticklabels([str(s) for s in selectivities[::2]])
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/size-ratio-compaction_debt.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/size-ratio-compaction_debt.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -156,7 +158,7 @@ def plot_space_amplification():
     ax.set_xticklabels([str(s) for s in selectivities[::2]])
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/size-ratio-space_amplification.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/size-ratio-space_amplification.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -189,7 +191,7 @@ def plot_range_query_latency():
     ax.set_xticklabels([str(s) for s in selectivities[::2]])
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/size-ratio-range_query_latency.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/size-ratio-range_query_latency.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -217,7 +219,7 @@ def plot_total_count_RQ_compaction_triggered_per_selectivity():
     ax.set_xticklabels([str(s) for s in selectivities], rotation=45)
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/rr-triggered.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/rr-triggered.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -247,7 +249,7 @@ def plot_avg_data_compacted_per_selectivity():
     ax.set_xticklabels([str(s) for s in selectivities], rotation=45)
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/avg-RQ-data-compacted.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/avg-RQ-data-compacted.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -277,7 +279,7 @@ def plot_avg_data_read_per_selectivity():
     ax.set_xticklabels([str(s) for s in selectivities], rotation=45)
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/avg-RQ-data-read.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/avg-RQ-data-read.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -315,7 +317,7 @@ def plot_RQ_read_amp_per_selectivity():
     ax.set_xticklabels([str(s) for s in selectivities], rotation=45)
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/avg-RQ-read-amp.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/avg-RQ-read-amp.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -342,7 +344,7 @@ def plot_RQ_latency_per_selectivity():
     ax.set_xticklabels([str(s) for s in selectivities], rotation=45)
 
     plt.tight_layout()
-    plt.savefig(f"{tag}/avg-RQ-latency.pdf", bbox_inches="tight", pad_inches=0.06)
+    plt.savefig(f"{OUTPUT_DIR}/avg-RQ-latency.pdf", bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
 
 
@@ -352,8 +354,8 @@ def plot_RQ_latency_per_selectivity():
 plot_compaction_debt()
 plot_space_amplification()
 plot_range_query_latency()
-plot_total_count_RQ_compaction_triggered_per_selectivity()
-plot_avg_data_compacted_per_selectivity()
-plot_RQ_read_amp_per_selectivity()
-plot_RQ_latency_per_selectivity()
-plot_avg_data_read_per_selectivity()
+# plot_total_count_RQ_compaction_triggered_per_selectivity()
+# plot_avg_data_compacted_per_selectivity()
+# plot_RQ_read_amp_per_selectivity()
+# plot_RQ_latency_per_selectivity()
+# plot_avg_data_read_per_selectivity()

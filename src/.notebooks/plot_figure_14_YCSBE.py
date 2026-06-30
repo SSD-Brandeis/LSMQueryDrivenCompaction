@@ -21,6 +21,8 @@ plt.rcParams["font.size"] = 20
 #           Global constants
 # --------------------------------------------------------------------
 tag = "TAG=ycsbe-2026-01-22"
+OUTPUT_DIR = f"Figures/Fig14"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 inserts = 2_100_000
 updates = 2_105_000
@@ -121,7 +123,7 @@ class PlotEpochStats:
                         rotation=90,
                     )
 
-        plt.savefig(f"{tag}/total-rq-writes.pdf", bbox_inches="tight", pad_inches=0.06)
+        plt.savefig(f"{OUTPUT_DIR}/total-rq-writes.pdf", bbox_inches="tight", pad_inches=0.06)
 
     def plot_total_bytes_written(self):
         convert_to_ = 1024**3
@@ -173,7 +175,7 @@ class PlotEpochStats:
                         rotation=90,
                     )
 
-        plt.savefig(f"{tag}/total-writes.pdf", bbox_inches="tight", pad_inches=0.06)
+        plt.savefig(f"{OUTPUT_DIR}/total-writes.pdf", bbox_inches="tight", pad_inches=0.06)
 
     def plot_total_bytes_written_normalized(self):
             convert_to_ = 1024**3
@@ -218,7 +220,7 @@ class PlotEpochStats:
             ax.set_xticks(x_positions)
             ax.set_xticklabels([self.approach_abr_order[i] for i in range(len(self.approach_abr_order))], rotation=90)
 
-            plt.savefig(f"{tag}/total-writes-normalized.pdf", bbox_inches="tight", pad_inches=0.06)
+            plt.savefig(f"{OUTPUT_DIR}/total-writes-normalized.pdf", bbox_inches="tight", pad_inches=0.06)
             plt.close(fig)
 
     def plot_compaction_debt_over_epochs(self):
@@ -252,7 +254,7 @@ class PlotEpochStats:
         ax.set_xticklabels([str(x + 1) for x in desired_xticks])
 
         plt.savefig(
-            f"{tag}/compaction-debt-over-epochs.pdf",
+            f"{OUTPUT_DIR}/compaction-debt-over-epochs.pdf",
             bbox_inches="tight",
             pad_inches=0.06,
         )
@@ -302,7 +304,7 @@ class PlotEpochStats:
             # Position y-label to avoid overlap with ticks
             ax.yaxis.set_label_coords(x=-0.48, y=0.34)
 
-            plt.savefig(f"{tag}/compaction-debt-normalized.pdf", bbox_inches="tight", pad_inches=0.06)
+            plt.savefig(f"{OUTPUT_DIR}/compaction-debt-normalized.pdf", bbox_inches="tight", pad_inches=0.06)
             plt.close(fig)
 
     def plot_compaction_debt(self):
@@ -359,7 +361,7 @@ class PlotEpochStats:
                         rotation=90,
                     )
 
-        plt.savefig(f"{tag}/compaction-debt.pdf", bbox_inches="tight", pad_inches=0.06)
+        plt.savefig(f"{OUTPUT_DIR}/compaction-debt.pdf", bbox_inches="tight", pad_inches=0.06)
 
         handles, labels = ax.get_legend_handles_labels()
         legend_fig = plt.figure(figsize=(8, 2))
@@ -379,7 +381,7 @@ class PlotEpochStats:
         )
 
         legend_fig.savefig(
-            f"{tag}/bounded-metric-legend.pdf", bbox_inches="tight", pad_inches=0.015
+            f"{OUTPUT_DIR}/bounded-metric-legend.pdf", bbox_inches="tight", pad_inches=0.015
         )
 
     def plot_space_amplification(self):
@@ -431,7 +433,7 @@ class PlotEpochStats:
                     )
 
         plt.savefig(
-            f"{tag}/space-amplification.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{OUTPUT_DIR}/space-amplification.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
     def plot_insert_throughput_for_phases(self, phases: List[Tuple[int]] = [(1, -1)]):
@@ -485,7 +487,7 @@ class PlotEpochStats:
         # ax.set_xticklabels([str(x) for x in desired_xticks])
 
         plt.savefig(
-            f"{tag}/inserts-throughput.pdf", bbox_inches="tight", pad_inches=0.04
+            f"{OUTPUT_DIR}/inserts-throughput.pdf", bbox_inches="tight", pad_inches=0.04
         )
         plt.close(fig)
 
@@ -523,7 +525,7 @@ class PlotEpochStats:
         ax.set_xticklabels([per for per in self.approach_abr_order], rotation=90)
 
         plt.savefig(
-            f"{tag}/wkl-execution-time.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{OUTPUT_DIR}/wkl-execution-time.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
 
@@ -602,7 +604,7 @@ class PlotRangeQueryStats:
         ax.set_xticklabels([per for per in approach_abbr], rotation=90)
 
         plt.savefig(
-            f"{tag}/did-optimization-trigger.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{OUTPUT_DIR}/did-optimization-trigger.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
     def bytes_read_for_each_range_query_rolling_broken_axes(self, window=200):
@@ -672,7 +674,7 @@ class PlotRangeQueryStats:
             bax.axs[-1].set_xticklabels([str(x) for x in desired_xticks])
 
             plt.savefig(
-                f"{tag}/range-query-bytes-read-rolling-borken-axes.pdf",
+                f"{OUTPUT_DIR}/range-query-bytes-read-rolling-borken-axes.pdf",
                 bbox_inches="tight",
                 pad_inches=0.04,
             )
@@ -746,7 +748,7 @@ class PlotRangeQueryStats:
         print(tag)
 
         plt.savefig(
-            f"{tag}/range-query-bytes-read-rolling.pdf",
+            f"{OUTPUT_DIR}/range-query-bytes-read-rolling.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -805,7 +807,7 @@ class PlotRangeQueryStats:
             bax.set_xlabel("range query number")
             bax.set_xticks(desired_xticks)
 
-            plt.savefig(f"{tag}/range-query-bytes-read-scatter-normalized.pdf", bbox_inches="tight")
+            plt.savefig(f"{OUTPUT_DIR}/range-query-bytes-read-scatter-normalized.pdf", bbox_inches="tight")
             plt.close(fig)
 
     def bytes_read_for_each_range_query_scatter_broken_axes(self):
@@ -848,7 +850,7 @@ class PlotRangeQueryStats:
         # FIX 4: Ensure x-axis doesn't overlap
         bax.set_xticks(desired_xticks)
 
-        plt.savefig(f"{tag}/range-query-bytes-read-scatter.pdf", bbox_inches="tight")
+        plt.savefig(f"{OUTPUT_DIR}/range-query-bytes-read-scatter.pdf", bbox_inches="tight")
         plt.close(fig)
 
     def bytes_read_for_each_range_query_scatter(self):
@@ -898,7 +900,7 @@ class PlotRangeQueryStats:
         # ax.set_xlim(left=-200)
 
         plt.savefig(
-            f"{tag}/range-query-bytes-read-scatter.pdf",
+            f"{OUTPUT_DIR}/range-query-bytes-read-scatter.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -942,7 +944,7 @@ class PlotRangeQueryStats:
         ax.set_xlim(left=0, right=desired_xticks[-1] + 0.03)
 
         plt.savefig(
-            f"{tag}/range-query-bytes-read-cdf.pdf",
+            f"{OUTPUT_DIR}/range-query-bytes-read-cdf.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1000,7 +1002,7 @@ class PlotRangeQueryStats:
         # ax.set_xticklabels([str(x) for x in desired_xticks])
 
         plt.savefig(
-            f"{tag}/range-query-bytes-read.pdf", bbox_inches="tight", pad_inches=0.06
+            f"{OUTPUT_DIR}/range-query-bytes-read.pdf", bbox_inches="tight", pad_inches=0.06
         )
 
     def normalized_latency_scatter(self):
@@ -1048,7 +1050,7 @@ class PlotRangeQueryStats:
             bax.set_xticks(desired_xticks)
 
             plt.savefig(
-                f"{tag}/range-query-latency-normalized.pdf",
+                f"{OUTPUT_DIR}/range-query-latency-normalized.pdf",
                 bbox_inches="tight",
                 pad_inches=0.04,
             )
@@ -1114,7 +1116,7 @@ class PlotRangeQueryStats:
             bax.set_xticks(desired_xticks)
 
             plt.savefig(
-                f"{tag}/range-query-latency-rolling.pdf",
+                f"{OUTPUT_DIR}/range-query-latency-rolling.pdf",
                 bbox_inches="tight",
                 pad_inches=0.04,
             )
@@ -1185,7 +1187,7 @@ class PlotRangeQueryStats:
             bax.set_xticks(desired_xticks)
 
             plt.savefig(
-                f"{tag}/range-query-latency-rolling.pdf",
+                f"{OUTPUT_DIR}/range-query-latency-rolling.pdf",
                 bbox_inches="tight",
                 pad_inches=0.04,
             )
@@ -1237,7 +1239,7 @@ class PlotRangeQueryStats:
             bax.set_xticks(desired_xticks)
 
             plt.savefig(
-                f"{tag}/range-query-latency-scatter.pdf",
+                f"{OUTPUT_DIR}/range-query-latency-scatter.pdf",
                 bbox_inches="tight",
                 pad_inches=0.04,
             )
@@ -1278,7 +1280,7 @@ class PlotRangeQueryStats:
         ax.set_xlim(left=0, right=desired_xticks[-1] + 0.5)
 
         plt.savefig(
-            f"{tag}/range-query-latency-cdf.pdf",
+            f"{OUTPUT_DIR}/range-query-latency-cdf.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1333,7 +1335,7 @@ class PlotRangeQueryStats:
         # ax.set_xticklabels([str(x) for x in desired_xticks])
 
         plt.savefig(
-            f"{tag}/range-query-latency.pdf", bbox_inches="tight", pad_inches=0.04
+            f"{OUTPUT_DIR}/range-query-latency.pdf", bbox_inches="tight", pad_inches=0.04
         )
         plt.close(fig)
 
@@ -1355,7 +1357,7 @@ class PlotRangeQueryStats:
         legend_fig.text(0.5, 0.85, legend_text, ha="center", va="center")
 
         legend_fig.savefig(
-            f"{tag}/bounded-legend-config.pdf", bbox_inches="tight", pad_inches=0.015
+            f"{OUTPUT_DIR}/bounded-legend-config.pdf", bbox_inches="tight", pad_inches=0.015
         )
         plt.close(legend_fig)
 
@@ -1382,7 +1384,7 @@ class PlotRangeQueryStats:
 
         # Save the legend figure separately; bbox_inches='tight' helps crop extra whitespace.
         legend_fig.savefig(
-            f"{tag}/bounded-legend.pdf", bbox_inches="tight", pad_inches=0.015
+            f"{OUTPUT_DIR}/bounded-legend.pdf", bbox_inches="tight", pad_inches=0.015
         )
         plt.close(legend_fig)
 
@@ -1456,7 +1458,7 @@ def plot_total_data_movement(
                 )
 
     plt.savefig(
-        f"{tag}/overall-data-movement.pdf", bbox_inches="tight", pad_inches=0.06
+        f"{OUTPUT_DIR}/overall-data-movement.pdf", bbox_inches="tight", pad_inches=0.06
     )
 
 
@@ -1529,7 +1531,7 @@ class PlotOperationLatencyStats:
         ax.set_ylabel(ylabel)
 
         plt.savefig(
-            f"{tag}/op-latency-scatter-{tag}.pdf",
+            f"{OUTPUT_DIR}/op-latency-scatter-{tag}.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1560,7 +1562,7 @@ class PlotOperationLatencyStats:
         ax.set_ylabel(ylabel)
 
         plt.savefig(
-            f"{tag}/op-latency-line-{tag}.pdf",
+            f"{OUTPUT_DIR}/op-latency-line-{tag}.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1625,7 +1627,7 @@ class PlotOperationLatencyStats:
         ax.set_ylabel(ylabel)
 
         plt.savefig(
-            f"{tag}/op-latency-rolling-{statistic}-{tag}.pdf",
+            f"{OUTPUT_DIR}/op-latency-rolling-{statistic}-{tag}.pdf",
             bbox_inches="tight",
             pad_inches=0.04,
         )
@@ -1681,7 +1683,7 @@ def plot_total_data_movement_normalized(
     ax.set_xticklabels(approach_abr_order, rotation=90)
     ax.yaxis.set_label_coords(-0.4, 0.38)
 
-    plt.savefig(f"{tag}/overall-data-movement-normalized.pdf", bbox_inches="tight")
+    plt.savefig(f"{OUTPUT_DIR}/overall-data-movement-normalized.pdf", bbox_inches="tight")
 
 
 
@@ -1726,7 +1728,7 @@ ALL_APPROACHES = {
     # "RangeReduce[lb=T^-1]": "RangeReduce[lb=T^-1]",
 }
 
-EXPDIRNAME = f"{PROJECT_DIR}/.vstats_old/experiments-{tag}-T{size_ratio}"
+EXPDIRNAME = f"{PROJECT_DIR}/logs/experiments-{tag}-T{size_ratio}"
 
 filesize = entry_size * entries_per_page * num_page_per_file
 
@@ -1819,20 +1821,20 @@ metric_exp = PlotEpochStats(
     epoch_to_plot=epoch_to_plot,
 )
 
-metric_exp.plot_total_bytes_written()
+# metric_exp.plot_total_bytes_written()
 # metric_exp.plot_total_bytes_written_normalized()
 metric_exp.plot_compaction_debt()
 # metric_exp.plot_compaction_debt_normalized()
 # # metric_exp.plot_compaction_debt_over_epochs()
 metric_exp.plot_space_amplification()
-metric_exp.plot_workload_exec_time()
+# metric_exp.plot_workload_exec_time()
 
-plot_total_data_movement(
-    epoch_plot_stats,
-    rq_stats,
-    approach_abr_order=APPROACH_ABBR,
-    epoch_to_plot=epoch_to_plot,
-)
+# plot_total_data_movement(
+#     epoch_plot_stats,
+#     rq_stats,
+#     approach_abr_order=APPROACH_ABBR,
+#     epoch_to_plot=epoch_to_plot,
+# )
 # plot_total_data_movement_normalized(
 #     epoch_plot_stats,
 #     rq_stats,
